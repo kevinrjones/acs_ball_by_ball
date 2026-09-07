@@ -48,4 +48,4 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin-version" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover-version" }
 pitest = { id = "info.solidsoft.pitest", version.ref = "pitest-version" }
-version-update = { id = "com.github.ben-manes.versions", version.ref = "update-version-version" }
+version-update = { id = "io.github.ben-manes.versions", version.ref = "update-version-version" }

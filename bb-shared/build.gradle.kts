@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.testing.Test
+
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
@@ -6,14 +8,8 @@ plugins {
 group = "com.knowledgespike"
 version = "1.0"
 
-repositories {
-    mavenCentral()
-    mavenLocal()
-}
-
 dependencies {
     testImplementation(kotlin("test"))
-    implementation(kotlin("stdlib-jdk8"))
 
     implementation(libs.logback.classic)
     implementation(libs.logback.core)
@@ -31,7 +27,7 @@ dependencies {
     implementation(libs.hikari.cp)
 }
 
-tasks.test {
+tasks.withType<Test>().configureEach {
     useJUnitPlatform()
     testLogging {
         events("passed", "skipped", "failed")
@@ -40,9 +36,4 @@ tasks.test {
 
 kotlin {
     jvmToolchain(21)
-}
-
-java {
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
 }

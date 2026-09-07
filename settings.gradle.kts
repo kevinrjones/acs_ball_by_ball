@@ -1,29 +1,25 @@
-rootProject.name = "StatsApp"
+import org.gradle.api.initialization.resolve.RepositoriesMode
 
-include("bb-update-database")
-include("bb-shared")
-
-
-buildscript {
+pluginManagement {
     repositories {
-        maven {
-            url = uri("https://plugins.gradle.org/m2/")
-        }
-    }
-    dependencies {
-        classpath("org.gradle.toolchains:foojay-resolver:1.0.0")
+        gradlePluginPortal()
+        mavenCentral()
     }
 }
 
-apply(plugin = "org.gradle.toolchains.foojay-resolver-convention")
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
+}
 
-//toolchainManagement {
-//    jvm {
-//        javaRepositories {
-//            repository("foojay") {
-//                resolverClass.set(org.gradle.toolchains.foojay.FoojayToolchainResolver::class.java)
-//            }
-//        }
-//    }
-//}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        mavenCentral()
+    }
+}
+
+rootProject.name = "BallByBall"
+
+include("bb-update-database")
+include("bb-shared")
 

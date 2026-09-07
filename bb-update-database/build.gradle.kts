@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.testing.Test
+
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
@@ -14,14 +16,8 @@ buildscript {
 group = "com.knowledgespike"
 version = "1.0"
 
-repositories {
-    mavenCentral()
-    mavenLocal()
-}
-
 dependencies {
     testImplementation(kotlin("test"))
-    implementation(kotlin("stdlib-jdk8"))
 
     implementation(libs.logback.classic)
     implementation(libs.logback.core)
@@ -39,7 +35,7 @@ dependencies {
     implementation(project(":bb-shared"))
 }
 
-tasks.test {
+tasks.withType<Test>().configureEach {
     useJUnitPlatform()
     testLogging {
         events("passed", "skipped", "failed")
@@ -50,11 +46,6 @@ kotlin {
     jvmToolchain(21)
 }
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
-}
-
 application {
     mainClass.set("com.knowledgespike.cricsheet.parse.Application")
 
@@ -63,9 +54,18 @@ application {
 
 
 flyway {
-    url = "jdbc:mysql://localhost:3306/cricsheet"
-    user = "cricsheet"
-    password = "p4ssw0rd"
+    url = providers.gradleProperty("flyway.url")
+        .orElse(providers.environmentVariable("FLYWAY_URL"))
+        .orElse("jdbc:mysql://localhost:3306/cricsheet")
+        .get()
+    user = providers.gradleProperty("flyway.user")
+        .orElse(providers.environmentVariable("FLYWAY_USER"))
+        .orElse("cricsheet")
+        .get()
+    password = providers.gradleProperty("flyway.password")
+        .orElse(providers.environmentVariable("FLYWAY_PASSWORD"))
+        .orElse("")
+        .get()
     schemas = arrayOf("cricsheet")
     locations = arrayOf("filesystem:${projectDir}/migrations/mysql")
     sqlMigrationPrefix = ""
