@@ -23,13 +23,10 @@ class Application {
         fun main(args: Array<String>) {
             try {
 
-                // run --args="-bd /Users/kevinjones/Dropbox/projects/cricket/CricketArchive/Archive/cricsheet
+                // run --args="-bd /Users/kevinjones/Dropbox/projects/cricket/ballbyball/Archive/cricsheet
                 // -pr people.csv -c jdbc:mysql://localhost:3306/cricsheet?useSSL=true&requireSSL=true
                 // -u cricsheet -p p4ssw0rd"
-                val cardDirectories = listOf<CardDirectoryData>(
-                    CardDirectoryData("tests_json", "Test Matches", "t", true),
-                    CardDirectoryData("odis_json", "One-Day Internationals", "a", true),
-                    CardDirectoryData("t20s_json", "International T20s", "itt", true),
+                val cardDirectories = listOf(
                     CardDirectoryData("apl_json", "Afghanistan Premier League", "tt"),
                     CardDirectoryData("bbl_json", "Big Bash", "tt"),
                     CardDirectoryData("blz_json", "Blaze", "wtt"),
@@ -45,27 +42,40 @@ class Application {
                     CardDirectoryData("ipl_json", "Indian Premier League", "tt"),
                     CardDirectoryData("ipo_json", "Cricket Ireland Inter-Provincial Limited Over Cup", "a"),
                     CardDirectoryData("ipt_json", "Cricket Ireland Inter-Provincial Twenty20 Trophy", "tt"),
-//                    CardDirectoryData("it20s_json", "International T20", "itt", true),
-                    CardDirectoryData("psl_json", "Pakistan Super League", "tt"),
-                    CardDirectoryData("lpl_json", "Sri Lankan Premier League", "tt"),
-                    CardDirectoryData("ssh_json", "Sheffield", "f"), // add sheffied shield before mdm
+                    CardDirectoryData("it20s_json", "International T20", "itt", true),
+                    CardDirectoryData("lpl_json", "Lanka Premier League", "tt"),
+                    CardDirectoryData("mcl_json", "Major Clubs Limited Over Tournament", "tt"),
+                    CardDirectoryData("mct_json", "Major Clubs T20 Tournament", "tt"),
                     CardDirectoryData("mdms_json", "Multiday Matches", "f"), // duplicates of ccg, ssh, bwt
+                    CardDirectoryData("mlc_json", "Major League Cricket", "tt"),
+                    CardDirectoryData("mlt_json", "Major League Tournament", "f"),
                     CardDirectoryData("msl_json", "Mzansi Super League", "tt"),
+                    CardDirectoryData("npl_json", "Nepal Premier League", "tt"),
                     CardDirectoryData("ntb_json", "T20 Blast matches", "tt"),
+                    CardDirectoryData("odis_json", "One-Day Internationals", "a", true),
+                    CardDirectoryData("odms_json", "ICC World Cricket League Americas Region Division One", "a"),
+                    CardDirectoryData("pks_json", "Plunket Shield", "f"),
+                    CardDirectoryData("psl_json", "Pakistan Super League", "tt"),
                     CardDirectoryData("rhf_json", "Rachael Heyhoe-Flint Trophy", "wa"),
                     CardDirectoryData("rlc_json", "Royal London Cup", "a"),
                     CardDirectoryData("sat_json", "SA T20", "tt"),
+                    CardDirectoryData("ssh_json", "Sheffield Shield", "f"), // add sheffied shield before mdm
                     CardDirectoryData("sft_json", "West Indies Super 50", "wa"),
                     CardDirectoryData("sma_json", "Syed Mushtaq Ali Trophy", "tt"),
                     CardDirectoryData("ssm_json", "Super Smash", "tt", true),
+                    CardDirectoryData("t20s_json", "International T20s", "itt", true),
+                    CardDirectoryData("tests_json", "Test Matches", "t", true),
                     CardDirectoryData("wbb_json", "Women's Big Bash", "wtt"),
                     CardDirectoryData("wcl_json", "Women's Caribbean Premier League", "wtt"),
+                    CardDirectoryData("wod_json", "ECB Women's One-Day Cup", "wa"),
                     CardDirectoryData("wpl_json", "Women's Premier League", "wtt"),
                     CardDirectoryData("wsl_json", "Women's Cricket Super League", "wtt"),
+                    CardDirectoryData("wtb_json", "Women's Blast", "wtt"),
                     CardDirectoryData("wtc_json", "Women's T20 Challenge", "wtt"),
                 )
 
-                val exceptions = listOf("804779.json", "1146789.json", "1002157.json")
+//                val exceptions = listOf("804779.json", "1146789.json", "1002157.json")
+                val exceptions = emptyList<String>()
 
                 val options = createCommandLineOptions()
 
@@ -112,6 +122,9 @@ class Application {
                 val playerRegistryParser = PlayerRegistryParser()
                 val players = playerRegistryParser.parse(File(baseDirectory + playerRegistry))
 
+//                players.map {
+//                    PersonRegistryEntity(it.id, it.name, it.caId.toIntOrNull() ?: 0)
+//                }
 
                 val dbConnection = DatabaseConnection(connectionString, userName, password)
                 dbConnection.connect.use { db ->
@@ -132,10 +145,11 @@ class Application {
                         it.name.endsWith("json")
                     }.forEach { file ->
                         if (!exceptions.contains(file.fileName.toString())) {
+//                            val cricSheet = ballByBallParser.parse(file.toFile())
                             dbConnection.connect.use {
                                 val db = Database(it.connection)
 
-                                if(db.shouldParse(file.fileName.name)) {
+                                if (db.shouldParse(file.fileName.name)) {
                                     log.debug(
                                         "Parsing : {}, {}, {}",
                                         file.fileName,

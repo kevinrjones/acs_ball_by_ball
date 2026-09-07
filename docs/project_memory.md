@@ -71,3 +71,68 @@ Align Gradle configuration with Java toolchain and reproducibility best practice
 
 - `./gradlew clean check --no-daemon` passed for both modules.
 - No test sources currently exist, so Gradle reported `NO-SOURCE` for test tasks.
+
+## Cricket warehouse schema
+
+### Title
+
+Add dimensional warehouse DDL
+
+### Date/time completed
+
+2026-09-07 17:14
+
+### What was shipped
+
+- Added `bb-update-database/migrations/mysql/2__initial_warehouse.sql`.
+- Added conformed date, team, person, ground, match, innings, and wicket dimensions.
+- Added match and delivery facts plus bridges for match person roles and delivery wickets.
+
+### Key decisions
+
+- Warehouse surrogate keys are separate from source identifiers, which remain on dimensions for ETL traceability.
+- Fact grains are one row per match and one row per ball delivery.
+- Many-to-many relationships are represented as factless bridge tables rather than duplicated fact rows.
+
+### Gotchas
+
+- The date dimension must be populated before loading facts; nullable date foreign keys preserve source matches with no start date.
+- The migration creates schema only; ETL loading and role-code standardisation remain application responsibilities.
+
+### Test coverage areas
+
+- The migration executed successfully in an isolated MariaDB 12.3.2 database and created 11 tables.
+- `./gradlew check --no-daemon` passed; modules currently contain no test sources.
+
+## Warehouse persistence loader
+
+### Title
+
+Migrate database statements to the dimensional warehouse schema
+
+### Date/time completed
+
+2026-09-07 17:32
+
+### What was shipped
+
+- Reworked `Database` persistence from the operational tables to `dim_*`, `fact_*`, and `bridge_*` tables.
+- Added surrogate-key lookups and inserts for teams, people, grounds, dates, matches, innings, deliveries, and wickets.
+- Replaced role-specific person-match tables with `bridge_match_person` role assignments.
+
+### Key decisions
+
+- Source identifiers are allocated from warehouse tables while warehouse-generated keys are used for foreign-key columns.
+- Delivery rows retain the source grain and link to innings, date, teams, and people through warehouse keys.
+- Existing match-file detection uses `dim_match.file_name` so repeated loads remain idempotent.
+
+### Gotchas
+
+- The application entry point still contains pre-existing commented database invocation code; this change updates the active `Database` persistence implementation.
+- Both modules currently have no test sources, so Gradle reports `NO-SOURCE` for test tasks.
+
+### Test coverage areas
+
+- `./gradlew :bb-update-database:compileKotlin --no-daemon` passed.
+- `./gradlew check --no-daemon` passed.
+- SQL search confirmed no active Kotlin statements reference the original operational tables.

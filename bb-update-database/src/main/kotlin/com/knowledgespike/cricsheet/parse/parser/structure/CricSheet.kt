@@ -6,13 +6,13 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
 @Serializable
-data class CricSheet(val meta: Meta, val info: Info, val innings: Array<Innings>)
+data class CricSheet(val meta: Meta, val info: Info, val innings: List<Innings>)
 
 @Serializable
 data class Meta(@SerialName("data_version") val dataVersion: String, val created: String, val revision: Int)
 
 /*
-missing: Array<String> | Array<JsonObject>
+missing: List<String> | List<JsonObject>
     JsonObject ->
         "missing": [
       {
@@ -70,9 +70,9 @@ players:   "players": {
 @Serializable
 data class Info(
     @SerialName("balls_per_over") val ballsPerOver: Int,
-    @SerialName("bowl_out") val bowlOut: Array<BowlOut>? = null,
+    @SerialName("bowl_out") val bowlOut: List<BowlOut>? = null,
     val city: String? = null,
-    val dates: Array<String>,
+    val dates: List<String>,
     val event: Event? = null,
     val gender: String,
     @SerialName("match_type") val matchType: String,
@@ -81,13 +81,13 @@ data class Info(
     val officials: Officials? = null,
     val outcome: Outcome,
     val overs: Int? = null,
-    @SerialName("player_of_match") val playerOfMatch: Array<String>? = null,
+    @SerialName("player_of_match") val playerOfMatch: List<String>? = null,
     val players: JsonObject,
     val registry: PlayersRegistry,
     val season: String,
     val superSubs: JsonObject? = null,
     @SerialName("team_type") val teamType: String,
-    val teams: Array<String>,
+    val teams: List<String>,
     val toss: Toss,
     val venue: String? = null
 )
@@ -109,10 +109,10 @@ data class Missing(val foo: String)
 
 @Serializable
 data class Officials(
-    @SerialName("match_referees") val matchReferees: Array<String>? = null,
-    @SerialName("reserve_umpires") val reserveUmpires: Array<String>? = null,
-    @SerialName("tv_umpires") val tvUmpires: Array<String>? = null,
-    val umpires: Array<String>? = null
+    @SerialName("match_referees") val matchReferees: List<String>? = null,
+    @SerialName("reserve_umpires") val reserveUmpires: List<String>? = null,
+    @SerialName("tv_umpires") val tvUmpires: List<String>? = null,
+    val umpires: List<String>? = null
 )
 
 @Serializable
@@ -151,12 +151,12 @@ miscounted_overs -> "miscounted_overs": {
 @Serializable
 data class Innings(
     val team: String,
-    val overs: Array<Over>? = null,
-    @SerialName("absent_hurt") val absentHurt: Array<String>? = null,
+    val overs: List<Over>? = null,
+    @SerialName("absent_hurt") val absentHurt: List<String>? = null,
     @SerialName("penalty_runs") val penaltyRuns: PenaltyRuns? = null,
     val declared: Boolean? = null,
     val forfeited: Boolean? = null,
-    val powerplays: Array<PowerPlays>? = null,
+    val powerplays: List<PowerPlays>? = null,
     @SerialName("miscounted_overs") val miscountedOvers: JsonObject? = null,
     val target: Target? = null,
     @SerialName("super_over") val superOver: Boolean? = null
@@ -164,7 +164,7 @@ data class Innings(
 
 
 @Serializable
-data class Over(val over: Int, val deliveries: Array<Delivery>)
+data class Over(val over: Int, val deliveries: List<Delivery>)
 
 @Serializable
 data class PenaltyRuns(val pre: Int? = null, val post: Int? = null)
@@ -178,7 +178,7 @@ data class Delivery(
     val replacements: Replacements? = null,
     val review: Review? = null,
     val runs: Runs,
-    val wickets: Array<Wickets>? = null
+    val wickets: List<Wickets>? = null
 )
 
 @Serializable
@@ -200,7 +200,7 @@ data class Extras(
 )
 
 @Serializable
-data class Replacements(val match: Array<Match>? = null, val role: Array<Role>? = null)
+data class Replacements(val match: List<Match>? = null, val role: List<Role>? = null)
 
 @Serializable
 data class Match(
@@ -237,7 +237,7 @@ data class Runs(
 
 @Serializable
 data class Wickets(
-    val fielders: Array<Player>? = null,
+    val fielders: List<Player>? = null,
     val kind: String,
     @SerialName("player_out") val playerOut: String
 )
