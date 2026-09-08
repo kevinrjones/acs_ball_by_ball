@@ -1,5 +1,10 @@
-package com.knowledgespike.cricsheet.parse.database
+package com.knowledgespike.cricsheet.parse.database.adapter
 
+import com.knowledgespike.cricsheet.parse.database.PersonRegistryEntity
+import com.knowledgespike.cricsheet.parse.database.Team
+import com.knowledgespike.cricsheet.parse.database.Location
+import com.knowledgespike.cricsheet.parse.database.WarehouseInnings
+import com.knowledgespike.cricsheet.parse.database.WarehouseMatch
 import com.knowledgespike.cricsheet.parse.parser.structure.Delivery
 
 /**

@@ -3,6 +3,7 @@
 ## What was shipped
 
 - Moved module-specific Gradle configuration from the root build script into `bb-shared/build.gradle.kts` and `bb-update-database/build.gradle.kts`.
+- Added MariaDB, PostgreSQL, and SQLite warehouse output adapters with dialect-specific direct JDBC and SQL-file support.
 
 ## Key decisions
 
@@ -12,6 +13,7 @@
 ## Gotchas
 
 - The dependency update plugin uses the replacement `io.github.ben-manes.versions` ID.
+- Generated SQL-file schemas must stay aligned with the dialect-specific warehouse migrations.
 
 ## Gradle configuration ownership
 
@@ -231,6 +233,42 @@ Document CSV generation and database loading commands
 
 - Documentation examples were checked against the current CLI options, Flyway configuration, migration filenames, and CSV adapter output order.
 
+## Dialect-specific warehouse adapters
+
+### Title
+
+Add PostgreSQL and SQLite output adapters
+
+### Date/time completed
+
+2026-09-08 07:00
+
+### What was shipped
+
+- Moved output adapters into dialect-specific packages under `database.adapter`.
+- Added MariaDB, PostgreSQL, and SQLite direct JDBC adapters with shared warehouse persistence behavior.
+- Added dialect-specific SQL-file adapters and schema generation for identity columns, conflict handling, transactions, and connection setup.
+- Added `--database` selection for SQL-file output and automatic direct-adapter selection from JDBC URLs.
+- Updated `README-DEV.md` and the database architecture documentation with adapter structure and commands.
+
+### Key decisions
+
+- Shared JDBC persistence remains in `JdbcOutputAdapter`; only dialect-specific conflict syntax and connection initialization are specialized.
+- SQL-file generation uses separate wrapper classes for each dialect while sharing the warehouse row/key model.
+- PostgreSQL uses the `cricsheet` schema, while SQLite uses its `main` database and enables foreign keys.
+
+### Gotchas
+
+- SQL-file output resets the warehouse tables and is destructive to existing warehouse data.
+- PostgreSQL direct connections set `search_path` to `cricsheet`; SQLite direct connections enable foreign keys before loading rows.
+- PostgreSQL runtime migration execution was not available locally because no PostgreSQL server or container image was present.
+
+### Test coverage areas
+
+- MariaDB, PostgreSQL, and SQLite SQL-file syntax and conflict clauses.
+- SQLite execution of the generated warehouse schema against an in-memory database.
+- Existing CSV and MariaDB SQL-file adapter behavior.
+
 ## Self-contained SQL-file warehouse reset
 
 ### Title
@@ -302,3 +340,46 @@ Document warehouse schema and relationships
 - Documentation was checked against the supplied migration DDL, the developer
   runbook’s warehouse loading order, and the existing warehouse project-memory
   entry.
+
+## PostgreSQL and SQLite migrations
+
+### Title
+
+Add PostgreSQL and SQLite database migrations
+
+### Date/time completed
+
+2026-09-08 06:51
+
+### What was shipped
+
+- Added complete `1__initial_tables.sql` and `2__initial_warehouse.sql`
+  migration pairs under `bb-update-database/migrations/postgres` and
+  `bb-update-database/migrations/sqlite`.
+- Added dialect selection to the Flyway Gradle configuration through
+  `migration.database` or `FLYWAY_DATABASE`.
+- Documented PostgreSQL and SQLite migration commands and dialect-specific
+  schema behavior in `README-DEV.md` and `docs/architecture/database.md`.
+
+### Key decisions
+
+- MySQL remains the default Flyway target for backward compatibility.
+- PostgreSQL uses identity columns and a `cricsheet` schema; SQLite uses
+  `INTEGER PRIMARY KEY AUTOINCREMENT` and the built-in `main` database name.
+- Indexes are separate `CREATE INDEX` statements outside MySQL table syntax so
+  all three dialects preserve the same logical indexes.
+
+### Gotchas
+
+- PostgreSQL and SQLite migrations are dialect-specific and must not be mixed
+  with the MySQL directory in one Flyway location.
+- SQLite direct execution uses `PRAGMA foreign_keys = ON`; Flyway executions
+  pass `-Pflyway.executeInTransaction=false` because SQLite does not change
+  this connection setting inside an active transaction.
+
+### Test coverage areas
+
+- Both SQLite migrations execute together successfully and create the complete
+  operational and warehouse table sets.
+- PostgreSQL migration scripts passed repository whitespace validation; a local
+  PostgreSQL server was unavailable for execution testing.

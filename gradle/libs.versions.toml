@@ -26,6 +26,7 @@ angus-activation = { module = "org.eclipse.angus:angus-activation", version.ref 
 angus-mail = { module = "org.eclipse.angus:angus-mail", version.ref = "angus-email" }
 commons-cli = { module = "commons-cli:commons-cli", version.ref = "commons-cli-version" }
 flyway = { module = "org.flywaydb:flyway-mysql", version.ref = "flyway-version" }
+flyway-postgres = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway-version" }
 hikari-cp = { module = "com.zaxxer:HikariCP", version.ref = "hikari-version" }
 junit-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit-version" }
 junit = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-version" }

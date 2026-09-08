@@ -5,11 +5,15 @@ import com.knowledgespike.cricketarchive.shared.DatabaseConnection
 import com.knowledgespike.cricsheet.parse.parser.BallByBallParser
 import com.knowledgespike.cricsheet.parse.parser.PlayerRegistryParser
 import com.knowledgespike.cricsheet.parse.database.Database
-import com.knowledgespike.cricsheet.parse.database.CsvOutputAdapter
-import com.knowledgespike.cricsheet.parse.database.OutputAdapter
 import com.knowledgespike.cricsheet.parse.database.PersonRegistryEntity
-import com.knowledgespike.cricsheet.parse.database.SqlOutputAdapter
-import com.knowledgespike.cricsheet.parse.database.SqlScriptOutputAdapter
+import com.knowledgespike.cricsheet.parse.database.adapter.OutputAdapter
+import com.knowledgespike.cricsheet.parse.database.adapter.csv.CsvOutputAdapter
+import com.knowledgespike.cricsheet.parse.database.adapter.mariadb.SqlOutputAdapter as MariaDbSqlOutputAdapter
+import com.knowledgespike.cricsheet.parse.database.adapter.mariadb.SqlScriptOutputAdapter as MariaDbSqlScriptOutputAdapter
+import com.knowledgespike.cricsheet.parse.database.adapter.postgres.SqlOutputAdapter as PostgresSqlOutputAdapter
+import com.knowledgespike.cricsheet.parse.database.adapter.postgres.SqlScriptOutputAdapter as PostgresSqlScriptOutputAdapter
+import com.knowledgespike.cricsheet.parse.database.adapter.sqlite.SqlOutputAdapter as SqliteSqlOutputAdapter
+import com.knowledgespike.cricsheet.parse.database.adapter.sqlite.SqlScriptOutputAdapter as SqliteSqlScriptOutputAdapter
 import com.knowledgespike.cricsheet.parse.models.CardDirectoryData
 import org.apache.commons.cli.*
 import java.io.File
@@ -119,6 +123,7 @@ class Application {
                 val outputType = cmd.getOptionValue("ot", "SQL").uppercase()
                 val outputFile = cmd.getOptionValue("o") ?: cmd.getOptionValue("sf")
                 val csvDirectory = cmd.getOptionValue("cd")
+                val databaseType = cmd.getOptionValue("db", "mariadb").lowercase()
 
 
                 if (!baseDirectory.endsWith('/'))
@@ -133,14 +138,14 @@ class Application {
                 when (outputType) {
                     "SQL_FILE" -> {
                         require(!outputFile.isNullOrBlank()) { "--outputFile is required when --outputType SQL_FILE is selected" }
-                        SqlScriptOutputAdapter(Path.of(outputFile)).use { adapter ->
+                        createScriptOutputAdapter(databaseType, Path.of(outputFile)).use { adapter ->
                             runImport(adapter, baseDirectory, people, cardDirectories, exceptions)
                         }
                     }
 
                     "SQL", "DATABASE" -> {
                         if (outputType == "SQL" && !outputFile.isNullOrBlank()) {
-                            SqlScriptOutputAdapter(Path.of(outputFile)).use { adapter ->
+                            createScriptOutputAdapter(databaseType, Path.of(outputFile)).use { adapter ->
                                 runImport(adapter, baseDirectory, people, cardDirectories, exceptions)
                             }
                             return
@@ -153,7 +158,7 @@ class Application {
                             cmd.getOptionValue("p")
                         )
                         dbConnection.connect.use { db ->
-                            SqlOutputAdapter(db.connection).use { adapter ->
+                            createSqlOutputAdapter(connectionString, db.connection).use { adapter ->
                                 runImport(adapter, baseDirectory, people, cardDirectories, exceptions)
                             }
                         }
@@ -176,12 +181,38 @@ class Application {
             log.info("finished")
         }
 
+        private fun createScriptOutputAdapter(databaseType: String, output: Path): OutputAdapter = when (databaseType) {
+            "mariadb", "mysql" -> MariaDbSqlScriptOutputAdapter(output)
+            "postgres", "postgresql" -> PostgresSqlScriptOutputAdapter(output)
+            "sqlite" -> SqliteSqlScriptOutputAdapter(output)
+            else -> throw IllegalArgumentException("Unsupported database type: $databaseType")
+        }
+
+        private fun createSqlOutputAdapter(connectionString: String, connection: java.sql.Connection): OutputAdapter =
+            when (databaseType(connectionString)) {
+                "mariadb" -> MariaDbSqlOutputAdapter(connection)
+                "postgres" -> PostgresSqlOutputAdapter(connection)
+                "sqlite" -> SqliteSqlOutputAdapter(connection)
+                else -> throw IllegalArgumentException("Unsupported database connection: $connectionString")
+            }
+
+        private fun databaseType(connectionString: String): String = when {
+            connectionString.startsWith("jdbc:mariadb:") || connectionString.startsWith("jdbc:mysql:") -> "mariadb"
+            connectionString.startsWith("jdbc:postgresql:") -> "postgres"
+            connectionString.startsWith("jdbc:sqlite:") -> "sqlite"
+            else -> "unknown"
+        }
+
         private fun createCommandLineOptions(): Options {
             val options = Options()
             options.addOption("h", "help", false, "print this message")
             options.addOption("c", "connectionString", true, "database connection string")
             options.addOption("u", "userName", true, "database user name")
             options.addOption("p", "password", true, "database password")
+            options.addOption(
+                Option.builder("db").longOpt("database").hasArg().argName("database")
+                    .desc("SQL-file database dialect: mariadb, postgres, or sqlite (default: mariadb)").get()
+            )
             options.addOption(
                 Option.builder("ot").longOpt("outputType").hasArg().argName("outputType")
                     .desc("output destination: SQL, DATABASE, SQL_FILE, or CSV (default: SQL)").get()

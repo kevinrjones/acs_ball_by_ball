@@ -1,5 +1,7 @@
 package com.knowledgespike.cricsheet.parse.database
 
+import com.knowledgespike.cricsheet.parse.database.adapter.csv.CsvOutputAdapter
+import com.knowledgespike.cricsheet.parse.database.adapter.MatchRecord
 import org.junit.jupiter.api.Test
 import strikt.api.expectThat
 import strikt.assertions.contains

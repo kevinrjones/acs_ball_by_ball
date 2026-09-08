@@ -1,6 +1,12 @@
-package com.knowledgespike.cricsheet.parse.database
+package com.knowledgespike.cricsheet.parse.database.adapter
 
 import com.knowledgespike.cricketarchive.InvalidStateException
+import com.knowledgespike.cricsheet.parse.database.Location
+import com.knowledgespike.cricsheet.parse.database.PersonRegistryEntity
+import com.knowledgespike.cricsheet.parse.database.Team
+import com.knowledgespike.cricsheet.parse.database.WarehouseInnings
+import com.knowledgespike.cricsheet.parse.database.WarehouseMatch
+import com.knowledgespike.cricsheet.parse.database.getNameParts
 import java.sql.Connection
 import java.sql.Statement
 import java.sql.Types
@@ -12,7 +18,7 @@ import java.time.temporal.WeekFields
 import java.util.Locale
 
 /** Writes warehouse rows directly to the configured database. */
-class SqlOutputAdapter(private val connection: Connection) : OutputAdapter {
+abstract class JdbcOutputAdapter(protected val connection: Connection) : OutputAdapter {
     override fun findMatchKey(fileName: String): Long? = queryKey(
         "select match_key from dim_match where file_name = ?",
         fileName
@@ -195,14 +201,16 @@ class SqlOutputAdapter(private val connection: Connection) : OutputAdapter {
     }
 
     override fun insertMatchPerson(matchKey: Long, personKey: Long, roleCode: String) {
-        execute(
+        executeAllowingNoOp(
             "insert into bridge_match_person (match_key, person_key, role_code) values (?, ?, ?) " +
-                    "on duplicate key update match_person_key = match_person_key",
+                    duplicateMatchPersonClause(),
             matchKey,
             personKey,
             roleCode
         )
     }
+
+    protected abstract fun duplicateMatchPersonClause(): String
 
     override fun writeAllPeople(people: Sequence<PersonRegistryEntity>) = people.forEach { person ->
         upsertPerson(person.id, person.name, person.caId)
@@ -251,6 +259,13 @@ class SqlOutputAdapter(private val connection: Connection) : OutputAdapter {
         connection.prepareStatement(sql).use { statement ->
             values.forEachIndexed { index, value -> setValue(statement, index + 1, value) }
             check(statement.executeUpdate() == 1)
+        }
+    }
+
+    private fun executeAllowingNoOp(sql: String, vararg values: Any?) {
+        connection.prepareStatement(sql).use { statement ->
+            values.forEachIndexed { index, value -> setValue(statement, index + 1, value) }
+            check(statement.executeUpdate() >= 0)
         }
     }
 

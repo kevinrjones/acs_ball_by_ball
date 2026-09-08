@@ -10,6 +10,7 @@ plugins {
 buildscript {
     dependencies {
         classpath(libs.flyway)
+        classpath(libs.flyway.postgres)
     }
 }
 
@@ -32,6 +33,8 @@ dependencies {
     implementation(libs.commons.cli)
     implementation(libs.kotlinx.serialization)
     implementation(libs.mariadb)
+    implementation(libs.postgres)
+    implementation(libs.sqlite)
     implementation(project(":bb-shared"))
 }
 
@@ -53,6 +56,11 @@ application {
 }
 
 
+val flywayDatabase = providers.gradleProperty("migration.database")
+    .orElse(providers.environmentVariable("FLYWAY_DATABASE"))
+    .orElse("mysql")
+    .get()
+
 flyway {
     url = providers.gradleProperty("flyway.url")
         .orElse(providers.environmentVariable("FLYWAY_URL"))
@@ -66,9 +74,10 @@ flyway {
         .orElse(providers.environmentVariable("FLYWAY_PASSWORD"))
         .orElse("")
         .get()
-    schemas = arrayOf("cricsheet")
-    locations = arrayOf("filesystem:${projectDir}/migrations/mysql")
+    schemas = if (flywayDatabase == "sqlite") arrayOf("main") else arrayOf("cricsheet")
+    locations = arrayOf("filesystem:${projectDir}/migrations/$flywayDatabase")
     sqlMigrationPrefix = ""
+    mixed = flywayDatabase == "sqlite"
     baselineOnMigrate = true
     outOfOrder = true
 }
