@@ -42,7 +42,6 @@ object Translate {
         val peopleInRegistry = getPeople(cricSheet)
         people.map { (team, players) ->
             val persons = players.jsonArray.map { person ->
-                val p = person.jsonPrimitive.content
                 val registeredPerson = peopleInRegistry.filter { it.name == person.jsonPrimitive.content }
                 if(registeredPerson.size != 1) throw InvalidStateException("Should be one matching person in the registry, actually ${registeredPerson.size}")
                 return@map registeredPerson[0]

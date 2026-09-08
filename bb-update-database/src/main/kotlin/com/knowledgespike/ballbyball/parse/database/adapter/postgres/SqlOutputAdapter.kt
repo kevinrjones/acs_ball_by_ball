@@ -6,7 +6,7 @@ import java.sql.Connection
 class SqlOutputAdapter(connection: Connection) : JdbcOutputAdapter(connection) {
     init {
         connection.createStatement().use { statement ->
-            statement.execute("set search_path to cricsheet")
+            statement.execute("set search_path to acs_ball_by_ball")
         }
     }
 

@@ -141,6 +141,12 @@ class SqlScriptOutputAdapterTest {
                     result.next()
                     expectThat(result.getInt(1)).isEqualTo(12)
                 }
+                statement.executeQuery(
+                    "select count(*) from sqlite_master where type = 'index' and name = 'idx_fact_delivery_ball_in_over'"
+                ).use { result ->
+                    result.next()
+                    expectThat(result.getInt(1)).isEqualTo(1)
+                }
             }
         }
     }

@@ -201,6 +201,7 @@ CREATE TABLE fact_delivery
     KEY idx_fact_delivery_non_striker (non_striker_key),
     KEY idx_fact_delivery_bowler (bowler_key),
     KEY idx_fact_delivery_over (over_number),
+    KEY idx_fact_delivery_ball_in_over (ball_in_over),
     KEY idx_fact_delivery_powerplay (powerplay),
 
     CONSTRAINT fk_fact_delivery_match

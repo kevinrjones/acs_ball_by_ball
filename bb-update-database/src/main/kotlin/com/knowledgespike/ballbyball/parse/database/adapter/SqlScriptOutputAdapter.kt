@@ -1,14 +1,6 @@
 package com.knowledgespike.ballbyball.parse.database.adapter
 
-import com.knowledgespike.ballbyball.parse.database.Location
-import com.knowledgespike.ballbyball.parse.database.PersonRegistryEntity
-import com.knowledgespike.ballbyball.parse.database.Team
-import com.knowledgespike.ballbyball.parse.database.WarehouseInnings
-import com.knowledgespike.ballbyball.parse.database.WarehouseMatch
-import com.knowledgespike.ballbyball.parse.database.getNameParts
-import com.knowledgespike.ballbyball.parse.database.adapter.DeliveryRecord
-import com.knowledgespike.ballbyball.parse.database.adapter.MatchRecord
-
+import com.knowledgespike.ballbyball.parse.database.*
 import java.io.BufferedWriter
 import java.nio.file.Files
 import java.nio.file.Path
@@ -16,7 +8,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.temporal.WeekFields
-import java.util.Locale
+import java.util.*
 
 /** Writes an executable dialect-specific SQL script while keeping warehouse keys stable within the script. */
 abstract class SqlScriptOutputAdapter(

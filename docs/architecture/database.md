@@ -347,8 +347,8 @@ Foreign keys:
   `dim_person(person_key)`.
 
 Indexes support match-order scans, date and innings filtering, team and player
-analysis, over filtering, and powerplay filtering. `source_ball_id` is unique
-for source-level deduplication.
+analysis, over and ball-in-over filtering, and powerplay filtering.
+`source_ball_id` is unique for source-level deduplication.
 
 ## Factless bridges
 

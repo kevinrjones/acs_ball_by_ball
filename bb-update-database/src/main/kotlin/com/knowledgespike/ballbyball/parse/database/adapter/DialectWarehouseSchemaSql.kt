@@ -228,6 +228,7 @@ internal object WarehouseSchemaSql {
             CREATE INDEX idx_fact_delivery_non_striker ON fact_delivery (non_striker_key);
             CREATE INDEX idx_fact_delivery_bowler ON fact_delivery (bowler_key);
             CREATE INDEX idx_fact_delivery_over ON fact_delivery (over_number);
+            CREATE INDEX idx_fact_delivery_ball_in_over ON fact_delivery (ball_in_over);
             CREATE INDEX idx_fact_delivery_powerplay ON fact_delivery (powerplay);
             """,
             """

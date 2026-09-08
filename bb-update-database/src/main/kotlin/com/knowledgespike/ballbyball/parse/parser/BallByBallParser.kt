@@ -18,7 +18,6 @@ class BallByBallParser {
     }
 
     fun buildCricSheet(data: String): CricSheet {
-        val sheet: CricSheet
         return json.decodeFromString(data)
     }
 }

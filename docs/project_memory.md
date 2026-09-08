@@ -566,3 +566,37 @@ Merge the fact match filename schema into migration version 2
 
 - Fresh SQLite schema execution and the full Gradle verification suite should
   confirm the initial warehouse migration exposes `fact_match.file_name`.
+
+## Index fact delivery ball position
+
+### Title
+
+Add an index for `fact_delivery.ball_in_over`
+
+### Date/time completed
+
+2026-09-08 14:50
+
+### What was shipped
+
+- Added `idx_fact_delivery_ball_in_over` to the MariaDB, PostgreSQL, and SQLite
+  version 2 warehouse migrations.
+- Added the same index to generated dialect-specific warehouse schema output.
+- Updated the database architecture documentation to describe ball-position
+  filtering support.
+
+### Key decisions
+
+- The index is single-column because queries filtering by the ball position
+  should not require a preceding `over_number` predicate.
+
+### Gotchas
+
+- Existing databases need the equivalent `CREATE INDEX` statement applied
+  separately because the project currently manages fresh schemas through the
+  consolidated version 2 migration.
+
+### Test coverage areas
+
+- Fresh SQLite migration index inspection and the full Gradle verification
+  suite.
