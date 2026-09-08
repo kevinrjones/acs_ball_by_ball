@@ -118,20 +118,5 @@ gradle-app.setting
 # gradle/wrapper/gradle-wrapper.properties
 
 temp/**
-cricketarchive-scripts/credentials.env
-cricketarchive-scripts/sa-database/bin
-cricketarchive-scripts/sa-database/lib
-cricketarchive-scripts/sa-getcards-nightly/bin
-cricketarchive-scripts/sa-getcards-nightly/lib
-cricketarchive-scripts/sa-getgrounds/bin
-cricketarchive-scripts/sa-getgrounds/lib
-cricketarchive-scripts/sa-getplayers/bin
-cricketarchive-scripts/sa-getplayers/lib
-cricketarchive-scripts/sa-parsecard/bin
-cricketarchive-scripts/sa-parsecard/lib
-cricketarchive-scripts/sa-parseplayer/bin
-cricketarchive-scripts/sa-parseplayer/lib
-cricketarchive-scripts/sa-update-officials/bin
-cricketarchive-scripts/sa-update-officials/lib
-cricketarchive-scripts/sa-update-players/bin
-cricketarchive-scripts/sa-update-players/lib
+bb-update-database/sql/**
+bb-update-database/csv/**

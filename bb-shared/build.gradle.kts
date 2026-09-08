@@ -3,6 +3,8 @@ import org.gradle.api.tasks.testing.Test
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.kover)
+    alias(libs.plugins.pitest)
 }
 
 group = "com.knowledgespike"

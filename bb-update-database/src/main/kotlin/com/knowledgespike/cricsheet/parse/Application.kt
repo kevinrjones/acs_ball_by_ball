@@ -5,11 +5,16 @@ import com.knowledgespike.cricketarchive.shared.DatabaseConnection
 import com.knowledgespike.cricsheet.parse.parser.BallByBallParser
 import com.knowledgespike.cricsheet.parse.parser.PlayerRegistryParser
 import com.knowledgespike.cricsheet.parse.database.Database
+import com.knowledgespike.cricsheet.parse.database.CsvOutputAdapter
+import com.knowledgespike.cricsheet.parse.database.OutputAdapter
 import com.knowledgespike.cricsheet.parse.database.PersonRegistryEntity
+import com.knowledgespike.cricsheet.parse.database.SqlOutputAdapter
+import com.knowledgespike.cricsheet.parse.database.SqlScriptOutputAdapter
 import com.knowledgespike.cricsheet.parse.models.CardDirectoryData
 import org.apache.commons.cli.*
 import java.io.File
 import java.nio.file.Files
+import java.nio.file.Path
 import java.nio.file.Paths
 import kotlin.io.path.name
 
@@ -81,6 +86,17 @@ class Application {
 
                 val formatter = org.apache.commons.cli.help.HelpFormatter.builder().get()
                 val header = "Parse cricsheet data into database"
+                if (args.isEmpty() || args.any { it == "-h" || it == "--help" }) {
+                    formatter.printHelp(
+                        "java parsecard",
+                        header,
+                        options,
+                        "",
+                        true
+                    )
+                    return
+                }
+
                 val cmd: CommandLine
                 val cmdLineParser: CommandLineParser = DefaultParser()
                 try {
@@ -98,22 +114,11 @@ class Application {
                     return
                 }
 
-                if (args.size == 0 || cmd.hasOption("h")) {
-                    formatter.printHelp(
-                        "java parsecard",
-                        header,
-                        options,
-                        "",
-                        true
-                    )
-                    System.exit(0)
-                }
-
                 var baseDirectory = cmd.getOptionValue("bd")
                 val playerRegistry = cmd.getOptionValue("pr")
-                val connectionString = cmd.getOptionValue("c")
-                val userName = cmd.getOptionValue("u")
-                val password = cmd.getOptionValue("p")
+                val outputType = cmd.getOptionValue("ot", "SQL").uppercase()
+                val outputFile = cmd.getOptionValue("o") ?: cmd.getOptionValue("sf")
+                val csvDirectory = cmd.getOptionValue("cd")
 
 
                 if (!baseDirectory.endsWith('/'))
@@ -121,48 +126,49 @@ class Application {
 
                 val playerRegistryParser = PlayerRegistryParser()
                 val players = playerRegistryParser.parse(File(baseDirectory + playerRegistry))
+                val people = players.map {
+                    PersonRegistryEntity(it.id, it.name, it.caId.toIntOrNull() ?: 0)
+                }.toList()
 
-//                players.map {
-//                    PersonRegistryEntity(it.id, it.name, it.caId.toIntOrNull() ?: 0)
-//                }
+                when (outputType) {
+                    "SQL_FILE" -> {
+                        require(!outputFile.isNullOrBlank()) { "--outputFile is required when --outputType SQL_FILE is selected" }
+                        SqlScriptOutputAdapter(Path.of(outputFile)).use { adapter ->
+                            runImport(adapter, baseDirectory, people, cardDirectories, exceptions)
+                        }
+                    }
 
-                val dbConnection = DatabaseConnection(connectionString, userName, password)
-                dbConnection.connect.use { db ->
-                    val database = Database(db.connection)
-                    database.writeAllPeople(players.map {
-                        PersonRegistryEntity(it.id, it.name, it.caId.toIntOrNull() ?: 0)
-                    })
-                }
-
-                val ballByBallParser = BallByBallParser()
-
-                cardDirectories.forEach { cardDirectoryData ->
-                    log.info("Inserting {} {}", cardDirectoryData.name, cardDirectoryData.matchType)
-                    val dataDirectory = "${baseDirectory}${cardDirectoryData.directoryName}/"
-                    val directory = Paths.get(dataDirectory)
-
-                    Files.list(directory).filter {
-                        it.name.endsWith("json")
-                    }.forEach { file ->
-                        if (!exceptions.contains(file.fileName.toString())) {
-//                            val cricSheet = ballByBallParser.parse(file.toFile())
-                            dbConnection.connect.use {
-                                val db = Database(it.connection)
-
-                                if (db.shouldParse(file.fileName.name)) {
-                                    log.debug(
-                                        "Parsing : {}, {}, {}",
-                                        file.fileName,
-                                        cardDirectoryData.name,
-                                        cardDirectoryData.matchType
-                                    )
-                                    val cricSheet = ballByBallParser.parse(file.toFile())
-
-                                    db.writeMatch(file.toFile().name, cricSheet, cardDirectoryData)
-                                }
+                    "SQL", "DATABASE" -> {
+                        if (outputType == "SQL" && !outputFile.isNullOrBlank()) {
+                            SqlScriptOutputAdapter(Path.of(outputFile)).use { adapter ->
+                                runImport(adapter, baseDirectory, people, cardDirectories, exceptions)
+                            }
+                            return
+                        }
+                        val connectionString = cmd.getOptionValue("c")
+                            ?: throw IllegalArgumentException("--connectionString is required for DATABASE output")
+                        val dbConnection = DatabaseConnection(
+                            connectionString,
+                            cmd.getOptionValue("u"),
+                            cmd.getOptionValue("p")
+                        )
+                        dbConnection.connect.use { db ->
+                            SqlOutputAdapter(db.connection).use { adapter ->
+                                runImport(adapter, baseDirectory, people, cardDirectories, exceptions)
                             }
                         }
                     }
+
+                    "CSV" -> {
+                        require(!csvDirectory.isNullOrBlank()) {
+                            "--csvDir is required when --outputType CSV is selected"
+                        }
+                        CsvOutputAdapter(Path.of(csvDirectory)).use { adapter ->
+                            runImport(adapter, baseDirectory, people, cardDirectories, exceptions)
+                        }
+                    }
+
+                    else -> throw IllegalArgumentException("Unsupported output type: $outputType")
                 }
             } catch (e: Exception) {
                 log.error("Unable to parse cricsheet data", e)
@@ -173,9 +179,19 @@ class Application {
         private fun createCommandLineOptions(): Options {
             val options = Options()
             options.addOption("h", "help", false, "print this message")
-            options.addRequiredOption("c", "connectionString", true, "database connection string")
-            options.addRequiredOption("u", "userName", true, "database user name")
-            options.addRequiredOption("p", "password", true, "database password")
+            options.addOption("c", "connectionString", true, "database connection string")
+            options.addOption("u", "userName", true, "database user name")
+            options.addOption("p", "password", true, "database password")
+            options.addOption(
+                Option.builder("ot").longOpt("outputType").hasArg().argName("outputType")
+                    .desc("output destination: SQL, DATABASE, SQL_FILE, or CSV (default: SQL)").get()
+            )
+            options.addOption(
+                Option.builder("o").longOpt("outputFile").hasArg().argName("outputFile")
+                    .desc("SQL script output file; with SQL this selects file output").get()
+            )
+            options.addOption("sf", "sqlFile", true, "alias for outputFile")
+            options.addOption("cd", "csvDir", true, "CSV output directory; required for CSV output")
             options.addOption(
                 Option
                     .builder("bd")
@@ -197,6 +213,36 @@ class Application {
                     .get()
             )
             return options
+        }
+
+        private fun runImport(
+            adapter: OutputAdapter,
+            baseDirectory: String,
+            people: List<PersonRegistryEntity>,
+            cardDirectories: List<CardDirectoryData>,
+            exceptions: List<String>
+        ) {
+            val database = Database(adapter)
+            database.writeAllPeople(people.stream())
+            val ballByBallParser = BallByBallParser()
+
+            cardDirectories.forEach { cardDirectoryData ->
+                log.info("Inserting {} {}", cardDirectoryData.name, cardDirectoryData.matchType)
+                val directory = Paths.get("${baseDirectory}${cardDirectoryData.directoryName}/")
+                Files.list(directory).use { files ->
+                    files.filter { it.name.endsWith("json") }.forEach { file ->
+                        if (!exceptions.contains(file.fileName.toString()) && database.shouldParse(file.fileName.name)) {
+                            log.debug(
+                                "Parsing : {}, {}, {}",
+                                file.fileName,
+                                cardDirectoryData.name,
+                                cardDirectoryData.matchType
+                            )
+                            database.writeMatch(file.fileName.name, ballByBallParser.parse(file.toFile()), cardDirectoryData)
+                        }
+                    }
+                }
+            }
         }
     }
 }
