@@ -27,7 +27,7 @@
         <appender-ref ref="FILE-ROLLING"/>
     </root>
     <logger name="com.knowledgespike" level="info"/>
-    <logger name="com.knowledgespike.cricsheet" level="debug"/>
+    <logger name="com.knowledgespike.ballbyball" level="debug"/>
     <logger name="com.zaxxer.hikari.pool.PoolBase" level="info"/>
     <logger name="com.zaxxer.hikari.pool.HikariPool" level="info"/>
     <logger name="com.zaxxer.hikari.HikariDataSource" level="info"/>

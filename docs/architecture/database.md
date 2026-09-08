@@ -3,7 +3,7 @@
 ## Scope
 
 This document describes the warehouse schema created by the dialect-specific
-migrations in `bb-update-database/migrations/{mysql,postgres,sqlite}/2__initial_warehouse.sql`.
+migrations in `bb-update-database/migrations/{mysql,postgres,sqlite}`.
 
 The MySQL and PostgreSQL migrations create the dimensional warehouse in the
 `cricsheet` database/schema. SQLite stores the same tables in its `main`
@@ -46,6 +46,9 @@ erDiagram
     DIM_PERSON ||--o{ BRIDGE_MATCH_PERSON : has_role
     FACT_DELIVERY ||--o{ BRIDGE_DELIVERY_WICKET : records
     DIM_WICKET ||--o{ BRIDGE_DELIVERY_WICKET : describes
+    FACT_DELIVERY ||--o{ BRIDGE_DELIVERY_FIELDER : involves
+    DIM_WICKET ||--o{ BRIDGE_DELIVERY_FIELDER : identifies
+    DIM_PERSON ||--o{ BRIDGE_DELIVERY_FIELDER : fields
 ```
 
 The `DIM_TEAM` relationships to `DIM_MATCH`, `DIM_INNINGS`, and
@@ -68,6 +71,7 @@ two, the toss team, the winner, and the loser.
 | `fact_delivery` | Fact | One row per source `BallByBall` delivery | `delivery_key` |
 | `bridge_match_person` | Factless bridge | One row per match/person/role assignment | `match_person_key` |
 | `bridge_delivery_wicket` | Factless bridge | One row per delivery/wicket association | (`delivery_key`, `wicket_key`) |
+| `bridge_delivery_fielder` | Factless bridge | One row per delivery/wicket/fielder association | (`delivery_key`, `wicket_key`, `person_key`) |
 
 ## Key conventions
 
@@ -282,11 +286,13 @@ Indexes and constraints:
 
 `fact_match` has one row per source match. Its primary key is also a foreign
 key to `dim_match`, so it stores match-level measures without copying the
-match descriptor columns into the fact.
+match descriptor columns into the fact. The source JSON filename is retained
+as a directly queryable provenance attribute.
 
 | Column | Type | Null | Description |
 | --- | --- | --- | --- |
 | `match_key` | `BIGINT UNSIGNED` | No | Primary key and foreign key to `dim_match`. |
+| `file_name` | `VARCHAR(120)` | No | Filename of the source JSON match file. |
 | `match_date_key` | `INT` | Yes | Optional foreign key to `dim_date`. |
 | `ground_key` | `BIGINT UNSIGNED` | No | Foreign key to `dim_ground`. |
 | `duration_days` | `INT` | No | Match duration in days. |
@@ -294,13 +300,15 @@ match descriptor columns into the fact.
 | `match_count` | `TINYINT UNSIGNED` | No | Additive count measure; defaults to `1`. |
 
 The fact also indexes `match_date_key` and `ground_key` for common analytical
-filters.
+filters. The filename is copied from `dim_match.file_name` when a match fact is
+created and is part of the initial warehouse schema.
 
 ### `fact_delivery`
 
 `fact_delivery` is the most granular fact. Each row represents one delivery in
 the source `BallByBall` table. Measures and role keys are stored at this grain;
-wicket associations are kept in `bridge_delivery_wicket`.
+wicket and fielder associations are kept in `bridge_delivery_wicket` and
+`bridge_delivery_fielder`.
 
 | Column | Type | Null | Description |
 | --- | --- | --- | --- |
@@ -377,6 +385,22 @@ The composite primary key (`delivery_key`, `wicket_key`) prevents duplicate
 associations. Both columns are also foreign keys, so a bridge row cannot exist
 without its delivery and wicket dimension row.
 
+### `bridge_delivery_fielder`
+
+This bridge records the people named in a wicket's Cricsheet `fielders` array.
+The wicket key is retained in addition to the delivery key so a fielder remains
+attached to the specific wicket when a delivery contains more than one wicket.
+
+| Column | Type | Null | Description |
+| --- | --- | --- | --- |
+| `delivery_key` | `BIGINT UNSIGNED` | No | Foreign key to `fact_delivery`. |
+| `wicket_key` | `BIGINT UNSIGNED` | No | Foreign key to `dim_wicket`. |
+| `person_key` | `BIGINT UNSIGNED` | No | Foreign key to the fielding person in `dim_person`. |
+
+The composite primary key (`delivery_key`, `wicket_key`, `person_key`) prevents
+duplicate fielder associations. The person index supports queries such as
+fielding dismissals by player.
+
 ## Relationship and query paths
 
 ### Match and delivery analysis
@@ -392,6 +416,9 @@ flowchart LR
     PERSON[dim_person] --> DELIVERY
     DELIVERY --> WICKETBRIDGE[bridge_delivery_wicket]
     WICKET[dim_wicket] --> WICKETBRIDGE
+    DELIVERY --> FIELDERBRIDGE[bridge_delivery_fielder]
+    WICKET --> FIELDERBRIDGE
+    PERSON[dim_person] --> FIELDERBRIDGE
 ```
 
 Typical analytical paths are:
@@ -406,6 +433,8 @@ Typical analytical paths are:
    filtered by `role_code`.
 5. Wicket analysis: `fact_delivery` → `bridge_delivery_wicket` →
    `dim_wicket`.
+6. Fielding analysis: `fact_delivery` → `bridge_delivery_fielder` →
+   `dim_person`, optionally joined through `wicket_key` to `dim_wicket`.
 
 When joining `fact_delivery` to teams or people, use the role-specific foreign
 key that matches the question. Joining all three person keys as though they
@@ -424,6 +453,7 @@ flowchart TD
     DELIVERY[fact_delivery]
     ROLES[bridge_match_person]
     WICKETS[bridge_delivery_wicket]
+    FIELDERS[bridge_delivery_fielder]
 
     BASE --> MATCH
     MATCH --> INNINGS
@@ -435,6 +465,9 @@ flowchart TD
     BASE --> ROLES
     DELIVERY --> WICKETS
     BASE --> WICKETS
+    DELIVERY --> FIELDERS
+    WICKETS --> FIELDERS
+    BASE --> FIELDERS
 ```
 
 For bulk output, the practical sequence is:
@@ -444,8 +477,11 @@ For bulk output, the practical sequence is:
 2. Populate `dim_match` after its referenced date, team, and ground rows are
    present.
 3. Populate `dim_innings`.
-4. Populate `fact_match` and `fact_delivery`.
+4. Populate `fact_match` with the source filename copied from `dim_match`, and
+   populate `fact_delivery`.
 5. Populate `bridge_match_person` and `bridge_delivery_wicket` after their
+   parent rows exist.
+6. Populate `bridge_delivery_fielder` after its delivery, wicket, and person
    parent rows exist.
 
 The application’s CSV loader follows this order. Optional files may be absent
@@ -457,7 +493,7 @@ contain the warehouse keys allocated by the output adapter.
 
 The parser depends on the dialect-neutral `OutputAdapter` contract. Adapter
 implementations are grouped under
-`bb-update-database/src/main/kotlin/com/knowledgespike/cricsheet/parse/database/adapter`:
+`bb-update-database/src/main/kotlin/com/knowledgespike/ballbyball/parse/database/adapter`:
 
 | Package | Responsibility |
 | --- | --- |
@@ -475,8 +511,9 @@ and a transaction around generated rows.
 
 ## Operational notes
 
-- Run Flyway migrations `1__initial_tables.sql` and `2__initial_warehouse.sql`
-  for the selected dialect before loading warehouse data.
+- Run Flyway migrations `1__initial_tables.sql` and
+  `2__initial_warehouse.sql` for the selected dialect before loading warehouse
+  data. The initial warehouse migration includes `fact_match.file_name`.
 - The migration creates tables but does not insert dimension or fact data.
 - The database schema is named `cricsheet` by the migration.
 - MySQL warehouse tables use `ENGINE = InnoDB`; PostgreSQL and SQLite use their

@@ -50,7 +50,7 @@ kotlin {
 }
 
 application {
-    mainClass.set("com.knowledgespike.cricsheet.parse.Application")
+    mainClass.set("com.knowledgespike.ballbyball.parse.Application")
 
     applicationDefaultJvmArgs = listOf("-Dlogback.configurationFile=./logging/logback.xml")
 }

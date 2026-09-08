@@ -299,7 +299,7 @@ Drop and recreate warehouse tables in generated SQL files
 
 - Foreign-key-safe table drop order and parent-before-child create order.
 - Existing SQL literal escaping and generated foreign-key relationship tests.
-- `./gradlew :bb-update-database:test --tests 'com.knowledgespike.cricsheet.parse.database.SqlScriptOutputAdapterTest' --no-daemon` passed.
+- `./gradlew :bb-update-database:test --tests 'com.knowledgespike.ballbyball.parse.database.SqlScriptOutputAdapterTest' --no-daemon` passed.
 
 ## Warehouse database documentation
 
@@ -383,3 +383,186 @@ Add PostgreSQL and SQLite database migrations
   operational and warehouse table sets.
 - PostgreSQL migration scripts passed repository whitespace validation; a local
   PostgreSQL server was unavailable for execution testing.
+
+## Reproducible MariaDB and PostgreSQL test environments
+
+### Title
+
+Document and automate dual-database Docker setup
+
+### Date/time completed
+
+2026-09-08 08:27
+
+### What was shipped
+
+- Added `docs/setup/SETUP-DB.md` with detailed Docker, credential, migration,
+  population, verification, lifecycle, and reset instructions.
+- Added executable `docs/setup/setup-db.sh` to create or start both database
+  containers, provision application users and databases, run Flyway, and load
+  the same Cricsheet input into MariaDB and PostgreSQL.
+- Linked the setup guide from the developer prerequisites in `README-DEV.md`.
+
+### Key decisions
+
+- MariaDB and PostgreSQL use separate pinned image tags, named volumes, and
+  non-default host ports so both environments can run concurrently.
+- Database creation and data loading remain idempotent and use the existing
+  dialect-specific migrations and JDBC adapters rather than a second schema or
+  loading implementation.
+
+### Gotchas
+
+- The script's default passwords are for local disposable environments only.
+- Changing an existing container's image, port, volume, or administrative
+  password requires `CONFIRM_RESET=1 docs/setup/setup-db.sh reset` first.
+
+### Test coverage areas
+
+- Shell syntax validation, executable help output, Docker status inspection, and
+  repository whitespace validation.
+- Full container migration and data-load execution remains dependent on Docker
+  image availability and a local Cricsheet data directory.
+
+## Delivery fielder bridge
+
+### Title
+
+Track fielders named on wicket dismissals
+
+### Date/time completed
+
+2026-09-08 10:38
+
+### What was shipped
+
+- Added `bridge_delivery_fielder` to the generated warehouse schema and to new
+  Flyway migration `3__delivery_fielder.sql` for MySQL, PostgreSQL, and SQLite.
+- Resolved Cricsheet wicket fielder names through `dim_person` and emitted the
+  delivery, wicket, and fielder person relationship through every output mode.
+- Updated the database architecture, developer runbook, and database setup
+  documentation with the new table and loading order.
+
+### Key decisions
+
+- The bridge retains `wicket_key` as well as `delivery_key`, preserving the
+  association when one delivery contains multiple wickets or fielders.
+- The composite key (`delivery_key`, `wicket_key`, `person_key`) prevents
+  duplicate fielder associations while allowing multiple fielders per wicket.
+
+### Gotchas
+
+- Fielder names must exist in the Cricsheet player registry because the bridge
+  references `dim_person`.
+
+### Test coverage areas
+
+- End-to-end parser-to-SQL output for a caught wicket with a named fielder.
+- CSV, SQL-script, generated-schema, and full Gradle verification coverage.
+
+## BallByBall package namespace
+
+### Title
+
+Rename application packages from Cricsheet to BallByBall
+
+### Date/time completed
+
+2026-09-08 11:24
+
+### What was shipped
+
+- Renamed the application namespace from `com.knowledgespike.cricsheet` to
+  `com.knowledgespike.ballbyball` across production code, tests, the Gradle
+  application entry point, and logging configuration.
+- Moved the Kotlin source and test package directories to match the new
+  namespace and updated developer and architecture documentation paths.
+
+### Key decisions
+
+- Only the Kotlin package namespace changed; the `cricsheet` database/schema,
+  migration identifiers, and Cricsheet input terminology remain unchanged.
+
+### Gotchas
+
+- Fully qualified test selectors and source-directory references must use the
+  new `ballbyball` namespace.
+
+### Test coverage areas
+
+- Repository-wide stale-namespace search and full Gradle `clean check`.
+
+## Fact match source filename
+
+### Title
+
+Retain source JSON filenames on match facts
+
+### Date/time completed
+
+2026-09-08 13:58
+
+### What was shipped
+
+- Added the non-null `file_name` column to generated `fact_match` schema output
+  and all SQL/CSV output adapters.
+- Added a versioned filename upgrade path for MariaDB, PostgreSQL, and SQLite,
+  with backfill logic from `dim_match.file_name` for existing rows.
+- Updated the database architecture, developer runbook, and Docker setup guide.
+
+### Key decisions
+
+- The application passes the original JSON filename from `Database.writeMatch`
+  into every `fact_match` output mode.
+- The original implementation used a versioned migration rather than
+  rewriting the already-applied initial warehouse migration.
+
+### Gotchas
+
+- The original SQLite upgrade path used an empty-string default only while
+  adding the column because SQLite cannot add a non-null column to a populated
+  table without a default; existing values were immediately backfilled from
+  `dim_match`.
+
+### Test coverage areas
+
+- SQL-script and CSV regression tests assert the filename column and emitted
+  value in `fact_match` rows.
+- SQLite generated-schema execution and the full Gradle verification suite.
+
+## Consolidate fact match filename into the initial warehouse migration
+
+### Title
+
+Merge the fact match filename schema into migration version 2
+
+### Date/time completed
+
+2026-09-08 14:26
+
+### What was shipped
+
+- Added the non-null `fact_match.file_name` column directly to each dialect's
+  `2__initial_warehouse.sql` migration.
+- Removed the redundant follow-up migration files.
+- Updated the developer, setup, and database architecture documentation to
+  describe version 2 as the complete initial warehouse schema.
+
+### Key decisions
+
+- The project is still using fresh database setup rather than incremental
+  migration upgrades, so the filename column is created with the rest of the
+  warehouse schema.
+- No backfill statement is needed in the initial migration because
+  `fact_match` has no rows when it is created.
+
+### Gotchas
+
+- Databases that have already applied the removed follow-up migration should
+  not rerun the consolidated version 2 migration; this change targets fresh
+  early-stage environments.
+
+### Test coverage areas
+
+- Fresh SQLite schema execution and the full Gradle verification suite should
+  confirm the initial warehouse migration exposes `fact_match.file_name`.

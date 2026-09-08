@@ -8,6 +8,8 @@ database-loading workflow is added or changed.
 
 - Java 21. Gradle uses the Java toolchain configured in the module build files.
 - MariaDB client tools (`mariadb`) when loading data into MariaDB.
+- Docker and the reproducible dual-database setup in `docs/setup/SETUP-DB.md`
+  when running the MariaDB and PostgreSQL test environments.
 - A Cricsheet data directory containing the scorecard directories and the
   player registry CSV. The directory must contain the subdirectories expected
   by `Application.kt`, such as `tests_json`, `odis_json`, and `t20s_json`.
@@ -99,8 +101,8 @@ export FLYWAY_URL="jdbc:sqlite:/path/to/cricsheet.db"
 
 For a new MySQL or PostgreSQL database, ensure the `cricsheet` database exists
 before running the migrations. Each dialect directory includes the original
-schema `1__initial_tables.sql` followed by the warehouse schema
-`2__initial_warehouse.sql`.
+schema `1__initial_tables.sql` and the complete warehouse schema
+`2__initial_warehouse.sql`, including the `fact_match.file_name` column.
 
 ```bash
 mariadb --host="$DB_HOST" --port="$DB_PORT" \
@@ -116,19 +118,19 @@ All parser runs use the Gradle application task:
 ./gradlew :bb-update-database:run --no-daemon --args="<options>"
 ```
 
-| Option | Required | Description |
-| --- | --- | --- |
-| `-h`, `--help` | No | Print the command-line help. |
-| `-bd`, `--baseDirectory` | Yes | Root directory containing scorecards and the player registry. |
-| `-pr`, `--playerRegistry` | Yes | Player-registry filename relative to `baseDirectory`. |
-| `-ot`, `--outputType` | No | `SQL` (default), `DATABASE`, `SQL_FILE`, or `CSV`. |
-| `-c`, `--connectionString` | For database output | JDBC connection string. |
-| `-u`, `--userName` | For database output | Database username. |
-| `-p`, `--password` | No | Database password. Prefer an environment variable or protected shell history. |
-| `--database` | For SQL files | SQL dialect: `mariadb`, `postgres`, or `sqlite` (default: `mariadb`). |
-| `-o`, `--outputFile` | For SQL files | SQL script path. With `SQL`, specifying this option selects file output. |
-| `-sf`, `--sqlFile` | For SQL files | Alias for `--outputFile`. |
-| `-cd`, `--csvDir` | For CSV output | Directory in which warehouse CSV files are written. |
+| Option                     | Required            | Description                                                                   |
+|----------------------------|---------------------|-------------------------------------------------------------------------------|
+| `-h`, `--help`             | No                  | Print the command-line help.                                                  |
+| `-bd`, `--baseDirectory`   | Yes                 | Root directory containing scorecards and the player registry.                 |
+| `-pr`, `--playerRegistry`  | Yes                 | Player-registry filename relative to `baseDirectory`.                         |
+| `-ot`, `--outputType`      | No                  | `SQL` (default), `DATABASE`, `SQL_FILE`, or `CSV`.                            |
+| `-c`, `--connectionString` | For database output | JDBC connection string.                                                       |
+| `-u`, `--userName`         | For database output | Database username.                                                            |
+| `-p`, `--password`         | No                  | Database password. Prefer an environment variable or protected shell history. |
+| `--database`               | For SQL files       | SQL dialect: `mariadb`, `postgres`, or `sqlite` (default: `mariadb`).         |
+| `-o`, `--outputFile`       | For SQL files       | SQL script path. With `SQL`, specifying this option selects file output.      |
+| `-sf`, `--sqlFile`         | For SQL files       | Alias for `--outputFile`.                                                     |
+| `-cd`, `--csvDir`          | For CSV output      | Directory in which warehouse CSV files are written.                           |
 
 ## Produce CSV output
 
@@ -140,10 +142,14 @@ Run the parser with `CSV` output and a destination directory:
 ```
 
 The adapter clears `CSV_DIR` before writing. It emits one file per warehouse
-table, with headers matching `2__initial_warehouse.sql`, including files such
-as `dim_person.csv`, `dim_match.csv`, `fact_delivery.csv`, and
-`bridge_delivery_wicket.csv`. Nullable values are written as MariaDB's `\N`
+table, with headers matching the generated warehouse schema, including files such
+as `dim_person.csv`, `dim_match.csv`, `fact_delivery.csv`,
+`bridge_delivery_wicket.csv`, and `bridge_delivery_fielder.csv`. Nullable
+values are written as MariaDB's `\N`
 marker.
+
+The `fact_match.csv` file includes the source JSON filename in its `file_name`
+column.
 
 ## Load CSV output into MariaDB
 
@@ -153,12 +159,12 @@ optional files that were not generated because the source data contained no
 rows for that table:
 
 ```bash
-CSV_DIR=csv/
+DB_PASSWORD='change-me'
+CSV_DIR=csv
 DB_HOST=localhost
 DB_PORT=3306
 DB_NAME=acs_ball_by_ball
 DB_USER=ballbyball
-DB_PASSWORD='change-me'
 
 for table in \
   dim_date \
@@ -171,11 +177,12 @@ for table in \
   fact_match \
   fact_delivery \
   bridge_match_person \
-  bridge_delivery_wicket
+  bridge_delivery_wicket \
+  bridge_delivery_fielder
 do
   file="$CSV_DIR/$table.csv"
   if [ -f "$file" ]; then
-    mariadb --local-infile=1 \
+    mariadb --verbose --local-infile=1 \
       --host="$DB_HOST" --port="$DB_PORT" \
       --user="$DB_USER" --password="$DB_PASSWORD" "$DB_NAME" <<SQL
 LOAD DATA LOCAL INFILE '$file'
@@ -210,8 +217,8 @@ mariadb --host="$DB_HOST" --port="$DB_PORT" \
 ```
 
 The generated SQL file is self-contained for the warehouse schema: it drops
-the warehouse tables in foreign-key dependency order, recreates them from
-`2__initial_warehouse.sql`, and then loads the generated rows. This is
+the warehouse tables in foreign-key dependency order, recreates them from the
+shared warehouse schema definition, and then loads the generated rows. This is
 destructive to the existing warehouse data, so use it only when replacing the
 entire warehouse is intended. The target database must already exist.
 
@@ -243,7 +250,7 @@ SQLite scripts enable foreign keys, use `INTEGER PRIMARY KEY AUTOINCREMENT`,
 and start a SQLite transaction after the schema has been recreated.
 
 The SQL-file adapters are implemented in the dialect-specific packages under
-`bb-update-database/src/main/kotlin/com/knowledgespike/cricsheet/parse/database/adapter`.
+`bb-update-database/src/main/kotlin/com/knowledgespike/ballbyball/parse/database/adapter`.
 The direct JDBC adapters are selected automatically from the `jdbc:mariadb:`,
 `jdbc:mysql:`, `jdbc:postgresql:`, or `jdbc:sqlite:` connection prefix.
 
