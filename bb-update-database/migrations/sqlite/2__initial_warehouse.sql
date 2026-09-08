@@ -129,6 +129,7 @@ CREATE INDEX idx_dim_wicket_kind ON dim_wicket (wicket_kind);
 CREATE TABLE fact_match
 (
     match_key      INTEGER NOT NULL PRIMARY KEY,
+    file_name      VARCHAR(120) NOT NULL,
     match_date_key INTEGER NULL,
     ground_key     INTEGER NOT NULL,
     duration_days  INTEGER NOT NULL,
@@ -217,3 +218,18 @@ CREATE TABLE bridge_delivery_wicket
     FOREIGN KEY (delivery_key) REFERENCES fact_delivery (delivery_key),
     FOREIGN KEY (wicket_key) REFERENCES dim_wicket (wicket_key)
 );
+
+
+CREATE TABLE bridge_delivery_fielder
+(
+    delivery_key INTEGER NOT NULL,
+    wicket_key   INTEGER NOT NULL,
+    person_key   INTEGER NOT NULL,
+
+    PRIMARY KEY (delivery_key, wicket_key, person_key),
+    FOREIGN KEY (delivery_key) REFERENCES fact_delivery (delivery_key),
+    FOREIGN KEY (wicket_key) REFERENCES dim_wicket (wicket_key),
+    FOREIGN KEY (person_key) REFERENCES dim_person (person_key)
+);
+
+CREATE INDEX idx_bridge_delivery_fielder_person ON bridge_delivery_fielder (person_key);

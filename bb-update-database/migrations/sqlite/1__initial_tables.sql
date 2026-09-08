@@ -24,6 +24,8 @@ CREATE TABLE PersonRegistry
     FullName VARCHAR(200) NOT NULL,
     CaId     INTEGER      NOT NULL
 );
+INSERT INTO PersonRegistry (PersonId, FullName, CaId)
+VALUES ('unknown', '[substitute]', 0);
 
 CREATE TABLE Players
 (
@@ -34,6 +36,8 @@ CREATE TABLE Players
 
     FOREIGN KEY (PersonId) REFERENCES PersonRegistry (PersonId) ON DELETE CASCADE
 );
+INSERT INTO Players (PersonId, FullName, SortNamePart, OtherNamePart)
+VALUES ('unknown', '[substitute]', '[substitute]', '');
 
 CREATE TABLE Umpires
 (

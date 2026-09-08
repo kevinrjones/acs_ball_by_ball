@@ -1,4 +1,4 @@
-use cricsheet;
+use acs_ball_by_ball;
 
 create table Teams
 (
@@ -21,6 +21,8 @@ create table PersonRegistry
     FullName varchar(200) not null,
     CaId     Int          not null
 );
+INSERT INTO PersonRegistry (PersonId, FullName, CaId)
+VALUES ('unknown', '[substitute]', 0);
 
 create table Players
 (
@@ -31,6 +33,8 @@ create table Players
 
     FOREIGN KEY (PersonId) REFERENCES PersonRegistry (PersonId) ON DELETE CASCADE
 );
+INSERT INTO Players (PersonId, FullName, SortNamePart, OtherNamePart)
+VALUES ('unknown', '[substitute]', '[substitute]', '');
 
 create table Umpires
 (

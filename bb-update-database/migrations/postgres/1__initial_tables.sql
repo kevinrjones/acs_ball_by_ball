@@ -1,5 +1,5 @@
-CREATE SCHEMA IF NOT EXISTS cricsheet;
-SET search_path TO cricsheet;
+CREATE SCHEMA IF NOT EXISTS acs_ball_by_ball;
+SET search_path TO acs_ball_by_ball;
 
 CREATE TABLE teams
 (
@@ -22,6 +22,8 @@ CREATE TABLE personregistry
     fullname VARCHAR(200) NOT NULL,
     caid     INTEGER      NOT NULL
 );
+INSERT INTO personregistry (personid, fullname, caid)
+VALUES ('unknown', '[substitute]', 0);
 
 CREATE TABLE players
 (
@@ -32,6 +34,8 @@ CREATE TABLE players
 
     FOREIGN KEY (personid) REFERENCES personregistry (personid) ON DELETE CASCADE
 );
+INSERT INTO players (personid, fullname, sortnamepart, othernamepart)
+VALUES ('unknown', '[substitute]', '[substitute]', '');
 
 CREATE TABLE umpires
 (

@@ -1,4 +1,4 @@
-USE cricsheet;
+USE acs_ball_by_ball;
 
 -- Dimensional warehouse schema.
 -- Source identifiers are retained for ETL traceability; *_key columns are
@@ -145,6 +145,7 @@ CREATE TABLE dim_wicket
 CREATE TABLE fact_match
 (
     match_key        BIGINT UNSIGNED NOT NULL PRIMARY KEY,
+    file_name        VARCHAR(120)    NOT NULL,
     match_date_key   INT             NULL,
     ground_key       BIGINT UNSIGNED NOT NULL,
     duration_days    INT             NOT NULL,
@@ -250,4 +251,22 @@ CREATE TABLE bridge_delivery_wicket
         FOREIGN KEY (delivery_key) REFERENCES fact_delivery (delivery_key),
     CONSTRAINT fk_bridge_delivery_wicket_wicket
         FOREIGN KEY (wicket_key) REFERENCES dim_wicket (wicket_key)
+) ENGINE = InnoDB;
+
+
+CREATE TABLE bridge_delivery_fielder
+(
+    delivery_key BIGINT UNSIGNED NOT NULL,
+    wicket_key   BIGINT UNSIGNED NOT NULL,
+    person_key   BIGINT UNSIGNED NOT NULL,
+
+    PRIMARY KEY (delivery_key, wicket_key, person_key),
+    KEY idx_bridge_delivery_fielder_person (person_key),
+
+    CONSTRAINT fk_bridge_delivery_fielder_delivery
+        FOREIGN KEY (delivery_key) REFERENCES fact_delivery (delivery_key),
+    CONSTRAINT fk_bridge_delivery_fielder_wicket
+        FOREIGN KEY (wicket_key) REFERENCES dim_wicket (wicket_key),
+    CONSTRAINT fk_bridge_delivery_fielder_person
+        FOREIGN KEY (person_key) REFERENCES dim_person (person_key)
 ) ENGINE = InnoDB;

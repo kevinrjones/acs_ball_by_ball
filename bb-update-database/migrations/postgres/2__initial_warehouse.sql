@@ -1,5 +1,5 @@
-CREATE SCHEMA IF NOT EXISTS cricsheet;
-SET search_path TO cricsheet;
+CREATE SCHEMA IF NOT EXISTS acs_ball_by_ball;
+SET search_path TO acs_ball_by_ball;
 
 CREATE TABLE dim_date
 (
@@ -137,6 +137,7 @@ CREATE INDEX idx_dim_wicket_kind ON dim_wicket (wicket_kind);
 CREATE TABLE fact_match
 (
     match_key      BIGINT  NOT NULL PRIMARY KEY,
+    file_name      VARCHAR(120) NOT NULL,
     match_date_key INTEGER NULL,
     ground_key     BIGINT  NOT NULL,
     duration_days  INTEGER NOT NULL,
@@ -240,3 +241,21 @@ CREATE TABLE bridge_delivery_wicket
     CONSTRAINT fk_bridge_delivery_wicket_wicket
         FOREIGN KEY (wicket_key) REFERENCES dim_wicket (wicket_key)
 );
+
+
+CREATE TABLE bridge_delivery_fielder
+(
+    delivery_key BIGINT NOT NULL,
+    wicket_key   BIGINT NOT NULL,
+    person_key   BIGINT NOT NULL,
+
+    PRIMARY KEY (delivery_key, wicket_key, person_key),
+    CONSTRAINT fk_bridge_delivery_fielder_delivery
+        FOREIGN KEY (delivery_key) REFERENCES fact_delivery (delivery_key),
+    CONSTRAINT fk_bridge_delivery_fielder_wicket
+        FOREIGN KEY (wicket_key) REFERENCES dim_wicket (wicket_key),
+    CONSTRAINT fk_bridge_delivery_fielder_person
+        FOREIGN KEY (person_key) REFERENCES dim_person (person_key)
+);
+
+CREATE INDEX idx_bridge_delivery_fielder_person ON bridge_delivery_fielder (person_key);
