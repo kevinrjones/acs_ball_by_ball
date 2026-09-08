@@ -222,6 +222,11 @@ shared warehouse schema definition, and then loads the generated rows. This is
 destructive to the existing warehouse data, so use it only when replacing the
 entire warehouse is intended. The target database must already exist.
 
+`bridge_delivery_fielder` uses `(delivery_key, wicket_key, person_key)` as its
+composite primary key. The parser suppresses repeated fielder associations and
+logs the source filename and key values; generated SQL and direct JDBC output
+also use dialect-specific conflict handling as a final safeguard.
+
 Generate a PostgreSQL script by selecting the PostgreSQL adapter:
 
 ```bash

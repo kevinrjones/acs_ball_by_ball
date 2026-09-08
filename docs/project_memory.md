@@ -637,3 +637,43 @@ Keep the source filename only on `dim_match`
 - SQL-script, CSV, and end-to-end parser output now assert the filename only on
   `dim_match` and the reduced `fact_match` column set.
 - Full Gradle verification and fresh SQLite schema execution.
+
+## Suppress duplicate delivery fielder associations
+
+### Title
+
+Make duplicate `bridge_delivery_fielder` inserts safe and observable
+
+### Date/time completed
+
+2026-09-08 16:20
+
+### What was shipped
+
+- Added composite-key checks to parser, SQL-script, and CSV output so repeated
+  `(delivery_key, wicket_key, person_key)` associations are emitted once.
+- Added MariaDB, PostgreSQL, and SQLite conflict-safe SQL for direct JDBC and
+  generated script output.
+- Added warning logs containing the source filename and all bridge keys when the
+  parser detects a repeated fielder, plus adapter warnings for suppressed calls.
+- Documented the duplicate handling contract in the developer and database
+  architecture guides.
+
+### Key decisions
+
+- The composite primary key remains the source of truth; duplicate rows are
+  ignored because they represent the same delivery/wicket/person association.
+- Duplicate detection happens before script/CSV emission and is also enforced
+  at the database boundary for direct JDBC callers.
+
+### Gotchas
+
+- A warning identifies duplicate keys but does not identify which upstream
+  Cricsheet object produced each occurrence beyond the source filename and
+  wicket kind; inspect the corresponding JSON when investigating a warning.
+
+### Test coverage areas
+
+- Duplicate fielder payloads produce one bridge row.
+- Repeated SQL-script and CSV adapter calls are suppressed.
+- Dialect-specific PostgreSQL/SQLite SQL syntax and full Gradle verification.

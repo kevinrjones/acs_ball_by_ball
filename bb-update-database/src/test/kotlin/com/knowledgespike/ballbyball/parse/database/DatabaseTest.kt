@@ -42,12 +42,29 @@ class DatabaseTest {
 
         val sql = Files.readString(output)
         expectThat(sql).contains(
-            "INSERT INTO bridge_delivery_fielder (delivery_key, wicket_key, person_key) VALUES (1, 1, 4);"
+            "INSERT INTO bridge_delivery_fielder (delivery_key, wicket_key, person_key) VALUES (1, 1, 4) " +
+                    "ON CONFLICT (delivery_key, wicket_key, person_key) DO NOTHING;"
         )
         expectThat(sql).contains(
             "INSERT INTO fact_match (match_key, match_date_key, ground_key, duration_days, margin, match_count) " +
                 "VALUES (1, 20240101, 1, 1, 1, 1);"
         )
+    }
+
+    @Test
+    fun `given duplicate wicket fielder entries when match is written then one fielder bridge row is emitted`() {
+        val output = Files.createTempFile("warehouse", ".sql")
+
+        SqlScriptOutputAdapter(output).use { adapter ->
+            Database(adapter).writeMatch(
+                fileName = "match.json",
+                cricSheet = cricSheetWithFielders(listOf(Player(name = "Fielder"), Player(name = "Fielder"))),
+                cardDirectoryData = CardDirectoryData("matches", "match", "t20")
+            )
+        }
+
+        val sql = Files.readString(output)
+        expectThat(sql.lines().count { it.startsWith("INSERT INTO bridge_delivery_fielder") }).isEqualTo(1)
     }
 
     @Test
@@ -67,7 +84,8 @@ class DatabaseTest {
             "INSERT INTO dim_person (person_key, source_person_id, full_name, sort_name_part, other_name_part, ca_id) VALUES (5, 'unknown', '[substitute]', '[substitute]', '', 0);"
         )
         expectThat(sql).contains(
-            "INSERT INTO bridge_delivery_fielder (delivery_key, wicket_key, person_key) VALUES (1, 1, 5);"
+            "INSERT INTO bridge_delivery_fielder (delivery_key, wicket_key, person_key) VALUES (1, 1, 5) " +
+                    "ON CONFLICT (delivery_key, wicket_key, person_key) DO NOTHING;"
         )
     }
 
@@ -94,7 +112,10 @@ class DatabaseTest {
         expectThat(player.name).isEqualTo(null)
     }
 
-    private fun cricSheetWithFielder(fielder: Player = Player(name = "Fielder")): CricSheet = CricSheet(
+    private fun cricSheetWithFielder(fielder: Player = Player(name = "Fielder")): CricSheet =
+        cricSheetWithFielders(listOf(fielder))
+
+    private fun cricSheetWithFielders(fielders: List<Player>): CricSheet = CricSheet(
         meta = Meta("1.0", "2024-01-01", 1),
         info = Info(
             ballsPerOver = 6,
@@ -135,7 +156,7 @@ class DatabaseTest {
                                 runs = Runs(batter = 0, extras = 0, total = 0),
                                 wickets = listOf(
                                     Wickets(
-                                        fielders = listOf(fielder),
+                                        fielders = fielders,
                                         kind = "caught",
                                         playerOut = "Batter"
                                     )

@@ -398,7 +398,11 @@ attached to the specific wicket when a delivery contains more than one wicket.
 
 The composite primary key (`delivery_key`, `wicket_key`, `person_key`) prevents
 duplicate fielder associations. The person index supports queries such as
-fielding dismissals by player.
+fielding dismissals by player. The parser treats a repeated composite key in a
+single wicket as one association, logs the filename and key values, and does not
+emit a second row. SQL-file and JDBC adapters also use the selected dialect's
+duplicate-safe insert form, so an association repeated by a caller is ignored
+without aborting the load.
 
 ## Relationship and query paths
 

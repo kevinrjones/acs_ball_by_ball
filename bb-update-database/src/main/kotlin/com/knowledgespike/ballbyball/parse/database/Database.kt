@@ -43,12 +43,12 @@ class Database(private val outputAdapter: OutputAdapter) {
         addMatchPeople(match, tvUmpires, "TV_UMPIRE")
         addMatchPeople(match, reserveUmpires, "RESERVE_UMPIRE")
         addMatchPeople(match, matchReferees, "MATCH_REFEREE")
-        addBallByBall(match, teams, cricSheet)
+        addBallByBall(fileName, match, teams, cricSheet)
 
         outputAdapter.commit()
     }
 
-    private fun addBallByBall(match: WarehouseMatch, teams: List<Team>, cricSheet: CricSheet) {
+    private fun addBallByBall(fileName: String, match: WarehouseMatch, teams: List<Team>, cricSheet: CricSheet) {
         val players = cricSheet.info.registry.people
         val matchDateKey = cricSheet.info.dates.firstOrNull()?.let(::parseDate)?.let(::upsertDate)
         var inningsOrder = 0
@@ -88,7 +88,7 @@ class Database(private val outputAdapter: OutputAdapter) {
                         powerplay = powerplay
                     )
                     if (deliveryKey != null) {
-                        addWickets(deliveryKey, delivery.wickets.orEmpty(), players)
+                        addWickets(fileName, deliveryKey, delivery.wickets.orEmpty(), players)
                     }
                 }
             }
@@ -134,10 +134,11 @@ class Database(private val outputAdapter: OutputAdapter) {
         )
     }
 
-    private fun addWickets(deliveryKey: Long, wickets: List<Wickets>, people: Map<String, String>) {
+    private fun addWickets(fileName: String, deliveryKey: Long, wickets: List<Wickets>, people: Map<String, String>) {
         wickets.forEach { wicket ->
             val wicketKey = outputAdapter.insertWicket(wicket.kind)
             outputAdapter.insertDeliveryWicket(deliveryKey, wicketKey)
+            val fielderKeys = mutableSetOf<Long>()
             wicket.fielders.orEmpty().forEach { fielder ->
                 val fielderKey = if (fielder.name != null) {
                     val fielderName = fielder.name
@@ -147,7 +148,20 @@ class Database(private val outputAdapter: OutputAdapter) {
                 } else {
                     throw InvalidStateException("Fielder has no name for wicket ${wicket.kind}")
                 }
-                outputAdapter.insertDeliveryFielder(deliveryKey, wicketKey, fielderKey)
+                if (!fielderKeys.add(fielderKey)) {
+                    log.warn(
+                        "Duplicate wicket fielder suppressed: fileName={}, deliveryKey={}, wicketKey={}, personKey={}, " +
+                                "wicketKind={}, fielderName={}",
+                        fileName,
+                        deliveryKey,
+                        wicketKey,
+                        fielderKey,
+                        wicket.kind,
+                        fielder.name ?: SUBSTITUTE_PLAYER_NAME
+                    )
+                } else {
+                    outputAdapter.insertDeliveryFielder(deliveryKey, wicketKey, fielderKey)
+                }
             }
         }
     }

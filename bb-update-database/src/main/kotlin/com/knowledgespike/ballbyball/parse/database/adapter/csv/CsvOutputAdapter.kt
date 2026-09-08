@@ -1,5 +1,6 @@
 package com.knowledgespike.ballbyball.parse.database.adapter.csv
 
+import com.knowledgespike.cricketarchive.LoggerDelegate
 import com.knowledgespike.ballbyball.parse.database.Location
 import com.knowledgespike.ballbyball.parse.database.PersonRegistryEntity
 import com.knowledgespike.ballbyball.parse.database.Team
@@ -22,6 +23,7 @@ import java.util.Locale
 
 /** Writes warehouse tables as UTF-8 CSV files suitable for bulk loading into MariaDB. */
 class CsvOutputAdapter(output: Path) : OutputAdapter {
+    private val log by LoggerDelegate()
     private val writers = mutableMapOf<String, BufferedWriter>()
     private val people = mutableMapOf<String, Long>()
     private val teams = mutableMapOf<String, Team>()
@@ -31,6 +33,7 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
     private val innings = mutableMapOf<Pair<Long, Int>, WarehouseInnings>()
     private val deliveries = mutableMapOf<Triple<Long, Long, Int>, Long>()
     private val matchPeople = mutableSetOf<Triple<Long, Long, String>>()
+    private val deliveryFielders = mutableSetOf<Triple<Long, Long, Long>>()
     private var nextTeamSourceId = 1L
     private var nextGroundSourceId = 1L
     private var nextMatchSourceId = 1L
@@ -218,6 +221,16 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
     }
 
     override fun insertDeliveryFielder(deliveryKey: Long, wicketKey: Long, personKey: Long) {
+        val bridgeKey = Triple(deliveryKey, wicketKey, personKey)
+        if (!deliveryFielders.add(bridgeKey)) {
+            log.warn(
+                "Duplicate bridge_delivery_fielder suppressed from CSV output: deliveryKey={}, wicketKey={}, personKey={}",
+                deliveryKey,
+                wicketKey,
+                personKey
+            )
+            return
+        }
         writeRow("bridge_delivery_fielder", DELIVERY_FIELDER_HEADERS, listOf(deliveryKey, wicketKey, personKey))
     }
 

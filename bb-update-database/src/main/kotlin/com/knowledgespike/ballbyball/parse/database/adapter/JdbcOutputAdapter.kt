@@ -1,6 +1,7 @@
 package com.knowledgespike.ballbyball.parse.database.adapter
 
 import com.knowledgespike.cricketarchive.InvalidStateException
+import com.knowledgespike.cricketarchive.LoggerDelegate
 import com.knowledgespike.ballbyball.parse.database.Location
 import com.knowledgespike.ballbyball.parse.database.PersonRegistryEntity
 import com.knowledgespike.ballbyball.parse.database.Team
@@ -19,6 +20,7 @@ import java.util.Locale
 
 /** Writes warehouse rows directly to the configured database. */
 abstract class JdbcOutputAdapter(protected val connection: Connection) : OutputAdapter {
+    private val log by LoggerDelegate()
     override fun findMatchKey(fileName: String): Long? = queryKey(
         "select match_key from dim_match where file_name = ?",
         fileName
@@ -207,12 +209,21 @@ abstract class JdbcOutputAdapter(protected val connection: Connection) : OutputA
     }
 
     override fun insertDeliveryFielder(deliveryKey: Long, wicketKey: Long, personKey: Long) {
-        execute(
-            "insert into bridge_delivery_fielder (delivery_key, wicket_key, person_key) values (?, ?, ?)",
+        val affectedRows = executeAllowingNoOp(
+            "insert into bridge_delivery_fielder (delivery_key, wicket_key, person_key) values (?, ?, ?) " +
+                    duplicateDeliveryFielderClause(),
             deliveryKey,
             wicketKey,
             personKey
         )
+        if (affectedRows == 0) {
+            log.warn(
+                "Duplicate bridge_delivery_fielder suppressed: deliveryKey={}, wicketKey={}, personKey={}",
+                deliveryKey,
+                wicketKey,
+                personKey
+            )
+        }
     }
 
     override fun insertMatchPerson(matchKey: Long, personKey: Long, roleCode: String) {
@@ -226,6 +237,8 @@ abstract class JdbcOutputAdapter(protected val connection: Connection) : OutputA
     }
 
     protected abstract fun duplicateMatchPersonClause(): String
+
+    protected abstract fun duplicateDeliveryFielderClause(): String
 
     override fun writeAllPeople(people: Sequence<PersonRegistryEntity>) = people.forEach { person ->
         upsertPerson(person.id, person.name, person.caId)
@@ -277,10 +290,10 @@ abstract class JdbcOutputAdapter(protected val connection: Connection) : OutputA
         }
     }
 
-    private fun executeAllowingNoOp(sql: String, vararg values: Any?) {
+    private fun executeAllowingNoOp(sql: String, vararg values: Any?): Int {
         connection.prepareStatement(sql).use { statement ->
             values.forEachIndexed { index, value -> setValue(statement, index + 1, value) }
-            check(statement.executeUpdate() >= 0)
+            return statement.executeUpdate().also { check(it >= 0) }
         }
     }
 

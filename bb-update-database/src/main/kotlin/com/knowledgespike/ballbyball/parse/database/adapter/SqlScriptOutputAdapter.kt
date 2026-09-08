@@ -1,5 +1,6 @@
 package com.knowledgespike.ballbyball.parse.database.adapter
 
+import com.knowledgespike.cricketarchive.LoggerDelegate
 import com.knowledgespike.ballbyball.parse.database.*
 import java.io.BufferedWriter
 import java.nio.file.Files
@@ -15,6 +16,7 @@ abstract class SqlScriptOutputAdapter(
     output: Path,
     private val dialect: SqlDialect
 ) : OutputAdapter {
+    private val log by LoggerDelegate()
     private val writer: BufferedWriter = openWriter(output)
     private val people = mutableMapOf<String, Long>()
     private val teams = mutableMapOf<String, Team>()
@@ -23,6 +25,7 @@ abstract class SqlScriptOutputAdapter(
     private val matches = mutableMapOf<String, Long>()
     private val innings = mutableMapOf<Pair<Long, Int>, WarehouseInnings>()
     private val deliveries = mutableMapOf<Triple<Long, Long, Int>, Long>()
+    private val deliveryFielders = mutableSetOf<Triple<Long, Long, Long>>()
     private var nextTeamSourceId = 1L
     private var nextGroundSourceId = 1L
     private var nextMatchSourceId = 1L
@@ -238,8 +241,19 @@ abstract class SqlScriptOutputAdapter(
     }
 
     override fun insertDeliveryFielder(deliveryKey: Long, wicketKey: Long, personKey: Long) {
+        val bridgeKey = Triple(deliveryKey, wicketKey, personKey)
+        if (!deliveryFielders.add(bridgeKey)) {
+            log.warn(
+                "Duplicate bridge_delivery_fielder suppressed from SQL script: deliveryKey={}, wicketKey={}, personKey={}",
+                deliveryKey,
+                wicketKey,
+                personKey
+            )
+            return
+        }
         write(
-            "INSERT INTO bridge_delivery_fielder (delivery_key, wicket_key, person_key) VALUES (?, ?, ?)",
+            "INSERT INTO bridge_delivery_fielder (delivery_key, wicket_key, person_key) VALUES (?, ?, ?) " +
+                    dialect.duplicateDeliveryFielderClause,
             deliveryKey,
             wicketKey,
             personKey
