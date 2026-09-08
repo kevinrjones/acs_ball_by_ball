@@ -287,12 +287,11 @@ Indexes and constraints:
 `fact_match` has one row per source match. Its primary key is also a foreign
 key to `dim_match`, so it stores match-level measures without copying the
 match descriptor columns into the fact. The source JSON filename is retained
-as a directly queryable provenance attribute.
+as the directly queryable provenance attribute `dim_match.file_name`.
 
 | Column | Type | Null | Description |
 | --- | --- | --- | --- |
 | `match_key` | `BIGINT UNSIGNED` | No | Primary key and foreign key to `dim_match`. |
-| `file_name` | `VARCHAR(120)` | No | Filename of the source JSON match file. |
 | `match_date_key` | `INT` | Yes | Optional foreign key to `dim_date`. |
 | `ground_key` | `BIGINT UNSIGNED` | No | Foreign key to `dim_ground`. |
 | `duration_days` | `INT` | No | Match duration in days. |
@@ -300,8 +299,8 @@ as a directly queryable provenance attribute.
 | `match_count` | `TINYINT UNSIGNED` | No | Additive count measure; defaults to `1`. |
 
 The fact also indexes `match_date_key` and `ground_key` for common analytical
-filters. The filename is copied from `dim_match.file_name` when a match fact is
-created and is part of the initial warehouse schema.
+filters. Join `fact_match` to `dim_match` on `match_key` when the source JSON
+filename is needed.
 
 ### `fact_delivery`
 
@@ -477,8 +476,7 @@ For bulk output, the practical sequence is:
 2. Populate `dim_match` after its referenced date, team, and ground rows are
    present.
 3. Populate `dim_innings`.
-4. Populate `fact_match` with the source filename copied from `dim_match`, and
-   populate `fact_delivery`.
+4. Populate `fact_match` and `fact_delivery`.
 5. Populate `bridge_match_person` and `bridge_delivery_wicket` after their
    parent rows exist.
 6. Populate `bridge_delivery_fielder` after its delivery, wicket, and person
@@ -513,7 +511,7 @@ and a transaction around generated rows.
 
 - Run Flyway migrations `1__initial_tables.sql` and
   `2__initial_warehouse.sql` for the selected dialect before loading warehouse
-  data. The initial warehouse migration includes `fact_match.file_name`.
+  data. The source JSON filename is stored in `dim_match.file_name`.
 - The migration creates tables but does not insert dimension or fact data.
 - The database schema is named `cricsheet` by the migration.
 - MySQL warehouse tables use `ENGINE = InnoDB`; PostgreSQL and SQLite use their

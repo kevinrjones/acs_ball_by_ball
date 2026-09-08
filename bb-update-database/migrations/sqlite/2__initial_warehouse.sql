@@ -129,7 +129,6 @@ CREATE INDEX idx_dim_wicket_kind ON dim_wicket (wicket_kind);
 CREATE TABLE fact_match
 (
     match_key      INTEGER NOT NULL PRIMARY KEY,
-    file_name      VARCHAR(120) NOT NULL,
     match_date_key INTEGER NULL,
     ground_key     INTEGER NOT NULL,
     duration_days  INTEGER NOT NULL,

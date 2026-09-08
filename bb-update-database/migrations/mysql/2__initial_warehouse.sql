@@ -145,7 +145,6 @@ CREATE TABLE dim_wicket
 CREATE TABLE fact_match
 (
     match_key        BIGINT UNSIGNED NOT NULL PRIMARY KEY,
-    file_name        VARCHAR(120)    NOT NULL,
     match_date_key   INT             NULL,
     ground_key       BIGINT UNSIGNED NOT NULL,
     duration_days    INT             NOT NULL,

@@ -237,7 +237,7 @@ class Database(private val outputAdapter: OutputAdapter) {
                 loserTeamKey = loser?.id
             )
         )
-        outputAdapter.insertMatchFact(match.key, fileName, matchStartDateKey, location.id, duration, margin)
+        outputAdapter.insertMatchFact(match.key, matchStartDateKey, location.id, duration, margin)
         return match
 
     }

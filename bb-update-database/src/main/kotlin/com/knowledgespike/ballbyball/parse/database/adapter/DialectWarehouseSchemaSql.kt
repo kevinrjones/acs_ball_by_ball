@@ -169,7 +169,6 @@ internal object WarehouseSchemaSql {
             CREATE TABLE fact_match
             (
                 match_key       $key NOT NULL PRIMARY KEY,
-                file_name       VARCHAR(120) NOT NULL,
                 match_date_key  $integer NULL,
                 ground_key       $key NOT NULL,
                 duration_days   $integer NOT NULL,

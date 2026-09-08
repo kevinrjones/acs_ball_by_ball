@@ -45,8 +45,8 @@ class DatabaseTest {
             "INSERT INTO bridge_delivery_fielder (delivery_key, wicket_key, person_key) VALUES (1, 1, 4);"
         )
         expectThat(sql).contains(
-            "INSERT INTO fact_match (match_key, file_name, match_date_key, ground_key, duration_days, margin, match_count) " +
-                "VALUES (1, 'match.json', 20240101, 1, 1, 1, 1);"
+            "INSERT INTO fact_match (match_key, match_date_key, ground_key, duration_days, margin, match_count) " +
+                "VALUES (1, 20240101, 1, 1, 1, 1);"
         )
     }
 

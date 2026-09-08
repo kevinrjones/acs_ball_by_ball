@@ -81,14 +81,14 @@ class SqlScriptOutputAdapterTest {
                 loserTeamKey = team2.id
             )
         )
-        adapter.insertMatchFact(match.key, "match.json", dateKey, ground.id, 1, 10)
+        adapter.insertMatchFact(match.key, dateKey, ground.id, 1, 10)
         adapter.close()
 
         val sql = Files.readString(output)
         expectThat(sql).contains("INSERT INTO dim_match (match_key, source_match_id")
         expectThat(sql).contains("VALUES (1, 1, NULL, 'match.json'")
-        expectThat(sql).contains("INSERT INTO fact_match (match_key, file_name, match_date_key")
-            .and { contains("VALUES (1, 'match.json', 20240102, 1, 1, 10, 1)") }
+        expectThat(sql).contains("INSERT INTO fact_match (match_key, match_date_key")
+            .and { contains("VALUES (1, 20240102, 1, 1, 10, 1)") }
     }
 
     @Test
@@ -146,6 +146,12 @@ class SqlScriptOutputAdapterTest {
                 ).use { result ->
                     result.next()
                     expectThat(result.getInt(1)).isEqualTo(1)
+                }
+                statement.executeQuery(
+                    "select count(*) from pragma_table_info('fact_match') where name = 'file_name'"
+                ).use { result ->
+                    result.next()
+                    expectThat(result.getInt(1)).isEqualTo(0)
                 }
             }
         }

@@ -119,16 +119,14 @@ abstract class JdbcOutputAdapter(protected val connection: Connection) : OutputA
 
     override fun insertMatchFact(
         matchKey: Long,
-        fileName: String,
         matchDateKey: Int?,
         groundKey: Long,
         durationDays: Int,
         margin: Int
     ) {
         execute(
-            "insert into fact_match (match_key, file_name, match_date_key, ground_key, duration_days, margin, match_count) values (?, ?, ?, ?, ?, ?, 1)",
+            "insert into fact_match (match_key, match_date_key, ground_key, duration_days, margin, match_count) values (?, ?, ?, ?, ?, 1)",
             matchKey,
-            fileName,
             matchDateKey,
             groundKey,
             durationDays,

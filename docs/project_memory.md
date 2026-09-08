@@ -600,3 +600,40 @@ Add an index for `fact_delivery.ball_in_over`
 
 - Fresh SQLite migration index inspection and the full Gradle verification
   suite.
+
+## Remove duplicated fact match filename
+
+### Title
+
+Keep the source filename only on `dim_match`
+
+### Date/time completed
+
+2026-09-08 15:29
+
+### What was shipped
+
+- Removed `fact_match.file_name` from the MariaDB, PostgreSQL, and SQLite
+  warehouse migrations and generated warehouse schema.
+- Removed the filename argument and value from the shared output contract,
+  database writer, JDBC/SQL/CSV adapters, and regression tests.
+- Updated the developer, setup, and database architecture documentation to
+  describe `dim_match.file_name` as the single source filename field.
+
+### Key decisions
+
+- `MatchRecord.fileName` remains unchanged because the filename is required by
+  `dim_match` for provenance and duplicate-match lookup.
+- No incremental migration was added because the project is using the
+  consolidated initial schema for fresh early-stage environments.
+
+### Gotchas
+
+- Existing databases containing the duplicate fact column must be rebuilt or
+  altered separately before loading the updated output.
+
+### Test coverage areas
+
+- SQL-script, CSV, and end-to-end parser output now assert the filename only on
+  `dim_match` and the reduced `fact_match` column set.
+- Full Gradle verification and fresh SQLite schema execution.

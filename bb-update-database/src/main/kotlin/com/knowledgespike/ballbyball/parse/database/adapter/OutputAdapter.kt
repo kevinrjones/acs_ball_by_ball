@@ -25,7 +25,6 @@ interface OutputAdapter : AutoCloseable {
 
     fun insertMatchFact(
         matchKey: Long,
-        fileName: String,
         matchDateKey: Int?,
         groundKey: Long,
         durationDays: Int,

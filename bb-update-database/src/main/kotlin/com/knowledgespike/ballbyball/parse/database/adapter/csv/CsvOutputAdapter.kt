@@ -138,7 +138,6 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
 
     override fun insertMatchFact(
         matchKey: Long,
-        fileName: String,
         matchDateKey: Int?,
         groundKey: Long,
         durationDays: Int,
@@ -147,7 +146,7 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
         writeRow(
             "fact_match",
             MATCH_FACT_HEADERS,
-            listOf(matchKey, fileName, matchDateKey, groundKey, durationDays, margin, 1)
+            listOf(matchKey, matchDateKey, groundKey, durationDays, margin, 1)
         )
     }
 
@@ -299,7 +298,7 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
         val INNINGS_HEADERS = listOf("innings_key", "match_key", "innings_number", "batting_team_key", "bowling_team_key")
         val WICKET_HEADERS = listOf("wicket_key", "source_wicket_id", "wicket_kind")
         val MATCH_FACT_HEADERS = listOf(
-            "match_key", "file_name", "match_date_key", "ground_key", "duration_days", "margin", "match_count"
+            "match_key", "match_date_key", "ground_key", "duration_days", "margin", "match_count"
         )
         val DELIVERY_HEADERS = listOf(
             "delivery_key", "source_ball_id", "match_key", "match_date_key", "innings_key", "batting_team_key", "bowling_team_key",

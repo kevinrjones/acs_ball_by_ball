@@ -147,16 +147,14 @@ abstract class SqlScriptOutputAdapter(
 
     override fun insertMatchFact(
         matchKey: Long,
-        fileName: String,
         matchDateKey: Int?,
         groundKey: Long,
         durationDays: Int,
         margin: Int
     ) {
         write(
-            "INSERT INTO fact_match (match_key, file_name, match_date_key, ground_key, duration_days, margin, match_count) VALUES (?, ?, ?, ?, ?, ?, 1)",
+            "INSERT INTO fact_match (match_key, match_date_key, ground_key, duration_days, margin, match_count) VALUES (?, ?, ?, ?, ?, 1)",
             matchKey,
-            fileName,
             matchDateKey,
             groundKey,
             durationDays,

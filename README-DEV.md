@@ -102,7 +102,7 @@ export FLYWAY_URL="jdbc:sqlite:/path/to/cricsheet.db"
 For a new MySQL or PostgreSQL database, ensure the `cricsheet` database exists
 before running the migrations. Each dialect directory includes the original
 schema `1__initial_tables.sql` and the complete warehouse schema
-`2__initial_warehouse.sql`, including the `fact_match.file_name` column.
+`2__initial_warehouse.sql`, with the source filename stored on `dim_match`.
 
 ```bash
 mariadb --host="$DB_HOST" --port="$DB_PORT" \
@@ -148,8 +148,8 @@ as `dim_person.csv`, `dim_match.csv`, `fact_delivery.csv`,
 values are written as MariaDB's `\N`
 marker.
 
-The `fact_match.csv` file includes the source JSON filename in its `file_name`
-column.
+The `dim_match.csv` file includes the source JSON filename in its `file_name`
+column. The `fact_match.csv` file contains only match-level measures and keys.
 
 ## Load CSV output into MariaDB
 
