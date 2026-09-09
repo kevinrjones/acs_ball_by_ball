@@ -3,6 +3,7 @@ package com.knowledgespike.ballbyball.web
 import com.knowledgespike.ballbyball.contracts.MatchSummary
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.get
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
@@ -18,6 +19,8 @@ import io.ktor.server.response.respondResource
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.routing
+import kotlinx.coroutines.CancellationException
+import org.slf4j.LoggerFactory
 
 fun Application.module() {
     val apiBaseUrl = environment.config.property("api.baseUrl").getString().trimEnd('/')
@@ -25,10 +28,11 @@ fun Application.module() {
     monitor.subscribe(ApplicationStopped) {
         client.close()
     }
-    module(apiBaseUrl, client)
+    moduleWithClient(apiBaseUrl, client)
 }
 
-fun Application.module(apiBaseUrl: String, client: HttpClient) {
+fun Application.moduleWithClient(apiBaseUrl: String, client: HttpClient) {
+    val applicationLog = LoggerFactory.getLogger("com.knowledgespike.ballbyball.web")
     install(CallLogging)
 
     routing {
@@ -36,15 +40,25 @@ fun Application.module(apiBaseUrl: String, client: HttpClient) {
             call.respondResource("static/index.html")
         }
         get("/matches") {
-            val response = client.get("$apiBaseUrl/api/matches")
-            if (!response.status.isSuccess()) {
+            try {
+                val response = client.get("$apiBaseUrl/api/matches")
+                if (!response.status.isSuccess()) {
+                    call.respondText(
+                        "The API is unavailable (${response.status.value}).",
+                        status = HttpStatusCode.BadGateway
+                    )
+                    return@get
+                }
+                call.respondText(response.body<List<MatchSummary>>().toHtml(), ContentType.Text.Html)
+            } catch (cause: CancellationException) {
+                throw cause
+            } catch (cause: Exception) {
+                applicationLog.warn("API request failed", cause)
                 call.respondText(
-                    "The API is unavailable (${response.status.value}).",
+                    "The API is unavailable.",
                     status = HttpStatusCode.BadGateway
                 )
-                return@get
             }
-            call.respondText(response.body<List<MatchSummary>>().toHtml(), ContentType.Text.Html)
         }
         staticResources("/static", "static")
     }
@@ -69,8 +83,13 @@ private fun String.escapeHtml(): String = replace("&", "&amp;")
     .replace("\"", "&quot;")
     .replace("'", "&#39;")
 
-private object HttpClientFactory {
+internal object HttpClientFactory {
     fun create(): HttpClient = HttpClient(io.ktor.client.engine.cio.CIO) {
+        install(HttpTimeout) {
+            requestTimeoutMillis = 5_000
+            connectTimeoutMillis = 2_000
+            socketTimeoutMillis = 5_000
+        }
         install(io.ktor.client.plugins.contentnegotiation.ContentNegotiation) {
             json()
         }

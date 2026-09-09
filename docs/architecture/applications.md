@@ -34,17 +34,24 @@ warehouse query implementation.
 ## `bb-api`
 
 `bb-api` uses a small `MatchRepository` interface as the seam between HTTP
-routing and persistence. `JooqMatchRepository` uses JOOQ's DSL with the
-warehouse `dim_match` table and a Hikari connection pool. The first query is
-deliberately small; generated JOOQ sources can be introduced when the schema
-and query surface have stabilised.
+routing and persistence. Its operations are suspendable, and
+`JooqMatchRepository` runs blocking JOOQ/JDBC work on `Dispatchers.IO` rather
+than on Ktor request threads. The repository selects the JOOQ dialect from the
+configured JDBC URL, uses the warehouse `dim_match` table and a Hikari
+connection pool, and keeps the first query deliberately small; generated JOOQ
+sources can be introduced when the schema and query surface have stabilised.
+
+Hikari is configured not to fail application startup when the database is
+unavailable. `/health` then reports the connection state as `200` or `503`,
+while match-query failures are logged and returned as server errors.
 
 Endpoints:
 
 - `GET /health` checks that the configured database connection can execute a
   query. It returns `200` when healthy and `503` otherwise.
-- `GET /api/matches?limit=25` returns recent matches ordered by warehouse key.
-  The limit must be between `1` and `100`.
+- `GET /api/matches?limit=25` returns recent matches ordered by match start date
+  (with the warehouse key as a deterministic tie-breaker). The limit must be
+  numeric and between `1` and `100`.
 
 Database configuration is supplied through environment variables. The defaults
 target the local MariaDB database used by the setup guide:
@@ -70,14 +77,22 @@ export DB_PASSWORD='acs_ball_by_ball-local-password'
 
 `bb-web` owns the static browser entry point and an injected Ktor HTTP client.
 Its `/matches` route calls the API, maps the shared `MatchSummary` contract to
-an escaped HTML list, and returns `text/html` for HTMX. The client is closed
-with the application lifecycle in the production module and can be replaced in
-tests without starting `bb-api`.
+an escaped HTML list, and returns `text/html` for HTMX. The production client
+has bounded request, connection, and socket timeouts. API status failures,
+connection failures, timeouts, and malformed JSON are mapped to `502 Bad
+Gateway`; cancellation is preserved. The client is closed with the
+application lifecycle in the production module and can be replaced in tests
+without starting `bb-api`.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `WEB_PORT` | `8080` | Web listening port |
 | `API_BASE_URL` | `http://localhost:8081` | Base URL used for API calls |
+
+Both applications use `application.yaml` and Ktor's YAML configuration module.
+Environment substitutions use the `${ENV:default}` form. The files are
+`bb-api/src/main/resources/application.yaml` and
+`bb-web/src/main/resources/application.yaml`.
 
 ## Running locally
 
@@ -103,9 +118,11 @@ are documented in `docs/setup/SETUP-DB.md`.
 
 ## Testing
 
-The API tests inject a fake repository and cover the health response and limit
-validation. The web test injects a Ktor `MockEngine` and verifies that JSON from
-the API becomes an HTML fragment. Run both suites with:
+The API tests inject a fake repository and cover healthy/unhealthy health
+responses, valid result serialization, numeric limit validation, and the
+unavailable-database startup path. The web tests inject a Ktor `MockEngine` and
+cover successful HTML rendering plus API status, connection, and malformed JSON
+failures. Run both suites with:
 
 ```bash
 ./gradlew :bb-api:test :bb-web:test --no-daemon

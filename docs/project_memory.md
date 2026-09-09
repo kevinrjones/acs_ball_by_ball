@@ -754,3 +754,47 @@ Create the JOOQ-backed API and static HTMX web application skeletons
 - API health response and match limit validation using an injected repository.
 - Web API handoff and HTML rendering using a Ktor `MockEngine` client.
 - Focused `bb-api` and `bb-web` Gradle test suites passed.
+
+## Harden Ktor applications and adopt YAML configuration
+
+### Title
+
+Fix API/web runtime risks and replace HOCON with YAML
+
+### Date/time completed
+
+2026-09-09 07:50
+
+### What was shipped
+
+- Made the API database pool non-fail-fast so `/health` remains available when
+  the configured database is unavailable.
+- Moved blocking JOOQ/JDBC work to an IO dispatcher, selected JOOQ dialects from
+  JDBC URLs, and ordered matches by start date with a deterministic key tie-breaker.
+- Added explicit API validation and cancellation-safe exception handling, plus
+  web-client timeouts and `502 Bad Gateway` mapping for upstream failures.
+- Replaced both HOCON resources with Ktor `application.yaml` files and added the
+  YAML configuration dependency through the version catalog.
+- Removed committed IntelliJ module/VCS metadata and ignored regenerated module
+  metadata.
+
+### Key decisions
+
+- The requested redundant database-index cleanup remains deferred; no database
+  index definitions were changed in this task.
+- `MatchRepository` is suspendable so transport code can call it without
+  blocking Ktor request threads, while the repository owns dispatcher selection.
+
+### Gotchas
+
+- YAML environment substitutions use `${ENV:default}` rather than HOCON's
+  optional substitution syntax.
+- A database outage is reported by `/health`; a failed match query still uses
+  the API's normal server-error response.
+
+### Test coverage areas
+
+- API health, startup with an unavailable database, valid/invalid limits, and
+  JSON serialization.
+- Web success, upstream HTTP failure, connection failure, and malformed JSON.
+- Focused module tests and the full Gradle `check` task.

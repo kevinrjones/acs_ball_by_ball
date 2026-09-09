@@ -311,8 +311,13 @@ API_BASE_URL=http://localhost:8081 \
 
 The browser-facing application listens on port `8080` and the API listens on
 port `8081` by default. Override `WEB_PORT`, `API_PORT`, and the database
-variables rather than storing credentials in source files. The complete
-database container setup remains in `docs/setup/SETUP-DB.md`.
+variables rather than storing credentials in source files. Both Ktor modules
+use `application.yaml` with `${ENV:default}` substitutions; do not add an
+`application.conf` file. The API remains startable when the database is down
+and exposes that state through `/health`; the web application maps API
+connection, timeout, status, and malformed-response failures to `502 Bad
+Gateway`. The complete database container setup remains in
+`docs/setup/SETUP-DB.md`.
 
 ## Updating this runbook
 

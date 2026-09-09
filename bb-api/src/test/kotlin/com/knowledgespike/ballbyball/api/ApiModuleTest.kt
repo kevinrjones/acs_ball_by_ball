@@ -13,7 +13,7 @@ import strikt.assertions.isEqualTo
 class ApiModuleTest {
     @Test
     fun `health reports repository status`() = testApplication {
-        application { module(FakeMatchRepository) }
+        application { moduleWithRepository(FakeMatchRepository(healthy = true)) }
 
         val response = client.get("/health")
 
@@ -22,17 +22,56 @@ class ApiModuleTest {
     }
 
     @Test
+    fun `health reports service unavailable when database is unhealthy`() = testApplication {
+        application { moduleWithRepository(FakeMatchRepository(healthy = false)) }
+
+        val response = client.get("/health")
+
+        expectThat(response.status).isEqualTo(HttpStatusCode.ServiceUnavailable)
+        expectThat(response.bodyAsText()).contains("\"status\": \"unavailable\"")
+    }
+
+    @Test
     fun `matches rejects an invalid limit`() = testApplication {
-        application { module(FakeMatchRepository) }
+        application { moduleWithRepository(FakeMatchRepository(healthy = true)) }
 
         val response = client.get("/api/matches?limit=101")
 
         expectThat(response.status).isEqualTo(HttpStatusCode.BadRequest)
     }
 
-    private object FakeMatchRepository : MatchRepository {
-        override fun isHealthy(): Boolean = true
+    @Test
+    fun `matches rejects a non numeric limit`() = testApplication {
+        application { moduleWithRepository(FakeMatchRepository(healthy = true)) }
 
-        override fun recentMatches(limit: Int): List<MatchSummary> = emptyList()
+        val response = client.get("/api/matches?limit=not-a-number")
+
+        expectThat(response.status).isEqualTo(HttpStatusCode.BadRequest)
+    }
+
+    @Test
+    fun `matches serializes repository results`() = testApplication {
+        application {
+            moduleWithRepository(
+                FakeMatchRepository(
+                    healthy = true,
+                    matches = listOf(MatchSummary(1, 10, "match.json", "TEST", "2026"))
+                )
+            )
+        }
+
+        val response = client.get("/api/matches?limit=1")
+
+        expectThat(response.status).isEqualTo(HttpStatusCode.OK)
+        expectThat(response.bodyAsText()).contains("\"fileName\": \"match.json\"")
+    }
+
+    private data class FakeMatchRepository(
+        val healthy: Boolean,
+        val matches: List<MatchSummary> = emptyList()
+    ) : MatchRepository {
+        override suspend fun isHealthy(): Boolean = healthy
+
+        override suspend fun recentMatches(limit: Int): List<MatchSummary> = matches.take(limit)
     }
 }

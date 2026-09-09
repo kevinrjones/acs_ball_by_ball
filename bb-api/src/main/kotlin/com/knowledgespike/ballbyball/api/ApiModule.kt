@@ -15,6 +15,7 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.get
 import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 
@@ -23,17 +24,20 @@ fun Application.module() {
     monitor.subscribe(ApplicationStopped) {
         resources.close()
     }
-    module(resources.repository)
+    moduleWithRepository(resources.repository)
 }
 
-fun Application.module(repository: MatchRepository) {
+fun Application.moduleWithRepository(repository: MatchRepository) {
     val applicationLog = LoggerFactory.getLogger("com.knowledgespike.ballbyball.api")
     install(CallLogging)
     install(ContentNegotiation) {
         json(Json { prettyPrint = true })
     }
     install(StatusPages) {
-        exception<Throwable> { call, cause ->
+        exception<Exception> { call, cause ->
+            if (cause is CancellationException) {
+                throw cause
+            }
             applicationLog.error("Unhandled API request failure", cause)
             call.respond(HttpStatusCode.InternalServerError)
         }
@@ -49,7 +53,15 @@ fun Application.module(repository: MatchRepository) {
         }
         route("/api") {
             get("/matches") {
-                val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 25
+                val limitParameter = call.request.queryParameters["limit"]
+                val limit = when {
+                    limitParameter == null -> 25
+                    else -> limitParameter.toIntOrNull()
+                }
+                if (limit == null) {
+                    call.respond(HttpStatusCode.BadRequest, "limit must be a number")
+                    return@get
+                }
                 if (limit !in 1..100) {
                     call.respond(HttpStatusCode.BadRequest, "limit must be between 1 and 100")
                     return@get

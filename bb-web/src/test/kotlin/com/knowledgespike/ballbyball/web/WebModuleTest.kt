@@ -16,6 +16,8 @@ import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Test
 import strikt.api.expectThat
 import strikt.assertions.contains
+import strikt.assertions.isEqualTo
+import java.io.IOException
 
 class WebModuleTest {
     @Test
@@ -32,11 +34,71 @@ class WebModuleTest {
             }
             install(ContentNegotiation) { json() }
         }
-        application { module("http://api", apiClient) }
+        application { moduleWithClient("http://api", apiClient) }
 
         val response = client.get("/matches")
 
         expectThat(response.bodyAsText()).contains("match.json")
+        apiClient.close()
+    }
+
+    @Test
+    fun `matches returns bad gateway when the API responds unsuccessfully`() = testApplication {
+        val apiClient = HttpClient(MockEngine) {
+            engine {
+                addHandler {
+                    respond(content = "unavailable", status = HttpStatusCode.ServiceUnavailable)
+                }
+            }
+        }
+        application { moduleWithClient("http://api", apiClient) }
+
+        val response = client.get("/matches")
+
+        expectThat(response.status).isEqualTo(HttpStatusCode.BadGateway)
+        expectThat(response.bodyAsText()).contains("The API is unavailable (503).")
+        apiClient.close()
+    }
+
+    @Test
+    fun `matches returns bad gateway when the API connection fails`() = testApplication {
+        val apiClient = HttpClient(MockEngine) {
+            engine {
+                addHandler { throw IOException("API unavailable") }
+            }
+        }
+        application { moduleWithClient("http://api", apiClient) }
+
+        val response = client.get("/matches")
+
+        expectThat(response.status).isEqualTo(HttpStatusCode.BadGateway)
+        expectThat(response.bodyAsText()).contains("The API is unavailable.")
+        apiClient.close()
+    }
+
+    @Test
+    fun `matches returns bad gateway when the API returns malformed JSON`() = testApplication {
+        val apiClient = HttpClient(MockEngine) {
+            engine {
+                addHandler {
+                    respond(
+                        content = "not-json",
+                        status = HttpStatusCode.OK,
+                        headers = io.ktor.http.headersOf(
+                            "Content-Type",
+                            ContentType.Application.Json.toString()
+                        )
+                    )
+                }
+            }
+            install(ContentNegotiation) { json() }
+        }
+        application { moduleWithClient("http://api", apiClient) }
+
+        val response = client.get("/matches")
+
+        expectThat(response.status).isEqualTo(HttpStatusCode.BadGateway)
+        expectThat(response.bodyAsText()).contains("The API is unavailable.")
         apiClient.close()
     }
 }
