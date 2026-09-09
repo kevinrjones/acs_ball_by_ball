@@ -20,8 +20,14 @@ dependencyResolutionManagement {
 
 rootProject.name = "BallByBall"
 
-include("bb-update-database")
-include("bb-shared")
-include("bb-api")
-include("bb-web")
+listOf(
+    "bb-update-database",
+    "bb-shared",
+    "bb-api",
+    "bb-web",
+).forEach { projectName ->
+    if (rootDir.resolve(projectName).isDirectory) {
+        include(projectName)
+    }
+}
 

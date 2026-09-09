@@ -16,3 +16,14 @@ data class MatchSummary(
     val matchType: String,
     val season: String
 )
+
+@Serializable
+data class RecentMatchesResponse(
+    val matches: List<MatchSummary>
+)
+
+@Serializable
+data class ApiError(
+    val code: String,
+    val message: String
+)

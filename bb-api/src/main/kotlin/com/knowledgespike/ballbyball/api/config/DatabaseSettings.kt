@@ -1,4 +1,4 @@
-package com.knowledgespike.ballbyball.api
+package com.knowledgespike.ballbyball.api.config
 
 import io.ktor.server.config.ApplicationConfig
 

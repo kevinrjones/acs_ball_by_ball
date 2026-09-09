@@ -1,0 +1,92 @@
+services:
+  mariadb:
+    image: mariadb:12.3.2
+    container_name: ballbyball-mariadb
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${DB_NAME:-acs_ball_by_ball}
+      MARIADB_USER: ${DB_USER:-ballbyball}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-p4ssw0rd}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-p4ssw0rd}
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./docker/mariadb/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${DB_ROOT_PASSWORD:-p4ssw0rd}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - ballbyball-net
+
+  api:
+    container_name: ballbyball-api
+    build:
+      context: .
+      dockerfile: bb-api/Dockerfile
+      target: final
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-8081}:8081"
+    environment:
+      API_PORT: 8081
+      DB_JDBC_URL: jdbc:mariadb://mariadb:3306/${DB_NAME:-acs_ball_by_ball}
+      DB_USER: ${DB_USER:-ballbyball}
+      DB_PASSWORD: ${DB_PASSWORD:-p4ssw0rd}
+      DB_MAX_POOL_SIZE: 10
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    networks:
+      - ballbyball-net
+
+  web:
+    container_name: ballbyball-web
+    build:
+      context: .
+      dockerfile: bb-web/Dockerfile
+      target: final
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-8080}:8080"
+    environment:
+      WEB_PORT: 8080
+      API_BASE_URL: http://api:8081
+    depends_on:
+      api:
+        condition: service_started
+    networks:
+      - ballbyball-net
+
+  update-database:
+    container_name: ballbyball-update-database
+    build:
+      context: .
+      dockerfile: bb-update-database/Dockerfile
+      target: final
+    environment:
+      DB_JDBC_URL: jdbc:mariadb://mariadb:3306/${DB_NAME:-acs_ball_by_ball}
+      DB_USER: ${DB_USER:-ballbyball}
+      DB_PASSWORD: ${DB_PASSWORD:-p4ssw0rd}
+      FLYWAY_URL: jdbc:mariadb://mariadb:3306/${DB_NAME:-acs_ball_by_ball}
+      FLYWAY_USER: ${DB_USER:-ballbyball}
+      FLYWAY_PASSWORD: ${DB_PASSWORD:-p4ssw0rd}
+    volumes:
+      - ${DATA_DIR:-./data}:/data:ro
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    profiles:
+      - tools
+    networks:
+      - ballbyball-net
+
+networks:
+  ballbyball-net:
+    driver: bridge
+
+volumes:
+  mariadb_data:

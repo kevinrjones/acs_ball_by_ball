@@ -3,7 +3,7 @@ ktor:
     port: "${API_PORT:8081}"
   application:
     modules:
-      - com.knowledgespike.ballbyball.api.ApiModuleKt.module
+      - com.knowledgespike.ballbyball.api.bootstrap.ApiModuleKt.module
 
 database:
   jdbcUrl: "${DB_JDBC_URL:jdbc:mariadb://localhost:3306/acs_ball_by_ball}"

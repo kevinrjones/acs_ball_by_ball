@@ -1,0 +1,25 @@
+# syntax=docker/dockerfile:1
+
+################################################################################
+# CI Dockerfile for bb-api
+# Expects pre-built installDist artifacts in bb-api/build/install/bb-api
+################################################################################
+FROM eclipse-temurin:21-jre-alpine AS final
+
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
+    mkdir -p /opt/app/logging /opt/app/logs && \
+    chown -R appuser:appgroup /opt/app
+
+WORKDIR /opt/app
+
+COPY bb-api/build/install/bb-api /opt/app/
+COPY bb-api/src/main/resources/logback.xml /opt/app/logging/logback.xml
+
+RUN chown -R appuser:appgroup /opt/app
+
+USER appuser
+
+ENV API_PORT=8081
+EXPOSE 8081
+
+ENTRYPOINT ["/opt/app/bin/bb-api"]

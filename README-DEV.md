@@ -319,6 +319,56 @@ connection, timeout, status, and malformed-response failures to `502 Bad
 Gateway`. The complete database container setup remains in
 `docs/setup/SETUP-DB.md`.
 
+## Docker and Compose Development Environment
+
+A full development environment is available using Docker Compose in `compose.yaml`. This brings up:
+- **MariaDB 11.4** database configured with database `acs_ball_by_ball`, user `ballbyball`, password `p4ssw0rd`, and auto-initializes relational and dimensional warehouse schemas from `docker/mariadb/init/`.
+- **bb-api** listening on port `8081` connected to the database.
+- **bb-web** listening on port `8080` connected to `bb-api`.
+- **bb-update-database** container runnable on demand with the `tools` profile.
+
+### Start the development stack (MariaDB, API, Web)
+
+```bash
+docker compose up -d --build
+```
+
+Access the web interface at `http://localhost:8080` and the API at `http://localhost:8081`.
+
+### Run database updates with bb-update-database in Docker
+
+Place Cricsheet JSON/CSV files in `./data` (or set `DATA_DIR` in `.env`), then run:
+
+```bash
+docker compose run --rm update-database \
+  --outputType DATABASE \
+  --baseDirectory /data \
+  --playerRegistry people.csv \
+  --connectionString jdbc:mariadb://mariadb:3306/acs_ball_by_ball \
+  --userName ballbyball \
+  --password p4ssw0rd
+```
+
+### Stop the development environment
+
+```bash
+docker compose down
+# Or to remove volumes and reset the database:
+docker compose down -v
+```
+
+## GitHub Actions CI/CD
+
+Workflows are located in `.github/workflows/`:
+
+- **CI (`ci.yml`)**: Runs `./gradlew clean check` on all pull requests and pushes to `main`.
+- **BB-API (`build-bb-api.yml`)**: Builds and checks `bb-api`, creates install distribution artifacts, and on version tags (`v*.*.*`) builds and pushes multi-architecture (`linux/amd64`, `linux/arm64`) Docker images to Docker Hub.
+- **BB-Web (`build-bb-web.yml`)**: Builds and checks `bb-web`, creates install distribution artifacts, and pushes Docker images on version tags.
+- **BB-Update-Database (`build-bb-update-database.yml`)**: Builds and checks `bb-update-database`, creates distribution artifacts, and pushes Docker images on version tags.
+- **Reusable Workflows & Actions**:
+  - `reusable-gradle.yml` & `reusable-docker.yml`
+  - Composite actions in `.github/workflows/actions/` (`setup-jdk`, `use-gradle`, `docker-push`)
+
 ## Updating this runbook
 
 When adding a tool or command:

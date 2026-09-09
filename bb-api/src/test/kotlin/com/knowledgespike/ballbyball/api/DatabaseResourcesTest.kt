@@ -1,5 +1,7 @@
 package com.knowledgespike.ballbyball.api
 
+import com.knowledgespike.ballbyball.api.config.DatabaseResources
+import com.knowledgespike.ballbyball.api.config.DatabaseSettings
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import strikt.api.expectThat
@@ -16,7 +18,7 @@ class DatabaseResourcesTest {
                 maximumPoolSize = 1
             )
         ).use { resources ->
-            expectThat(resources.repository.isHealthy()).isFalse()
+            expectThat(resources.databaseHealth.isHealthy()).isFalse()
         }
     }
 }

@@ -3,7 +3,7 @@ ktor:
     port: "${WEB_PORT:8080}"
   application:
     modules:
-      - com.knowledgespike.ballbyball.web.WebModuleKt.module
+      - com.knowledgespike.ballbyball.web.bootstrap.WebModuleKt.module
 
 api:
   baseUrl: "${API_BASE_URL:http://localhost:8081}"

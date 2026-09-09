@@ -2,6 +2,9 @@
 
 ## What was shipped
 
+- Added GitHub Actions CI/CD workflows and composite actions for multi-module Gradle verification, artifact packaging, and Docker Hub container publishing.
+- Created multi-stage Dockerfiles and CI Dockerfiles for `bb-api`, `bb-web`, and `bb-update-database`.
+- Created a `compose.yaml` development environment with MariaDB 11.4 (`acs_ball_by_ball`), automatic schema initialization, and connected Ktor web and API services.
 - Moved module-specific Gradle configuration from the root build script into `bb-shared/build.gradle.kts` and `bb-update-database/build.gradle.kts`.
 - Added MariaDB, PostgreSQL, and SQLite warehouse output adapters with dialect-specific direct JDBC and SQL-file support.
 
@@ -798,3 +801,84 @@ Fix API/web runtime risks and replace HOCON with YAML
   JSON serialization.
 - Web success, upstream HTTP failure, connection failure, and malformed JSON.
 - Focused module tests and the full Gradle `check` task.
+
+## Layer bb-api and bb-web around application seams
+
+### Title
+
+Introduce pragmatic layered Ktor application architecture
+
+### Date/time completed
+
+2026-09-09 09:04
+
+### What was shipped
+
+- Reorganised `bb-api` into bootstrap/configuration, inbound HTTP routes,
+  application validation/use cases, outbound ports, and a JOOQ adapter.
+- Reorganised `bb-web` into bootstrap, inbound routes/presentation, an
+  application API-client port, and an outbound Ktor HTTP adapter.
+- Added typed `MatchLimit` validation, separated `DatabaseHealth` from the
+  match repository, and added shared `RecentMatchesResponse` and `ApiError`
+  JSON contracts.
+- Added the layered architecture, dependency direction, request flows, and
+  contributor navigation to `docs/architecture/applications.md` and
+  `AGENTS.md`.
+
+### Key decisions
+
+- Kept the layers inside the existing Gradle applications instead of creating
+  more Gradle modules; the interfaces are sufficient seams for this scope.
+- Kept `bb-shared` as the single source of API JSON contracts while keeping
+  JOOQ rows and HTML rendering out of the shared module.
+- Used sealed results for expected validation/upstream failures and retained
+  cancellation-safe exception handling for unexpected failures.
+
+### Gotchas
+
+- Kotlin requires backticks when importing packages named `in`.
+- `bb-api` and `bb-web` YAML module paths now point to their `bootstrap`
+  packages.
+
+### Test coverage areas
+
+- API route validation, shared response serialization, health status, and
+  unavailable-database startup.
+- Web shared-contract decoding, HTML rendering, upstream status/connection,
+  and malformed JSON failures through the outbound adapter.
+
+## GitHub Actions CI/CD and Docker development environment
+
+### Title
+
+Add GitHub Actions workflows, Dockerfiles, and Docker Compose development environment
+
+### Date/time completed
+
+2026-09-09 11:15
+
+### What was shipped
+
+- Added GitHub Actions composite actions (`setup-jdk`, `use-gradle`, `docker-push`) and reusable workflows (`reusable-gradle.yml`, `reusable-docker.yml`).
+- Added CI workflow (`ci.yml`) running `./gradlew clean check --no-daemon` on pull requests and pushes to `main`.
+- Added release workflows (`build-bb-api.yml`, `build-bb-web.yml`, `build-bb-update-database.yml`) for Gradle building, distribution artifact uploading, and multi-architecture Docker image publishing.
+- Added standalone and CI Dockerfiles for `bb-api`, `bb-web`, and `bb-update-database` using Temurin Alpine images and non-root application users.
+- Added `compose.yaml` with MariaDB 11.4 (`acs_ball_by_ball`, `ballbyball` user, `p4ssw0rd` password), health checks, auto-initialization SQL scripts, API/Web services, and an on-demand `update-database` tool service.
+- Added `.env.example` and updated developer documentation in `README-DEV.md`.
+
+### Key decisions
+
+- Used Temurin 21 Alpine for minimal image attack surface and efficient multi-architecture container runtime.
+- Docker containers run as non-root user `appuser` with explicit logging and working directory permissions.
+- Database initialization in Docker Compose mounts `docker/mariadb/init/` to pre-create both relational and dimensional warehouse schemas upon container startup.
+- Reusable workflows and composite actions keep CI definitions DRY and consistent across microservices.
+
+### Gotchas
+
+- When running `bb-update-database` in Docker Compose, point `--connectionString` to `jdbc:mariadb://mariadb:3306/acs_ball_by_ball` within the internal network.
+- Docker Compose development stack exposes MariaDB on 3306, API on 8081, and Web on 8080 by default.
+
+### Test coverage areas
+
+- `./gradlew clean check --no-daemon` validated across all modules.
+- Docker Compose configuration and service dependency graph verified.

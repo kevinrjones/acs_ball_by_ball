@@ -1,0 +1,44 @@
+name: Build BB-API
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*.*.*'
+    paths:
+      - 'bb-api/**'
+      - 'bb-shared/**'
+      - '.github/workflows/build-bb-api.yml'
+      - '.github/workflows/reusable-gradle.yml'
+      - '.github/workflows/reusable-docker.yml'
+    branches: [ "main" ]
+  pull_request:
+    paths:
+      - 'bb-api/**'
+      - 'bb-shared/**'
+      - '.github/workflows/build-bb-api.yml'
+    branches: [ "main" ]
+
+jobs:
+  gradle:
+    uses: ./.github/workflows/reusable-gradle.yml
+    with:
+      working-directory: '.'
+      build-task: ':bb-api:check :bb-api:installDist'
+      upload-artifact-name: 'bb-api-dist'
+      upload-artifact-path: 'bb-api/build/install/bb-api'
+
+  docker-publish:
+    needs: gradle
+    if: startsWith(github.ref, 'refs/tags/')
+    uses: ./.github/workflows/reusable-docker.yml
+    with:
+      image-name: 'bb-api'
+      image-version: ${{ github.ref_name }}
+      working-directory: '.'
+      dockerfile: 'bb-api/Dockerfile.ci'
+      docker-username: ${{ vars.DOCKER_USERNAME }}
+      artifact-name: 'bb-api-dist'
+      artifact-path: 'bb-api/build/install/bb-api'
+    secrets:
+      docker-password: ${{ secrets.DOCKER_PASSWORD }}

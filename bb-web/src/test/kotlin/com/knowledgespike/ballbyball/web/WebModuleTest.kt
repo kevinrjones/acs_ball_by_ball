@@ -1,6 +1,9 @@
 package com.knowledgespike.ballbyball.web
 
 import com.knowledgespike.ballbyball.contracts.MatchSummary
+import com.knowledgespike.ballbyball.contracts.RecentMatchesResponse
+import com.knowledgespike.ballbyball.web.adapter.out.api.KtorMatchApiClient
+import com.knowledgespike.ballbyball.web.bootstrap.moduleWithApiClient
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -26,7 +29,9 @@ class WebModuleTest {
             engine {
                 addHandler {
                     respond(
-                        content = Json.encodeToString(listOf(MatchSummary(1, 10, "match.json", "TEST", "2026"))),
+                        content = Json.encodeToString(
+                            RecentMatchesResponse(listOf(MatchSummary(1, 10, "match.json", "TEST", "2026")))
+                        ),
                         status = HttpStatusCode.OK,
                         headers = io.ktor.http.headersOf("Content-Type", ContentType.Application.Json.toString())
                     )
@@ -34,7 +39,7 @@ class WebModuleTest {
             }
             install(ContentNegotiation) { json() }
         }
-        application { moduleWithClient("http://api", apiClient) }
+        application { moduleWithApiClient(KtorMatchApiClient("http://api", apiClient)) }
 
         val response = client.get("/matches")
 
@@ -51,7 +56,7 @@ class WebModuleTest {
                 }
             }
         }
-        application { moduleWithClient("http://api", apiClient) }
+        application { moduleWithApiClient(KtorMatchApiClient("http://api", apiClient)) }
 
         val response = client.get("/matches")
 
@@ -67,7 +72,7 @@ class WebModuleTest {
                 addHandler { throw IOException("API unavailable") }
             }
         }
-        application { moduleWithClient("http://api", apiClient) }
+        application { moduleWithApiClient(KtorMatchApiClient("http://api", apiClient)) }
 
         val response = client.get("/matches")
 
@@ -93,7 +98,7 @@ class WebModuleTest {
             }
             install(ContentNegotiation) { json() }
         }
-        application { moduleWithClient("http://api", apiClient) }
+        application { moduleWithApiClient(KtorMatchApiClient("http://api", apiClient)) }
 
         val response = client.get("/matches")
 
