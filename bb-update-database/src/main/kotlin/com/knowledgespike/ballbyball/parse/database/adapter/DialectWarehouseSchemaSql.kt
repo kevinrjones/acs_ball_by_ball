@@ -88,6 +88,7 @@ internal object WarehouseSchemaSql {
             );
             CREATE INDEX idx_dim_person_sort_name ON dim_person (sort_name_part);
             CREATE INDEX idx_dim_person_ca_id ON dim_person (ca_id);
+            CREATE INDEX idx_dim_person_full_name ON dim_person (full_name);
             """,
             """
             CREATE TABLE dim_ground
@@ -133,6 +134,9 @@ internal object WarehouseSchemaSql {
                 CONSTRAINT fk_dim_match_loser_team FOREIGN KEY (loser_team_key) REFERENCES dim_team (team_key)
             );
             CREATE INDEX idx_dim_match_type ON dim_match (match_type);
+            CREATE INDEX idx_dim_match_file_name ON dim_match (file_name);
+            CREATE INDEX idx_dim_match_type_year ON dim_match (match_type, match_start_year);
+            CREATE INDEX idx_dim_match_teams_type ON dim_match (match_type, team1_key, team2_key);
             CREATE INDEX idx_dim_match_season ON dim_match (season);
             CREATE INDEX idx_dim_match_start_date ON dim_match (match_start_date_key);
             CREATE INDEX idx_dim_match_team1 ON dim_match (team1_key);
@@ -219,6 +223,7 @@ internal object WarehouseSchemaSql {
                 CONSTRAINT fk_fact_delivery_bowler FOREIGN KEY (bowler_key) REFERENCES dim_person (person_key)
             );
             CREATE INDEX idx_fact_delivery_match_order ON fact_delivery (match_key, innings_order);
+            CREATE INDEX idx_fact_delivery_match_seq ON fact_delivery (match_key, innings_order, over_number, ball_in_over);
             CREATE INDEX idx_fact_delivery_date ON fact_delivery (match_date_key);
             CREATE INDEX idx_fact_delivery_innings ON fact_delivery (innings_key);
             CREATE INDEX idx_fact_delivery_batting_team ON fact_delivery (batting_team_key);
@@ -253,6 +258,7 @@ internal object WarehouseSchemaSql {
                 CONSTRAINT fk_bridge_delivery_wicket_delivery FOREIGN KEY (delivery_key) REFERENCES fact_delivery (delivery_key),
                 CONSTRAINT fk_bridge_delivery_wicket_wicket FOREIGN KEY (wicket_key) REFERENCES dim_wicket (wicket_key)
             );
+            CREATE INDEX idx_bridge_delivery_wicket_wicket ON bridge_delivery_wicket (wicket_key);
             """,
             """
             CREATE TABLE bridge_delivery_fielder
@@ -265,6 +271,7 @@ internal object WarehouseSchemaSql {
                 CONSTRAINT fk_bridge_delivery_fielder_wicket FOREIGN KEY (wicket_key) REFERENCES dim_wicket (wicket_key),
                 CONSTRAINT fk_bridge_delivery_fielder_person FOREIGN KEY (person_key) REFERENCES dim_person (person_key)
             );
+            CREATE INDEX idx_bridge_delivery_fielder_wicket ON bridge_delivery_fielder (wicket_key);
             CREATE INDEX idx_bridge_delivery_fielder_person ON bridge_delivery_fielder (person_key);
             """
         )

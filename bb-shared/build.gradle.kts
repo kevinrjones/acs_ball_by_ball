@@ -20,6 +20,7 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.junit.engine)
+    testRuntimeOnly(libs.junit.platform.launcher)
     testImplementation(libs.kluent)
     testImplementation(libs.strikt)
 

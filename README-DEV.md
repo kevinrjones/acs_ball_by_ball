@@ -287,6 +287,33 @@ script adapter instead. `SQL_FILE` makes that offline behavior explicit. The
 SQL-file adapter resets and recreates the warehouse tables; direct `DATABASE`
 output does not reset tables.
 
+## Ktor applications
+
+The repository now includes two runnable Ktor applications. The architecture,
+configuration, endpoints, and browser-to-API flow are documented in
+`docs/architecture/applications.md`.
+
+Run the JOOQ-backed API against a migrated local database:
+
+```bash
+DB_JDBC_URL='jdbc:mariadb://localhost:3307/acs_ball_by_ball' \
+DB_USER=acs_ball_by_ball \
+DB_PASSWORD='acs_ball_by_ball-local-password' \
+./gradlew :bb-api:run --no-daemon
+```
+
+Run the static HTMX web application in a second shell:
+
+```bash
+API_BASE_URL=http://localhost:8081 \
+./gradlew :bb-web:run --no-daemon
+```
+
+The browser-facing application listens on port `8080` and the API listens on
+port `8081` by default. Override `WEB_PORT`, `API_PORT`, and the database
+variables rather than storing credentials in source files. The complete
+database container setup remains in `docs/setup/SETUP-DB.md`.
+
 ## Updating this runbook
 
 When adding a tool or command:

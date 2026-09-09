@@ -22,4 +22,6 @@ rootProject.name = "BallByBall"
 
 include("bb-update-database")
 include("bb-shared")
+include("bb-api")
+include("bb-web")
 

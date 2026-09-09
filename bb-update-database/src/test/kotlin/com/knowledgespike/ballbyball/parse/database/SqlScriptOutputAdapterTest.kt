@@ -162,6 +162,22 @@ class SqlScriptOutputAdapterTest {
                     result.next()
                     expectThat(result.getInt(1)).isEqualTo(1)
                 }
+                listOf(
+                    "idx_fact_delivery_match_seq",
+                    "idx_dim_match_file_name",
+                    "idx_dim_match_type_year",
+                    "idx_dim_match_teams_type",
+                    "idx_dim_person_full_name",
+                    "idx_bridge_delivery_wicket_wicket",
+                    "idx_bridge_delivery_fielder_wicket"
+                ).forEach { indexName ->
+                    statement.executeQuery(
+                        "select count(*) from sqlite_master where type = 'index' and name = '$indexName'"
+                    ).use { result ->
+                        result.next()
+                        expectThat(result.getInt(1)).isEqualTo(1)
+                    }
+                }
                 statement.executeQuery(
                     "select count(*) from pragma_table_info('fact_match') where name = 'file_name'"
                 ).use { result ->

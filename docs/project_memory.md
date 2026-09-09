@@ -638,6 +638,39 @@ Keep the source filename only on `dim_match`
   `dim_match` and the reduced `fact_match` column set.
 - Full Gradle verification and fresh SQLite schema execution.
 
+## Add warehouse query indexes
+
+### Title
+
+Add requested lookup and delivery-sequence indexes to the initial warehouse schema
+
+### Date/time completed
+
+2026-09-08 21:18
+
+### What was shipped
+
+- Added the requested delivery sequence, match lookup, person-name, and wicket
+  bridge indexes to the MariaDB, PostgreSQL, and SQLite version 2 migrations.
+- Added the same indexes to generated dialect-specific warehouse schema output.
+- Updated database architecture documentation and SQLite schema assertions.
+
+### Key decisions
+
+- Preserved the existing indexes and added the requested indexes with the exact
+  names and column order supplied for query compatibility.
+
+### Gotchas
+
+- Existing databases need the equivalent `CREATE INDEX` statements applied
+  separately because the project currently manages fresh schemas through the
+  consolidated version 2 migration.
+
+### Test coverage areas
+
+- Generated SQLite warehouse schema contains all seven requested indexes.
+- Full Gradle verification and migration execution checks.
+
 ## Suppress duplicate delivery fielder associations
 
 ### Title
@@ -677,3 +710,47 @@ Make duplicate `bridge_delivery_fielder` inserts safe and observable
 - Duplicate fielder payloads produce one bridge row.
 - Repeated SQL-script and CSV adapter calls are suppressed.
 - Dialect-specific PostgreSQL/SQLite SQL syntax and full Gradle verification.
+
+## Add Ktor API and web applications
+
+### Title
+
+Create the JOOQ-backed API and static HTMX web application skeletons
+
+### Date/time completed
+
+2026-09-08 21:36
+
+### What was shipped
+
+- Added the `bb-api` Ktor application with environment-backed database
+  configuration, Hikari pooling, JOOQ match queries, health checking, and
+  JSON endpoints.
+- Added the `bb-web` Ktor application with a static HTMX page and an API-backed
+  HTML fragment route.
+- Added shared serializable API contracts, Gradle version-catalog entries,
+  application configuration, logging, and focused tests for both applications.
+- Documented the module responsibilities and local run commands in
+  `docs/architecture/applications.md` and `README-DEV.md`.
+
+### Key decisions
+
+- Kept `MatchRepository` as the persistence seam so HTTP routes do not depend
+  directly on JOOQ or Hikari.
+- Used JOOQ's DSL against the existing warehouse tables while postponing code
+  generation until the schema and query surface are stable.
+- Kept the web application framework-light: Ktor serves static HTML and HTMX
+  performs the browser interaction, while the server performs the API call.
+
+### Gotchas
+
+- PostgreSQL connections must set `currentSchema=acs_ball_by_ball` in the JDBC
+  URL because the warehouse tables live in that schema.
+- Both applications require a migrated warehouse before the production API
+  module can answer database requests.
+
+### Test coverage areas
+
+- API health response and match limit validation using an injected repository.
+- Web API handoff and HTML rendering using a Ktor `MockEngine` client.
+- Focused `bb-api` and `bb-web` Gradle test suites passed.

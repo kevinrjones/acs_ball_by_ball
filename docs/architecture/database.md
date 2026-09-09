@@ -185,7 +185,8 @@ is recorded in `bridge_match_person.role_code`.
 Indexes and constraints:
 
 - Unique key: `uq_dim_person_source_id` on `source_person_id`.
-- Secondary indexes: `idx_dim_person_sort_name` and `idx_dim_person_ca_id`.
+- Secondary indexes: `idx_dim_person_full_name`, `idx_dim_person_sort_name`, and
+  `idx_dim_person_ca_id`.
 
 ### `dim_ground`
 
@@ -238,9 +239,10 @@ Foreign keys:
   `loser_team_key` reference `dim_team(team_key)`.
 - `ground_key` references `dim_ground(ground_key)`.
 
-Indexes include match type, season, start date, both participating teams, and
-ground. The source match identifier is unique, making it suitable for
-idempotent source-match detection.
+Indexes include file name, match type/year, the ordered team pair by match type,
+match type, season, start date, both participating teams, and ground. The source
+match identifier is unique, making it suitable for idempotent source-match
+detection.
 
 ### `dim_innings`
 
@@ -345,8 +347,9 @@ Foreign keys:
 - `batter_key`, `non_striker_key`, and `bowler_key` reference
   `dim_person(person_key)`.
 
-Indexes support match-order scans, date and innings filtering, team and player
-analysis, over and ball-in-over filtering, and powerplay filtering.
+Indexes support match-order and match-sequence scans, date and innings filtering,
+team and player analysis, over and ball-in-over filtering, and powerplay
+filtering.
 `source_ball_id` is unique for source-level deduplication.
 
 ## Factless bridges
@@ -382,7 +385,8 @@ delivery fact rows.
 
 The composite primary key (`delivery_key`, `wicket_key`) prevents duplicate
 associations. Both columns are also foreign keys, so a bridge row cannot exist
-without its delivery and wicket dimension row.
+without its delivery and wicket dimension row. The `wicket_key` index supports
+reverse lookup from a wicket to its deliveries.
 
 ### `bridge_delivery_fielder`
 
@@ -398,7 +402,9 @@ attached to the specific wicket when a delivery contains more than one wicket.
 
 The composite primary key (`delivery_key`, `wicket_key`, `person_key`) prevents
 duplicate fielder associations. The person index supports queries such as
-fielding dismissals by player. The parser treats a repeated composite key in a
+`idx_bridge_delivery_fielder_wicket` supports reverse lookup from a wicket, and
+the person index supports queries such as fielding dismissals by player. The
+parser treats a repeated composite key in a
 single wicket as one association, logs the filename and key values, and does not
 emit a second row. SQL-file and JDBC adapters also use the selected dialect's
 duplicate-safe insert form, so an association repeated by a caller is ignored

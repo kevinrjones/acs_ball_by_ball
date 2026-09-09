@@ -45,6 +45,7 @@ CREATE TABLE dim_person
     ca_id            INT             NOT NULL,
 
     UNIQUE KEY uq_dim_person_source_id (source_person_id),
+    KEY idx_dim_person_full_name (full_name),
     KEY idx_dim_person_sort_name (sort_name_part),
     KEY idx_dim_person_ca_id (ca_id)
 ) ENGINE = InnoDB;
@@ -87,6 +88,9 @@ CREATE TABLE dim_match
 
     UNIQUE KEY uq_dim_match_source_id (source_match_id),
     KEY idx_dim_match_type (match_type),
+    KEY idx_dim_match_file_name (file_name),
+    KEY idx_dim_match_type_year (match_type, match_start_year),
+    KEY idx_dim_match_teams_type (match_type, team1_key, team2_key),
     KEY idx_dim_match_season (season),
     KEY idx_dim_match_start_date (match_start_date_key),
     KEY idx_dim_match_team1 (team1_key),
@@ -192,6 +196,7 @@ CREATE TABLE fact_delivery
 
     UNIQUE KEY uq_fact_delivery_source_id (source_ball_id),
     KEY idx_fact_delivery_match_order (match_key, innings_order),
+    KEY idx_fact_delivery_match_seq (match_key, innings_order, over_number, ball_in_over),
     KEY idx_fact_delivery_date (match_date_key),
     KEY idx_fact_delivery_innings (innings_key),
     KEY idx_fact_delivery_batting_team (batting_team_key),
@@ -246,6 +251,7 @@ CREATE TABLE bridge_delivery_wicket
     wicket_key   BIGINT UNSIGNED NOT NULL,
 
     PRIMARY KEY (delivery_key, wicket_key),
+    KEY idx_bridge_delivery_wicket_wicket (wicket_key),
 
     CONSTRAINT fk_bridge_delivery_wicket_delivery
         FOREIGN KEY (delivery_key) REFERENCES fact_delivery (delivery_key),
@@ -261,6 +267,7 @@ CREATE TABLE bridge_delivery_fielder
     person_key   BIGINT UNSIGNED NOT NULL,
 
     PRIMARY KEY (delivery_key, wicket_key, person_key),
+    KEY idx_bridge_delivery_fielder_wicket (wicket_key),
     KEY idx_bridge_delivery_fielder_person (person_key),
 
     CONSTRAINT fk_bridge_delivery_fielder_delivery
