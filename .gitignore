@@ -122,3 +122,5 @@ temp/**
 bb-update-database/sql/**
 bb-update-database/csv/**
 .env
+
+design
