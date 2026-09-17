@@ -1,0 +1,261 @@
+<!-- BEGIN: MainHeader -->
+<header class="bg-white border-b border-slate-200 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+            <!-- Logo & Navigation Links -->
+            <div class="flex items-center gap-8">
+                <a class="flex items-center gap-3 group" href="/">
+                    <!-- Brand Badge -->
+                    <div class="w-10 h-10 rounded-xl bg-brand-900 text-white flex items-center justify-center font-bold text-xl shadow-sm transition-transform group-hover:scale-105">
+                        M
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-slate-900 text-lg leading-none tracking-tight">Maiden</span>
+                            <span class="text-xs bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded-full border border-emerald-200">Ball by Ball</span>
+                        </div>
+                        <p class="text-xs text-slate-500 font-normal leading-tight mt-0.5">Ball-by-ball cricket data</p>
+                    </div>
+                </a>
+                <!-- Primary Navigation -->
+                <nav class="hidden md:flex items-center space-x-1" data-purpose="top-navigation">
+                    <a class="px-3.5 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors" href="#">Home</a>
+                    <a class="px-3.5 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors" href="#">Matches</a>
+                    <a class="px-3.5 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors" href="#">Series</a>
+                    <a class="px-3.5 py-2 text-sm font-semibold text-emerald-800 bg-emerald-50 rounded-lg transition-colors border border-emerald-100" href="#">Stats Archive</a>
+                </nav>
+            </div>
+            <!-- User Authentication / Dropdown -->
+            <div class="flex items-center gap-3">
+                <button class="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 border border-slate-200 text-sm font-medium text-slate-700 transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" type="button">
+                    <div class="w-6 h-6 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs font-semibold">
+                        <svg class="w-3.5 h-3.5 text-slate-200" fill="currentColor" viewBox="0 0 20 20">
+                            <path clip-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" fill-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <span class="truncate max-w-[180px] sm:max-w-none text-slate-900 font-medium">kevin&#64;knowledgespike.com</span>
+                    <svg class="w-4 h-4 text-slate-400 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+</header>
+<!-- END: MainHeader -->
+
+<!-- BEGIN: MainContent -->
+<main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-10">
+    <!-- Search Hero Hub -->
+    <section class="text-center space-y-6 max-w-4xl mx-auto" data-purpose="search-control-center">
+        <div class="space-y-2">
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">Ball by Ball</h1>
+            <p class="text-slate-500 text-base font-normal">Click on the button for search</p>
+        </div>
+        <!-- Action Button Grid -->
+        <div class="space-y-2.5 pt-2">
+            <div aria-label="Search Categories" class="flex flex-wrap justify-center gap-3" role="group">
+                <button class="px-5 py-2.5 text-sm font-semibold rounded-lg bg-[#0e3b43] text-white hover:bg-[#09292e] shadow-sm transition-all hover:shadow hover:-translate-y-0.5 focus:ring-2 focus:ring-offset-1 focus:ring-teal-700">
+                    Card Search
+                </button>
+                <button class="px-5 py-2.5 text-sm font-semibold rounded-lg bg-[#0e3b43] text-white hover:bg-[#09292e] shadow-sm transition-all hover:shadow hover:-translate-y-0.5 focus:ring-2 focus:ring-offset-1 focus:ring-teal-700">
+                    Player Search
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Two-Column Layout: Latest Results vs Latest News -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <!-- BEGIN: Column 1 - Latest Results -->
+        <section class="lg:col-span-7 space-y-4" data-purpose="latest-results-section">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-200">
+                <div class="flex items-center gap-2">
+                    <h2 class="text-xl font-bold text-slate-900 tracking-tight">Latest Results</h2>
+                    <span class="text-xs font-semibold bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full">
+                        @if (hasLoaded()) {
+                            {{ matches().length }} Matches
+                        } @else {
+                            {{ sampleMatches.length }} Matches
+                        }
+                    </span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="text-xs font-medium text-slate-500">10 Sept 2026</span>
+                    <button
+                        (click)="loadRecentMatches()"
+                        [disabled]="isLoading()"
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                        <svg class="w-3.5 h-3.5 text-slate-500" [class.animate-spin]="isLoading()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+                        </svg>
+                        @if (isLoading()) {
+                            Loading matches...
+                        } @else {
+                            Load recent matches
+                        }
+                    </button>
+                </div>
+            </div>
+
+            <!-- Error Banner -->
+            @if (errorMessage()) {
+                <div class="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-center justify-between">
+                    <span>{{ errorMessage() }}</span>
+                    <button (click)="loadRecentMatches()" class="text-xs font-semibold text-rose-900 underline hover:no-underline ml-2">Retry</button>
+                </div>
+            }
+
+            <div id="matches" class="space-y-3.5" aria-live="polite">
+                @if (hasLoaded()) {
+                    @if (isLoading()) {
+                        <div class="p-6 text-center bg-white rounded-xl border border-slate-200/90 shadow-sm text-slate-500 text-sm">
+                            <svg class="animate-spin h-5 w-5 mx-auto mb-2 text-emerald-600" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Fetching latest matches from API...
+                        </div>
+                    } @else if (matches().length === 0) {
+                        <p class="text-sm text-slate-500 p-4 bg-white rounded-xl border border-slate-200/90 shadow-sm">No matches found.</p>
+                    } @else {
+                        @for (match of matches(); track match.matchKey) {
+                            <article class="bg-white rounded-xl p-4 border border-slate-200/90 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                                <div class="flex items-center justify-between gap-3 text-xs mb-2">
+                                    <span class="font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">{{ match.matchType }}</span>
+                                    <div class="flex items-center gap-1.5 text-slate-400 group-hover:text-emerald-700 transition-colors">
+                                        <span class="text-xs text-slate-400">Season {{ match.season }}</span>
+                                    </div>
+                                </div>
+                                <div class="space-y-1.5 py-1">
+                                    <div class="flex justify-between items-center text-sm">
+                                        <span class="font-bold text-slate-900">{{ match.fileName }}</span>
+                                        <span class="text-xs text-slate-500 font-normal">ID: {{ match.sourceMatchId }}</span>
+                                    </div>
+                                </div>
+                                <div class="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                                    <p class="font-semibold text-emerald-700">Match #{{ match.matchKey }}</p>
+                                    <span class="text-slate-400 uppercase text-[10px] font-medium tracking-wider">{{ match.matchType }}</span>
+                                </div>
+                            </article>
+                        }
+                    }
+                } @else {
+                    <!-- Initial Static Matches -->
+                    @for (match of sampleMatches; track match.competition) {
+                        <article class="bg-white rounded-xl p-4 border border-slate-200/90 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                            <div class="flex items-center justify-between gap-3 text-xs mb-2">
+                                <span class="font-semibold px-2 py-0.5 rounded border" [ngClass]="match.badgeClass">{{ match.competition }}</span>
+                                <div class="flex items-center gap-1.5 text-slate-400 group-hover:text-emerald-700 transition-colors">
+                                    <span class="text-xs text-slate-400">{{ match.date }}</span>
+                                    <svg class="w-4 h-4 cursor-pointer hover:text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="space-y-1.5 py-1">
+                                <div class="flex justify-between items-center text-sm">
+                                    <span [class.font-bold]="match.isTeam1Winner" [class.font-medium]="!match.isTeam1Winner" [class.text-slate-900]="match.isTeam1Winner" [class.text-slate-700]="!match.isTeam1Winner">{{ match.team1 }}</span>
+                                    <span class="tracking-tight" [class.font-bold]="match.isTeam1Winner" [class.font-semibold]="!match.isTeam1Winner" class="text-slate-900">
+                                        {{ match.score1 }}
+                                        @if (match.overs1) {
+                                            <span class="text-xs text-slate-500 font-normal ml-1">{{ match.overs1 }}</span>
+                                        }
+                                    </span>
+                                </div>
+                                <div class="flex justify-between items-center text-sm">
+                                    <span [class.font-bold]="match.isTeam2Winner" [class.font-medium]="!match.isTeam2Winner" [class.text-slate-900]="match.isTeam2Winner" [class.text-slate-700]="!match.isTeam2Winner">{{ match.team2 }}</span>
+                                    <span class="tracking-tight" [class.font-bold]="match.isTeam2Winner" [class.font-semibold]="!match.isTeam2Winner" class="text-slate-900">
+                                        {{ match.score2 }}
+                                        @if (match.overs2) {
+                                            <span class="text-xs text-slate-500 font-normal ml-1">{{ match.overs2 }}</span>
+                                        }
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                                <p class="font-semibold text-emerald-700">{{ match.result }}</p>
+                                <span class="text-slate-400 uppercase text-[10px] font-medium tracking-wider">{{ match.format }}</span>
+                            </div>
+                        </article>
+                    }
+                }
+            </div>
+        </section>
+        <!-- END: Column 1 - Latest Results -->
+
+        <!-- BEGIN: Column 2 - Latest News -->
+        <section class="lg:col-span-5 space-y-4" data-purpose="latest-news-changelog">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-200">
+                <div class="flex items-center gap-2">
+                    <h2 class="text-xl font-bold text-slate-900 tracking-tight">Latest News</h2>
+                    <span class="text-xs font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200">Ball by Ball Updates</span>
+                </div>
+                <span class="text-xs font-medium text-slate-400">Changelog</span>
+            </div>
+            <div class="space-y-3.5">
+                <!-- Changelog Item 1 -->
+                <article class="bg-white rounded-xl p-4 border border-slate-200/90 shadow-sm hover:border-slate-300 transition-colors">
+                    <div class="flex items-baseline justify-between mb-1.5">
+                        <h3 class="text-sm font-bold text-slate-900">Ported Code to Kotlin</h3>
+                        <span class="text-xs font-medium text-slate-400 whitespace-nowrap ml-2">1st June 2026</span>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        Fixed several bugs, especially around sorting when switching between the main search pages
+                    </p>
+                </article>
+                <!-- Changelog Item 2 -->
+                <article class="bg-white rounded-xl p-4 border border-slate-200/90 shadow-sm hover:border-slate-300 transition-colors">
+                    <div class="flex items-baseline justify-between mb-1.5">
+                        <h3 class="text-sm font-bold text-slate-900">Ported Code to Kotlin</h3>
+                        <span class="text-xs font-medium text-slate-400 whitespace-nowrap ml-2">4th April 2026</span>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        No new functionality but I have ported the codebase to Kotlin, improving maintainability and performance.
+                    </p>
+                </article>
+                <!-- Changelog Item 3 -->
+                <article class="bg-white rounded-xl p-4 border border-slate-200/90 shadow-sm hover:border-slate-300 transition-colors">
+                    <div class="flex items-baseline justify-between mb-1.5">
+                        <h3 class="text-sm font-bold text-slate-900">Improved Code</h3>
+                        <span class="text-xs font-medium text-slate-400 whitespace-nowrap ml-2">24th February 2026</span>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        No new functionality but I have fixed a lot of underlying issues and improved a ton of code
+                    </p>
+                </article>
+                <!-- Changelog Item 4 -->
+                <article class="bg-white rounded-xl p-4 border border-slate-200/90 shadow-sm hover:border-slate-300 transition-colors">
+                    <div class="flex items-baseline justify-between mb-1.5">
+                        <h3 class="text-sm font-bold text-slate-900">Added Officials</h3>
+                        <span class="text-xs font-medium text-slate-400 whitespace-nowrap ml-2">9th February 2026</span>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        Added 'Officials Records', so we can now search for officials in the same way that we search for team records, batting records or bowling records. We've also added an officials 'page' so that the details of officials can be viewed. And finally there's a search page for officials that is similar to the search for players.
+                    </p>
+                </article>
+                <!-- Changelog Item 5 -->
+                <article class="bg-white rounded-xl p-4 border border-slate-200/90 shadow-sm hover:border-slate-300 transition-colors">
+                    <div class="flex items-baseline justify-between mb-1.5">
+                        <h3 class="text-sm font-bold text-slate-900">Added Partnership by Position</h3>
+                        <span class="text-xs font-medium text-slate-400 whitespace-nowrap ml-2">26th January 2026</span>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        Added partnerships by position for players, so you can see how well they've done with any partner for each wicket.
+                    </p>
+                </article>
+            </div>
+        </section>
+        <!-- END: Column 2 - Latest News -->
+    </div>
+</main>
+<!-- END: MainContent -->
+
+<!-- BEGIN: Footer -->
+<footer class="bg-white border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-2">
+        <p>&copy; 2026 Maiden Cricket / Ball by Ball Data. All rights reserved.</p>
+        <p class="text-slate-400">Built with Angular and Ktor</p>
+    </div>
+</footer>
+<!-- END: Footer -->

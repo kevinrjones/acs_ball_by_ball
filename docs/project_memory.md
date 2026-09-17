@@ -2,6 +2,11 @@
 
 ## What was shipped
 
+- Replaced HTMX front end in `bb-web` with a modern standalone Angular 19 application in `bb-web/ClientApp`.
+- Preserved all original styling and layout elements (header, brand badge, hero search buttons, match cards, changelog) using Tailwind CSS.
+- Implemented `MatchService` and TypeScript domain models matching shared JSON API contracts (`RecentMatchesResponse`, `MatchSummary`, `ApiError`).
+- Configured Ktor `bb-web` backend with JSON `ContentNegotiation` and `singlePageApplication` resource serving.
+- Wired Angular build and headless Karma testing into the Gradle lifecycle (`./gradlew check`).
 - Added GitHub Actions CI/CD workflows and composite actions for multi-module Gradle verification, artifact packaging, and Docker Hub container publishing.
 - Created multi-stage Dockerfiles and CI Dockerfiles for `bb-api`, `bb-web`, and `bb-update-database`.
 - Created a `compose.yaml` development environment with MariaDB 11.4 (`acs_ball_by_ball`), automatic schema initialization, and connected Ktor web and API services.
@@ -17,6 +22,42 @@
 
 - The dependency update plugin uses the replacement `io.github.ben-manes.versions` ID.
 - Generated SQL-file schemas must stay aligned with the dialect-specific warehouse migrations.
+
+## Angular frontend migration
+
+### Title
+
+Transition web front end from HTMX to Angular
+
+### Date/time completed
+
+2026-09-17 16:16
+
+### What was shipped
+
+- Stripped out HTMX templates and `MatchHtmlRenderer` in `bb-web`.
+- Created modern Angular application in `bb-web/ClientApp` using standalone components, Angular Signals, and Tailwind CSS.
+- Preserved all original HTMX layout styling (header, brand identity, navigation, hero buttons, match cards, and changelog).
+- Implemented `MatchService` with `HttpClient` consuming `/api/matches` returning typed JSON contracts (`RecentMatchesResponse`).
+- Configured Gradle `bb-web` build with `node-gradle` (`npmInstallClientApp`, `buildClientApp`, `testClientApp`, `syncClientAppResources`) and Ktor `singlePageApplication`.
+
+### Key decisions
+
+- Used modern standalone Angular components (`bootstrapApplication`) without legacy `AppModules`.
+- Configured Ktor `singlePageApplication` resource serving for client SPA and fallback routing while servicing `/api/` endpoints.
+- Maintained `FAIL_ON_PROJECT_REPOS` compliance by using installed system Node runtime (`download.set(false)`).
+- Included Angular Karma unit testing in the Gradle `check` lifecycle.
+
+### Gotchas
+
+- Angular control flow syntax requires `@` inside text (like email addresses) to be written as HTML entity `&#64;`.
+- Gradle resource processing requires duplicate handling strategy (`DuplicatesStrategy.INCLUDE`) when merging generated client assets.
+
+### Test coverage areas
+
+- Angular unit tests (`app.component.spec.ts`, `match.service.spec.ts`) running headless in Karma / ChromeHeadless (8 specs).
+- Ktor `WebModuleTest` verifying SPA shell serving at `/` and typed JSON response / error status mappings for `/api/matches`.
+- Full project `./gradlew check` across all modules.
 
 ## Gradle configuration ownership
 

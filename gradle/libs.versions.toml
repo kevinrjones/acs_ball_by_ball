@@ -16,6 +16,7 @@ ktor-version = "3.5.2"
 kover-version = "0.9.9"
 logback-version = "1.6.3"
 maria-db-version = "3.5.10"
+node-gradle-version = "7.1.0"
 pitest-junit5-version = "1.2.3"
 pitest-version = "1.19.0"
 postgres-version = "42.7.13"
@@ -63,5 +64,6 @@ flyway = { id = "org.flywaydb.flyway", version.ref = "flyway-version" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin-version" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover-version" }
+node-gradle = { id = "com.github.node-gradle.node", version.ref = "node-gradle-version" }
 pitest = { id = "info.solidsoft.pitest", version.ref = "pitest-version" }
 version-update = { id = "io.github.ben-manes.versions", version.ref = "update-version-version" }

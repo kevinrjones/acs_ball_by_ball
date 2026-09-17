@@ -8,7 +8,7 @@ loader:
 | Module   | Responsibility                                                                | Default port |
 |----------|-------------------------------------------------------------------------------|--------------|
 | `bb-api` | Read warehouse data through JOOQ and expose JSON HTTP endpoints               | `8081`       |
-| `bb-web` | Serve the static HTMX front end and translate browser requests into API calls | `8080`       |
+| `bb-web` | Host the Angular SPA front end and translate browser requests into API calls  | `8080`       |
 
 Both applications use the shared `bb-shared` module for serialized HTTP
 contracts. Gradle module registration is kept in `settings.gradle.kts`, and all
@@ -18,18 +18,19 @@ versions are declared in `gradle/libs.versions.toml`.
 
 ```mermaid
 flowchart LR
-    Browser[Browser] --> Web[bb-web :8080]
+    Browser[Browser: Angular SPA] --> Web[bb-web :8080]
     Web -->|HTTP JSON request| API[bb-api :8081]
     API -->|JOOQ query| DB[(acs_ball_by_ball)]
     Shared[bb-shared contracts] -.-> Web
     Shared -.-> API
 ```
 
-The web application serves `bb-web/src/main/resources/static/index.html`.
-The page uses HTMX to request `/matches`; `bb-web` calls `/api/matches` on
-`bb-api`, converts the JSON response into an HTML fragment, and returns that
-fragment to the browser. This keeps browser-facing rendering separate from the
-warehouse query implementation.
+The web application serves the compiled Angular single page application from
+`ClientApp` (built and synchronized into `static/browser` resources). The browser
+makes JSON requests to `/api/matches`; `bb-web` proxies calls to `/api/matches`
+on `bb-api` and returns the shared `RecentMatchesResponse` contract as JSON.
+Static assets and frontend navigation routes fallback to `index.html` via Ktor's
+`singlePageApplication` support.
 
 ## Layered structure
 
@@ -91,9 +92,10 @@ an error response.
 `web.adapter.in.http.WebRoutes` depends on `MatchApiClient`, not on Ktor's
 `HttpClient`. `KtorMatchApiClient` is the production adapter and maps non-2xx,
 connection, timeout, and malformed JSON failures to `MatchApiResult.Unavailable`.
-`MatchHtmlRenderer` is a pure presenter that escapes all values before placing
-them into HTML. A browser-facing failure is consequently rendered as
-`502 Bad Gateway` without leaking transport or exception details.
+API responses are returned as typed JSON (`RecentMatchesResponse` or `ApiError`)
+with appropriate HTTP status codes (e.g. `502 Bad Gateway` on failure).
+Static single page application assets and index fallbacks are handled via
+Ktor's `singlePageApplication` configurator.
 
 ### Shared JSON contracts
 

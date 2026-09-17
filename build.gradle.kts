@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.version.update)
     alias(libs.plugins.catalog.update)
     alias(libs.plugins.kover).apply(false)
+    alias(libs.plugins.node.gradle).apply(false)
     alias(libs.plugins.pitest).apply(false)
 }
 

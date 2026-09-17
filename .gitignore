@@ -124,3 +124,8 @@ bb-update-database/csv/**
 .env
 
 design
+
+# Node / Frontend
+**/node_modules/
+**/ClientApp/dist/
+**/.angular/

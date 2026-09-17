@@ -1,32 +1,58 @@
 package com.knowledgespike.ballbyball.web.adapter.`in`.http
 
+import com.knowledgespike.ballbyball.contracts.ApiError
+import com.knowledgespike.ballbyball.contracts.RecentMatchesResponse
 import com.knowledgespike.ballbyball.web.application.MatchApiClient
 import com.knowledgespike.ballbyball.web.application.MatchApiResult
-import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
-import io.ktor.server.response.respondResource
-import io.ktor.server.response.respondText
-import io.ktor.server.http.content.staticResources
+import io.ktor.server.http.content.singlePageApplication
+import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
+import io.ktor.server.routing.route
 
 fun Route.registerWebRoutes(matchApiClient: MatchApiClient) {
-    get("/") {
-        call.respondResource("static/index.html")
+    route("/api") {
+        get("/matches") {
+            when (val result = matchApiClient.recentMatches()) {
+                is MatchApiResult.Success -> call.respond(
+                    HttpStatusCode.OK,
+                    RecentMatchesResponse(result.matches)
+                )
+
+                is MatchApiResult.Unavailable -> call.respond(
+                    HttpStatusCode.BadGateway,
+                    ApiError(
+                        code = "BAD_GATEWAY",
+                        message = result.status?.let { "The API is unavailable (${it.value})." }
+                            ?: "The API is unavailable."
+                    )
+                )
+            }
+        }
     }
+
     get("/matches") {
         when (val result = matchApiClient.recentMatches()) {
-            is MatchApiResult.Success -> call.respondText(
-                renderMatches(result.matches),
-                ContentType.Text.Html
+            is MatchApiResult.Success -> call.respond(
+                HttpStatusCode.OK,
+                RecentMatchesResponse(result.matches)
             )
 
-            is MatchApiResult.Unavailable -> call.respondText(
-                result.status?.let { "The API is unavailable (${it.value})." }
-                    ?: "The API is unavailable.",
-                status = HttpStatusCode.BadGateway
+            is MatchApiResult.Unavailable -> call.respond(
+                HttpStatusCode.BadGateway,
+                ApiError(
+                    code = "BAD_GATEWAY",
+                    message = result.status?.let { "The API is unavailable (${it.value})." }
+                        ?: "The API is unavailable."
+                )
             )
         }
     }
-    staticResources("/static", "static")
+
+    singlePageApplication {
+        useResources = true
+        filesPath = "static/browser"
+        defaultPage = "index.html"
+    }
 }
