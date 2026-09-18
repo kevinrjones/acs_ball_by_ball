@@ -7,7 +7,6 @@ import com.knowledgespike.ballbyball.web.adapter.out.service.DefaultTokenService
 import com.knowledgespike.ballbyball.web.application.MatchApiClient
 import com.knowledgespike.ballbyball.web.config.KbffConfigFactory
 import com.knowledgespike.ballbyball.web.config.apiBaseUrl
-import com.knowledgespike.ballbyball.web.domain.service.TokenService
 import com.knowledgespike.feature.kbff.data.repository.InMemoryKbffSessionStorage
 import com.knowledgespike.feature.kbff.domain.model.KbffConfiguration
 import com.knowledgespike.feature.kbff.domain.model.KbffSession
@@ -17,17 +16,14 @@ import com.knowledgespike.feature.kbff.presentation.auth.installKbffSecurityHead
 import com.knowledgespike.feature.kbff.presentation.auth.kbffOidc
 import com.knowledgespike.feature.kbff.presentation.route.kbffAuthRoutes
 import com.knowledgespike.feature.kbff.presentation.route.kbffProxyRoutes
-import io.ktor.client.HttpClient
-import io.ktor.serialization.kotlinx.json.json
-import io.ktor.server.application.Application
-import io.ktor.server.application.ApplicationStopped
-import io.ktor.server.application.install
-import io.ktor.server.auth.Authentication
-import io.ktor.server.plugins.calllogging.CallLogging
-import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.server.routing.routing
-import io.ktor.server.sessions.Sessions
-import io.ktor.server.sessions.cookie
+import io.ktor.client.*
+import io.ktor.serialization.kotlinx.json.*
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
+import io.ktor.server.plugins.calllogging.*
+import io.ktor.server.plugins.contentnegotiation.*
+import io.ktor.server.routing.*
+import io.ktor.server.sessions.*
 import kotlinx.coroutines.DisposableHandle
 import kotlinx.serialization.json.Json
 

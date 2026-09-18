@@ -27,7 +27,7 @@ import java.io.File
  */
 fun main(args: Array<String>) {
     loadEnvironmentVariables()
-    io.ktor.server.netty.EngineMain.main(args)
+    EngineMain.main(args)
 }
 
 /**
