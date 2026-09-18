@@ -2,6 +2,7 @@ package com.knowledgespike.ballbyball.parse.database
 
 import com.knowledgespike.ballbyball.parse.database.adapter.sqlite.SqlScriptOutputAdapter
 import com.knowledgespike.ballbyball.parse.models.CardDirectoryData
+import com.knowledgespike.ballbyball.parse.parser.structure.PowerPlays
 import com.knowledgespike.ballbyball.parse.parser.structure.By
 import com.knowledgespike.ballbyball.parse.parser.structure.CricSheet
 import com.knowledgespike.ballbyball.parse.parser.structure.Delivery
@@ -110,6 +111,76 @@ class DatabaseTest {
         val player = Json.decodeFromString<Player>(json)
         expectThat(player.substitute).isEqualTo(true)
         expectThat(player.name).isEqualTo(null)
+    }
+
+    @Test
+    fun `given parenthesized player name when getNameParts is called then name is not erased`() {
+        val (sortNamePart, otherNamePart) = getNameParts("Bob Willis (sub)")
+        expectThat(sortNamePart).isEqualTo("BobWillis")
+        expectThat(otherNamePart).isEqualTo("")
+
+        val (initialSort, initialOther) = getNameParts("GS Sobers (c)")
+        expectThat(initialOther).isEqualTo("GS")
+        expectThat(initialSort).isEqualTo("Sobers")
+    }
+
+    @Test
+    fun `given match with powerplays when match is written then powerplay is stored in fact_delivery`() {
+        val output = Files.createTempFile("warehouse", ".sql")
+
+        SqlScriptOutputAdapter(output).use { adapter ->
+            Database(adapter).writeMatch(
+                fileName = "match.json",
+                cricSheet = cricSheetWithPowerplays(),
+                cardDirectoryData = CardDirectoryData("matches", "match", "t20")
+            )
+        }
+
+        val sql = Files.readString(output)
+        // delivery.powerplay should be 1
+        expectThat(sql).contains("INSERT INTO fact_delivery")
+        val deliveryLine = sql.lines().first { it.startsWith("INSERT INTO fact_delivery") }
+        // The powerplay column value before wicket_count (which is 1 from the caught dismissal) should be 1
+        expectThat(deliveryLine).contains(", 1, 1);")
+    }
+
+    @Test
+    fun `given missing person in registry when Translate getPlayers is called then InvalidStateException is thrown`() {
+        val cricSheet = cricSheetWithFielder()
+        val playersJson = JsonObject(
+            mapOf("Home" to JsonArray(listOf(JsonPrimitive("UnknownPlayer"))))
+        )
+
+        assertThrows<InvalidStateException> {
+            com.knowledgespike.ballbyball.parse.parser.structure.Translate.getPlayers(playersJson, cricSheet)
+        }
+    }
+
+    @Test
+    fun `given valid officials and players when Translate is called then registry lookups map correctly`() {
+        val cricSheet = cricSheetWithFielder()
+        val players = com.knowledgespike.ballbyball.parse.parser.structure.Translate.getPlayers(
+            cricSheet.info.players,
+            cricSheet
+        )
+        expectThat(players["Home"]?.firstOrNull()?.id).isEqualTo("batter-id")
+        expectThat(players["Home"]?.firstOrNull()?.name).isEqualTo("Batter")
+
+        val officials = com.knowledgespike.ballbyball.parse.parser.structure.Translate.getOfficials(
+            listOf("NonStriker"),
+            cricSheet
+        )
+        expectThat(officials.firstOrNull()?.id).isEqualTo("non-striker-id")
+    }
+
+    private fun cricSheetWithPowerplays(): CricSheet {
+        val base = cricSheetWithFielder()
+        val inningsWithPowerplay = base.innings.map { innings ->
+            innings.copy(
+                powerplays = listOf(PowerPlays(from = "0.1", to = "5.6", type = "mandatory"))
+            )
+        }
+        return base.copy(innings = inningsWithPowerplay)
     }
 
     private fun cricSheetWithFielder(fielder: Player = Player(name = "Fielder")): CricSheet =

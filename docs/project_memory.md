@@ -2,6 +2,13 @@
 
 ## What was shipped
 
+- Fixed parenthesized player name parsing bug in `Database.kt` where `substringBefore` was incorrectly called on an uninitialized empty string, ensuring player names like `Bob Willis (sub)` are properly parsed instead of erased.
+- Optimized `Translate.kt` to perform direct map lookups on `cricSheet.info.registry.people` (`O(1)`), eliminating linear list filtering (`O(N)`) and imperative mutable map/list accumulation.
+- Simplified powerplay calculations in `Database.kt` to use functional `mapIndexed` instead of mutable list accumulation and manual counter variables.
+- Updated default Flyway database credentials, URL, and schema in `bb-update-database/build.gradle.kts` to target `acs_ball_by_ball` with user `ballbyball` and password `p4ssw0rd`.
+- Aligned default database user (`ballbyball`) and password (`p4ssw0rd`) in `bb-api/src/main/resources/application.yaml` with `compose.yaml` and `.env.example`.
+- Removed duplicate route registration function `registerApiRoutes` from `ApiModule.kt`, relying exclusively on direct registration in `moduleWithServices`.
+- Removed redundant top-level scope aliases (`VALID_SCOPES`, `DEFAULT_VALID_SCOPES`) in `Security.kt`, referencing `JwtSettings.DEFAULT_VALID_SCOPES` directly.
 - Adopted a **Sealed Class Error Hierarchy** rooted in `@Serializable sealed class Error(val message: String)` matching `acs-api`, providing a shared `message` across all domain, validation, and persistence errors.
 - Updated `.junie/AGENTS.md` guidelines to prefer sealed class error hierarchies over sealed interfaces.
 - Introduced **Tiny Types** via Kotlin inline value classes (`@JvmInline value class`) across `bb-shared` and `bb-api` (`Limit`, `MatchKey`, `SourceMatchId`, `MatchType`, `Season`, `UserId`).
@@ -56,6 +63,59 @@
 - When running `bb-api` locally, ensure `DB_PORT` and `DB_JDBC_URL` in `.env` and `bb-api/.env` point to port `3306` (where the `ballbyball` database runs), rather than `3307`. Port `3307` is used by the Identity Server's container (`identity-local-mariadb-1`), which rejects the `ballbyball` user credentials with `Access denied for user 'ballbyball'@'172.21.0.1'`.
 - Access tokens issued by the Identity Server for client `ballbyball` contain audience `acs-bbb` and scopes `bbb.api` / `bbb.api.read`. In `bb-api`, JWT verification must accept multiple audiences (`withAnyOfAudience`) including both `acs-bbb` and `bb.api`, and scope validation must accept `bbb.api.*` alongside `bb.api.*`. If `JWT_AUDIENCE` was strictly `bb.api`, incoming bearer tokens are rejected with `401 Unauthorized`.
 - In `bb-web`, `HttpClientFactory` previously hardcoded a 5000ms request timeout (`requestTimeoutMillis = 5_000`). When `bb-web` proxies requests like `/api/user/profile` to `bb-api`, `bb-api` verifies the token by fetching JWKS keys from `ids.local:8443`. On macOS, resolving `.local` domains under dual-stack DNS triggers a 5-second multicast DNS (Bonjour) wait for IPv6 unless IPv4 is explicitly preferred (`-Djava.net.preferIPv4Stack=true`), causing total request duration to exceed 5000ms (~5055ms) and `bb-web` to abort with `Request timeout has expired [url=http://localhost:8082/api/user/profile, request_timeout=5000 ms]`. Configured default HTTP client timeouts to 60s (with 30s connect timeout) via `application.yaml` / `.env`, added `-Djava.net.preferIPv4Stack=true` to Gradle JVM args and `applicationDefaultJvmArgs`, and added timeouts to `JwkProviderBuilder`.
+
+## Database Parser and Configuration Cleanup
+
+### Title
+
+Fix parenthesized player name parsing, optimize registry lookup, and align database configuration defaults
+
+### Date/time completed
+
+2026-09-18 17:36
+
+### What was shipped
+
+- Fixed critical name erasure bug in `Database.kt:getNameParts` by evaluating `substringBefore("(")`.trim() on `personName` instead of an uninitialized empty string.
+- Replaced linear list iteration in `Translate.kt` (`getPlayers`, `getOfficials`) with direct `O(1)` map lookups on `cricSheet.info.registry.people`.
+- Converted powerplay calculation in `Database.kt` from imperative mutable list loops to functional `mapIndexed`.
+- Updated default Flyway connection details in `bb-update-database/build.gradle.kts` to target `jdbc:mysql://localhost:3306/acs_ball_by_ball` with user `ballbyball` and schema `acs_ball_by_ball`.
+- Aligned default database user and password in `bb-api/src/main/resources/application.yaml` with `compose.yaml` and `.env.example` (`ballbyball` / `p4ssw0rd`).
+
+### Key decisions
+
+- **Direct Map Lookups over Linear Scans**: `PlayersRegistry.people` is already a `Map<String, String>`; querying the map directly provides `O(1)` performance and eliminates list allocations.
+- **Unified Local DB Defaults**: Standardized credentials across `compose.yaml`, `.env.example`, `application.yaml`, and `build.gradle.kts` to `ballbyball` / `p4ssw0rd` and `acs_ball_by_ball` schema.
+
+### Test coverage areas
+
+- `DatabaseTest` in `bb-update-database`: Added unit tests for parenthesized names in `getNameParts`, missing registry entries in `Translate.getPlayers`, and powerplay storage in `fact_delivery`.
+- Full build and test suite passes cleanly across all modules (`./gradlew check --no-daemon`).
+
+## Code Review Cleanup in bb-api
+
+### Title
+
+Remove duplicate route registration and unused scope aliases in bb-api
+
+### Date/time completed
+
+2026-09-18 17:15
+
+### What was shipped
+
+- Removed unused `Route.registerApiRoutes` extension in `ApiModule.kt` that duplicated route registration in `moduleWithServices`.
+- Removed unused top-level scope aliases (`DEFAULT_VALID_SCOPES`, `VALID_SCOPES`) in `Security.kt` in favor of `JwtSettings.DEFAULT_VALID_SCOPES`.
+- Added missing import for `userPrincipal` in `UserRoute.kt`.
+
+### Key decisions
+
+- **Consolidate Route Registration**: Centralized route setup in `moduleWithServices` to prevent duplicate route declaration drift.
+- **Single Source of Truth for Scopes**: Scopes are configured via `JwtSettings` instead of duplicate top-level constants.
+
+### Test coverage areas
+
+- `ApiModuleTest` in `bb-api`: All 14 tests passing covering all routes and security checks.
 
 ## Sealed Class Error Hierarchy in bb-shared
 

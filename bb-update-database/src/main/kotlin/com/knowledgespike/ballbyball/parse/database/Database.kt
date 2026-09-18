@@ -167,18 +167,11 @@ class Database(private val outputAdapter: OutputAdapter) {
     }
 
     private fun calculatePowerplays(powerplays: List<PowerPlays>?, ballsPersOVer: Int): List<PowerplayDetails> {
-        val powerplayDetails = mutableListOf<PowerplayDetails>()
-        powerplays?.let { pps ->
-            var ppNumber = 0
-            pps.forEach {
-                ppNumber++
-                val fromBall = calculateBallFromOver(it.from, ballsPersOVer)
-                val toBall = calculateBallFromOver(it.to, ballsPersOVer)
-                val type = it.type
-                powerplayDetails.add(PowerplayDetails(ppNumber, fromBall, toBall, type))
-            }
-        }
-        return powerplayDetails
+        return powerplays?.mapIndexed { index, powerplay ->
+            val fromBall = calculateBallFromOver(powerplay.from, ballsPersOVer)
+            val toBall = calculateBallFromOver(powerplay.to, ballsPersOVer)
+            PowerplayDetails(index + 1, fromBall, toBall, powerplay.type)
+        } ?: emptyList()
     }
 
     private fun calculateBallFromOver(over: String, ballsPersOVer: Int): Int {
@@ -319,18 +312,14 @@ class Database(private val outputAdapter: OutputAdapter) {
 }
 
 fun getNameParts(personName: String): Pair<String, String> {
-    var name: String = ""
-
     val sortNamePart: String
     val otherNamePart: String
 
-    name = if (personName.contains("(")) {
-        name.substringBefore("(").trim()
+    val fullName = if (personName.contains("(")) {
+        personName.substringBefore("(").trim()
     } else {
         personName
     }
-
-    val fullName = name
 
     if (!fullName.contains(" ")) {
         otherNamePart = ""

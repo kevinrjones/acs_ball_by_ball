@@ -30,10 +30,6 @@ import java.util.concurrent.TimeUnit
 
 const val AUTH_JWT = "auth-jwt"
 
-val DEFAULT_VALID_SCOPES: Set<String> = JwtSettings.DEFAULT_VALID_SCOPES
-
-val VALID_SCOPES: Set<String> = DEFAULT_VALID_SCOPES
-
 private val logger = LoggerFactory.getLogger("com.knowledgespike.ballbyball.api.bootstrap.Security")
 
 val UserPrincipalKey: AttributeKey<UserPrincipal> = AttributeKey("UserPrincipal")

@@ -38,17 +38,15 @@ object Translate {
      * @throws InvalidStateException If a player's name in the JSON object does not correspond to exactly one person in the CricSheet registry.
      */
     fun getPlayers(people: JsonObject, cricSheet: CricSheet): Map<String, List<Person>> {
-        val teamPlayers = mutableMapOf<String, List<Person>>()
-        val peopleInRegistry = getPeople(cricSheet)
-        people.map { (team, players) ->
-            val persons = players.jsonArray.map { person ->
-                val registeredPerson = peopleInRegistry.filter { it.name == person.jsonPrimitive.content }
-                if(registeredPerson.size != 1) throw InvalidStateException("Should be one matching person in the registry, actually ${registeredPerson.size}")
-                return@map registeredPerson[0]
+        val peopleInRegistry = cricSheet.info.registry.people
+        return people.mapValues { (_, players) ->
+            players.jsonArray.map { person ->
+                val name = person.jsonPrimitive.content
+                val id = peopleInRegistry[name]
+                    ?: throw InvalidStateException("Should be one matching person in the registry, actually 0")
+                Person(id, name)
             }
-            teamPlayers.put(team, persons)
         }
-        return teamPlayers
     }
 
     /**
@@ -60,19 +58,11 @@ object Translate {
      * contains zero or more than one match for a given official name.
      */
     fun getOfficials(officials: List<String>?, cricSheet: CricSheet): List<Person> {
-        val peopleInRegistry = getPeople(cricSheet)
-        val listOfOfficials = mutableListOf<Person>()
-
-        officials?.let { officialsList ->
-            val foundUmpireAsPeople = officialsList.map {name->
-                val registeredPerson = peopleInRegistry.filter { it.name == name }
-                if(registeredPerson.size != 1) throw InvalidStateException("Should be one matching person in the registry, actually ${registeredPerson.size}")
-                registeredPerson[0]
-            }
-            listOfOfficials.addAll(foundUmpireAsPeople)
-        }
-
-        return listOfOfficials
-
+        val peopleInRegistry = cricSheet.info.registry.people
+        return officials?.map { name ->
+            val id = peopleInRegistry[name]
+                ?: throw InvalidStateException("Should be one matching person in the registry, actually 0")
+            Person(id, name)
+        } ?: emptyList()
     }
 }

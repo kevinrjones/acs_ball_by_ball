@@ -53,8 +53,7 @@ fun Application.moduleWithDependencies(
             JwtSettings(
                 jwksUrl = "https://ids.local:8443/.well-known/openid-configuration/jwks",
                 issuer = "https://ids.local:8443",
-                realm = "Access to BallByBall API",
-                audiences = listOf("acs-bbb", "bbb.api")
+                realm = "Access to BallByBall API"
             )
         }
     moduleWithServices(DefaultMatchService(matchRepository), databaseHealth, settings, jwtVerifier)
@@ -91,11 +90,4 @@ fun Application.moduleWithServices(
         routeMatches(matchService)
         routeUser()
     }
-}
-
-fun Route.registerApiRoutes(matchService: MatchService, databaseHealth: DatabaseHealth) {
-    routeHeartbeat()
-    routeHealth(databaseHealth)
-    routeMatches(matchService)
-    routeUser()
 }

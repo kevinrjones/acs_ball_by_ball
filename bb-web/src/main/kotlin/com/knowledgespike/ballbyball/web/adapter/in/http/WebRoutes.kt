@@ -12,33 +12,14 @@ import io.ktor.server.routing.get
 import io.ktor.server.routing.route
 
 fun Route.registerWebRoutes(matchApiClient: MatchApiClient) {
-    route("/api") {
-        get("/matches") {
-            when (val result = matchApiClient.recentMatches()) {
-                is MatchApiResult.Success -> call.respond(
-                    HttpStatusCode.OK,
-                    Envelope.success(RecentMatchesResponse(result.matches))
-                )
-
-                is MatchApiResult.Unavailable -> call.respond(
-                    HttpStatusCode.BadGateway,
-                    Envelope.failure(
-                        result.status?.let { "The API is unavailable (${it.value})." }
-                            ?: "The API is unavailable."
-                    )
-                )
-            }
-        }
-    }
-
-    get("/matches") {
+    suspend fun io.ktor.server.application.ApplicationCall.respondMatches() {
         when (val result = matchApiClient.recentMatches()) {
-            is MatchApiResult.Success -> call.respond(
+            is MatchApiResult.Success -> respond(
                 HttpStatusCode.OK,
                 Envelope.success(RecentMatchesResponse(result.matches))
             )
 
-            is MatchApiResult.Unavailable -> call.respond(
+            is MatchApiResult.Unavailable -> respond(
                 HttpStatusCode.BadGateway,
                 Envelope.failure(
                     result.status?.let { "The API is unavailable (${it.value})." }
@@ -47,6 +28,12 @@ fun Route.registerWebRoutes(matchApiClient: MatchApiClient) {
             )
         }
     }
+
+    route("/api") {
+        get("/matches") { call.respondMatches() }
+    }
+
+    get("/matches") { call.respondMatches() }
 
     singlePageApplication {
         useResources = true

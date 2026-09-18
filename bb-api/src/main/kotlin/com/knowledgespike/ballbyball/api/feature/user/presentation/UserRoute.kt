@@ -2,6 +2,7 @@ package com.knowledgespike.ballbyball.api.feature.user.presentation
 
 import com.knowledgespike.ballbyball.api.bootstrap.AUTH_JWT
 import com.knowledgespike.ballbyball.api.bootstrap.requireUserPrincipal
+import com.knowledgespike.ballbyball.api.bootstrap.userPrincipal
 import com.knowledgespike.ballbyball.api.bootstrap.userProtected
 import com.knowledgespike.ballbyball.api.routing.respondOk
 import com.knowledgespike.ballbyball.contracts.UserProfileResponse
@@ -15,7 +16,7 @@ fun Route.routeUser() {
         userProtected {
             route("/api") {
                 get("/user/profile") {
-                    val user = call.requireUserPrincipal() ?: return@get
+                    val user = call.userPrincipal() ?: return@get
 
                     call.respondOk(
                         UserProfileResponse(
