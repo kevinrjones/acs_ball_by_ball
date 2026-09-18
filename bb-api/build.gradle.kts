@@ -22,6 +22,10 @@ dependencies {
 
     implementation(libs.hikari.cp)
     implementation(libs.jooq)
+    // Loads local .env configuration into JVM system properties on startup
+
+    implementation(libs.dotenv.kotlin)
+
     runtimeOnly(libs.mariadb)
     runtimeOnly(libs.postgres)
 

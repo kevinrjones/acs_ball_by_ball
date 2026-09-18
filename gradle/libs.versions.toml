@@ -3,6 +3,7 @@ angus-activation = "2.0.3"
 angus-email = "2.0.5"
 catalog-update-version-version = "1.1.1"
 commons-cli-version = "1.11.0"
+dotenv-version = "6.5.1"
 flyway-version = "13.5.0"
 hikari-version = "7.1.0"
 jooq-version = "3.21.8"
@@ -28,6 +29,7 @@ update-version-version = "0.61.0"
 angus-activation = { module = "org.eclipse.angus:angus-activation", version.ref = "angus-activation" }
 angus-mail = { module = "org.eclipse.angus:angus-mail", version.ref = "angus-email" }
 commons-cli = { module = "commons-cli:commons-cli", version.ref = "commons-cli-version" }
+dotenv-kotlin = { module = "io.github.cdimascio:dotenv-kotlin", version.ref = "dotenv-version" }
 flyway = { module = "org.flywaydb:flyway-mysql", version.ref = "flyway-version" }
 flyway-postgres = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway-version" }
 hikari-cp = { module = "com.zaxxer:HikariCP", version.ref = "hikari-version" }

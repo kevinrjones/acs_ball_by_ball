@@ -8,7 +8,7 @@ loader:
 | Module   | Responsibility                                                                | Default port |
 |----------|-------------------------------------------------------------------------------|--------------|
 | `bb-api` | Read warehouse data through JOOQ and expose JSON HTTP endpoints               | `8081`       |
-| `bb-web` | Host the Angular SPA front end and translate browser requests into API calls  | `8080`       |
+| `bb-web` | Host the Angular SPA front end and translate browser requests into API calls  | `9999`       |
 
 Both applications use the shared `bb-shared` module for serialized HTTP
 contracts. Gradle module registration is kept in `settings.gradle.kts`, and all
@@ -18,7 +18,7 @@ versions are declared in `gradle/libs.versions.toml`.
 
 ```mermaid
 flowchart LR
-    Browser[Browser: Angular SPA] --> Web[bb-web :8080]
+    Browser[Browser: Angular SPA] --> Web[bb-web :9999]
     Web -->|HTTP JSON request| API[bb-api :8081]
     API -->|JOOQ query| DB[(acs_ball_by_ball)]
     Shared[bb-shared contracts] -.-> Web
@@ -166,7 +166,7 @@ replaced in tests without starting `bb-api`.
 
 | Variable       | Default                 | Purpose                     |
 |----------------|-------------------------|-----------------------------|
-| `WEB_PORT`     | `8080`                  | Web listening port          |
+| `WEB_PORT`     | `9999`                  | Web listening port          |
 | `API_BASE_URL` | `http://localhost:8081` | Base URL used for API calls |
 
 Both applications use `application.yaml` and Ktor's YAML configuration module.
@@ -192,7 +192,7 @@ API_BASE_URL=http://localhost:8081 \
 ./gradlew :bb-web:run --no-daemon
 ```
 
-Open `http://localhost:8080`, select **Load recent matches**, and verify that
+Open `http://localhost:9999`, select **Load recent matches**, and verify that
 the returned list came through the API. The Docker database preparation steps
 are documented in `docs/setup/SETUP-DB.md`.
 
