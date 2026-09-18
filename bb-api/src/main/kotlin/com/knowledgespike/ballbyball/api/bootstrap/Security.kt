@@ -76,6 +76,7 @@ fun Application.configureSecurity(
                 val provider = jwkProvider ?: JwkProviderBuilder(URI.create(jwtSettings.jwksUrl).toURL())
                     .cached(10, 24, TimeUnit.HOURS)
                     .rateLimited(10, 1, TimeUnit.MINUTES)
+                    .timeouts(15_000, 15_000)
                     .build()
 
                 verifier(provider, jwtSettings.issuer) {

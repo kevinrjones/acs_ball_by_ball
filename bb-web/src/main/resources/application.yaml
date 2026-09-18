@@ -10,6 +10,11 @@ ktor:
 api:
   baseUrl: "${API_BASE_URL:http://localhost:8081}"
 
+httpClient:
+  requestTimeoutMillis: "${HTTP_REQUEST_TIMEOUT_MILLIS:60000}"
+  connectTimeoutMillis: "${HTTP_CONNECT_TIMEOUT_MILLIS:30000}"
+  socketTimeoutMillis: "${HTTP_SOCKET_TIMEOUT_MILLIS:60000}"
+
 kbff:
   oidc:
     authority: "${OIDC_AUTHORITY:https://ids.local:8443}"

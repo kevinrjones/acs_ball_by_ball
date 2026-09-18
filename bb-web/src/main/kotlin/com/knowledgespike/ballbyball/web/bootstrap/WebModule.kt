@@ -32,7 +32,7 @@ fun Application.module() {
     val bffConfig = KbffConfigFactory.fromConfig(environment.config, isDevelopment)
     val apiBaseUrl = bffConfig.apiBaseUrl
 
-    val httpClient = HttpClientFactory.create()
+    val httpClient = HttpClientFactory.fromConfig(environment.config)
     val appInstance = this
     var stopSubscription: DisposableHandle? = null
     stopSubscription = monitor.subscribe(ApplicationStopped) { app ->
@@ -58,7 +58,7 @@ fun Application.module() {
 
 fun Application.moduleWithApiClient(matchApiClient: MatchApiClient, client: HttpClient? = null) {
     val defaultConfig = KbffConfigFactory.defaultConfiguration(isDevelopment = true)
-    val defaultClient = client ?: HttpClientFactory.create()
+    val defaultClient = client ?: HttpClientFactory.fromConfig(environment.config)
     if (client == null) {
         val appInstance = this
         var stopSubscription: DisposableHandle? = null

@@ -107,6 +107,7 @@ tasks.named("check") {
 
 application {
     mainClass.set("com.knowledgespike.ballbyball.web.ApplicationKt")
+    applicationDefaultJvmArgs = listOf("-Djava.net.preferIPv4Stack=true")
 }
 
 tasks.withType<Test>().configureEach {

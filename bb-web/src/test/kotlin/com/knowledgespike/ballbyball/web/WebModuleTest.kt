@@ -2,6 +2,7 @@ package com.knowledgespike.ballbyball.web
 
 import com.knowledgespike.ballbyball.contracts.MatchSummary
 import com.knowledgespike.ballbyball.contracts.RecentMatchesResponse
+import com.knowledgespike.ballbyball.web.adapter.out.api.HttpClientFactory
 import com.knowledgespike.ballbyball.web.adapter.out.api.KtorMatchApiClient
 import com.knowledgespike.ballbyball.web.adapter.out.service.DefaultTokenService
 import com.knowledgespike.ballbyball.web.application.MatchApiClient
@@ -23,6 +24,7 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
+import io.ktor.server.config.*
 import io.ktor.server.sessions.*
 import io.ktor.server.testing.*
 import kotlinx.coroutines.runBlocking
@@ -424,6 +426,19 @@ class WebModuleTest {
         expectThat(response.status).isEqualTo(HttpStatusCode.Found)
         mockHttpClient.close()
         testClient.close()
+    }
+
+    @Test
+    fun `http client factory creates client with custom timeouts from application config`() {
+        val config = MapApplicationConfig(
+            "httpClient.requestTimeoutMillis" to "45000",
+            "httpClient.connectTimeoutMillis" to "15000",
+            "httpClient.socketTimeoutMillis" to "45000"
+        )
+
+        val client = HttpClientFactory.fromConfig(config)
+        expectThat(client).isA<HttpClient>()
+        client.close()
     }
 
     private class FakeMatchApiClient : MatchApiClient {

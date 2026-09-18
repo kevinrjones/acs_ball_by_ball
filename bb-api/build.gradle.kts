@@ -42,6 +42,7 @@ dependencies {
 
 application {
     mainClass.set("com.knowledgespike.ballbyball.api.ApplicationKt")
+    applicationDefaultJvmArgs = listOf("-Djava.net.preferIPv4Stack=true")
 }
 
 tasks.withType<Test>().configureEach {
