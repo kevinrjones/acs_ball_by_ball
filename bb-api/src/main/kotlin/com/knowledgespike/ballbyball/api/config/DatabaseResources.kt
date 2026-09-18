@@ -1,8 +1,9 @@
 package com.knowledgespike.ballbyball.api.config
 
-import com.knowledgespike.ballbyball.api.adapter.out.jooq.JooqMatchRepository
-import com.knowledgespike.ballbyball.api.application.port.out.DatabaseHealth
-import com.knowledgespike.ballbyball.api.application.port.out.MatchRepository
+import com.knowledgespike.ballbyball.api.feature.health.data.repository.JooqDatabaseHealth
+import com.knowledgespike.ballbyball.api.feature.health.domain.DatabaseHealth
+import com.knowledgespike.ballbyball.api.feature.matches.data.repository.JooqMatchRepository
+import com.knowledgespike.ballbyball.api.feature.matches.domain.repository.MatchRepository
 import com.zaxxer.hikari.HikariConfig
 import com.zaxxer.hikari.HikariDataSource
 import org.jooq.SQLDialect
@@ -21,10 +22,10 @@ class DatabaseResources(settings: DatabaseSettings) : Closeable {
         }
     )
 
-    private val jooqRepository = JooqMatchRepository(dataSource, dialectFor(settings.jdbcUrl))
+    private val dialect = dialectFor(settings.jdbcUrl)
 
-    val matchRepository: MatchRepository = jooqRepository
-    val databaseHealth: DatabaseHealth = jooqRepository
+    val matchRepository: MatchRepository = JooqMatchRepository(dataSource, dialect)
+    val databaseHealth: DatabaseHealth = JooqDatabaseHealth(dataSource, dialect)
 
     override fun close() {
         dataSource.close()

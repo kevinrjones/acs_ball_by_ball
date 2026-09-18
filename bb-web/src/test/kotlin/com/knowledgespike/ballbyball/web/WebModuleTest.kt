@@ -1,5 +1,6 @@
 package com.knowledgespike.ballbyball.web
 
+import com.knowledgespike.ballbyball.contracts.Envelope
 import com.knowledgespike.ballbyball.contracts.MatchSummary
 import com.knowledgespike.ballbyball.contracts.RecentMatchesResponse
 import com.knowledgespike.ballbyball.web.adapter.out.api.HttpClientFactory
@@ -45,7 +46,9 @@ class WebModuleTest {
                 addHandler {
                     respond(
                         content = Json.encodeToString(
-                            RecentMatchesResponse(listOf(MatchSummary(1, 10, "match.json", "TEST", "2026")))
+                            Envelope.success(
+                                RecentMatchesResponse(listOf(MatchSummary(1, 10, "match.json", "TEST", "2026")))
+                            )
                         ),
                         status = HttpStatusCode.OK,
                         headers = headersOf("Content-Type", ContentType.Application.Json.toString())
@@ -181,7 +184,7 @@ class WebModuleTest {
                 addHandler { request ->
                     authHeaderValue = request.headers[HttpHeaders.Authorization]
                     respond(
-                        content = Json.encodeToString(RecentMatchesResponse(emptyList())),
+                        content = Json.encodeToString(Envelope.success(RecentMatchesResponse(emptyList()))),
                         status = HttpStatusCode.OK,
                         headers = headersOf("Content-Type", ContentType.Application.Json.toString())
                     )
@@ -345,7 +348,7 @@ class WebModuleTest {
             engine {
                 addHandler {
                     respond(
-                        content = Json.encodeToString(RecentMatchesResponse(emptyList())),
+                        content = Json.encodeToString(Envelope.success(RecentMatchesResponse(emptyList()))),
                         status = HttpStatusCode.OK,
                         headers = headersOf("Content-Type", ContentType.Application.Json.toString())
                     )

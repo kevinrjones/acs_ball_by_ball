@@ -91,10 +91,27 @@ to this
 - Discouraged: Template Method. Prefer composition.
 - Inheritance: capped at one level. Prefer composition.
 - **COMPOSITION** Prefer composition over inheritance
-- **ADR** generate an ADR for every architectural decision
+- **ADR** Generate an ADR for every architectural decision
 - **Testing** Code must be test first, prefer to use BDD for user stories and TDD for testing smaller units
 - **TDD** Prefer JUnit and Strikt for TDD
 - **BDD** Prefer Cucumber JVM for BDD and use Gherkin spec files
+
+## Feature Slices Architecture
+
+The application is structured using **Feature Slices**. Instead of organizing code strictly by horizontal technical layers (e.g. monolithic global `controllers`, `services`, and `repositories` across disparate domains), each feature has its own package/directory, and everything related to that feature that is not shared lives in that directory.
+
+Features reside under `feature.<feature_name>` (e.g., `feature.heartbeat`, `feature.health`, `feature.matches`, `feature.user`).
+
+Each feature slice is structured into:
+- `presentation`: Ktor routes, HTTP request/response handling, parameter parsing and validation for the feature.
+- `domain`: Use cases, services, domain models, and repository interfaces specific to the feature.
+- `data`: Repository implementations (e.g. jOOQ-based data access), database queries, and data mappers for the feature.
+
+### Rules for Feature Slices
+1. **Feature Colocation**: Code that changes together stays together. All routes, services, and queries for a given feature are located inside its feature folder.
+2. **Shared Infrastructure & Core**: Cross-cutting concerns that are shared across features (such as server bootstrap, database connection pooling/configuration, security/JWT verification plugins, common HTTP helpers, and shared serialization models like `Envelope`) live in top-level shared packages (e.g. `bootstrap`, `config`, or `bb-shared`).
+3. **Encapsulated Dependencies**: Features define their dependencies (such as repository interfaces) in their `domain` layer and implement them in their `data` layer.
+4. **Independent Evolution**: Adding, modifying, or removing a feature touches only that feature's directory, avoiding cascading modifications across unrelated domains.
 
 ## Testing Strategies
 
@@ -235,12 +252,10 @@ For each sprint/task
 
 Read `docs/architecture/applications.md` before changing `bb-api`, `bb-web`,
 or their `bb-shared` JSON contracts. It is the architecture map for the
-application layers, dependency direction, request flows, validation/error
-handling, and test seams.
+feature slices, runtime flows, validation/error handling, and test seams.
 
-- Keep HTTP routes in inbound adapters and database/HTTP integrations in
-  outbound adapters.
-- Put use-case validation and orchestration in application packages.
+- Organize features into vertical slices (`feature.<feature_name>`) containing their presentation (routes), domain (use cases/repositories), and data (jOOQ persistence) layers.
+- Shared infrastructure (database connection pools, JWT security configuration, application bootstrap) belongs in shared packages (`config`, `bootstrap`) or `bb-shared`.
 - Define JSON request/response/error types in `bb-shared` with
   `kotlinx.serialization`.
 - Run `./gradlew clean check --no-daemon` after application changes.

@@ -39,12 +39,12 @@ export class AppComponent implements OnInit {
 
     this.matchService.getRecentMatches(8).subscribe({
       next: (response) => {
-        this.matches.set(response.matches);
+        this.matches.set(response.result.matches);
         this.hasLoaded.set(true);
         this.isLoading.set(false);
       },
       error: (err) => {
-        const errorDetail = err?.error?.message || err?.message || 'The API is currently unavailable.';
+        const errorDetail = err?.error?.errorMessage || err?.error?.message || err?.message || 'The API is currently unavailable.';
         this.errorMessage.set(`Failed to load matches: ${errorDetail}`);
         this.isLoading.set(false);
       }
@@ -56,12 +56,12 @@ export class AppComponent implements OnInit {
     this.profileError.set(null);
 
     this.authService.getUserProfile().subscribe({
-      next: (profile) => {
-        this.userProfile.set(profile);
+      next: (response) => {
+        this.userProfile.set(response.result);
         this.isProfileLoading.set(false);
       },
       error: (err) => {
-        const errorDetail = err?.error?.message || err?.message || 'Unable to load profile.';
+        const errorDetail = err?.error?.errorMessage || err?.error?.message || err?.message || 'Unable to load profile.';
         this.profileError.set(`Profile access rejected: ${errorDetail}`);
         this.isProfileLoading.set(false);
       }

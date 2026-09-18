@@ -5,7 +5,7 @@ import com.auth0.jwk.JwkProviderBuilder
 import com.auth0.jwt.interfaces.JWTVerifier
 import com.auth0.jwt.interfaces.Payload
 import com.knowledgespike.ballbyball.api.config.JwtSettings
-import com.knowledgespike.ballbyball.contracts.ApiError
+import com.knowledgespike.ballbyball.contracts.Envelope
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
@@ -174,7 +174,7 @@ suspend fun ApplicationCall.requireUserPrincipal(): UserPrincipal? {
     if (jwtPrincipal == null) {
         respond(
             HttpStatusCode.Unauthorized,
-            ApiError(code = "unauthorized", message = "Authentication required")
+            Envelope.failure("Authentication required")
         )
         return null
     }
@@ -183,7 +183,7 @@ suspend fun ApplicationCall.requireUserPrincipal(): UserPrincipal? {
     if (user == null) {
         respond(
             HttpStatusCode.Forbidden,
-            ApiError(code = "forbidden", message = "User authorization required")
+            Envelope.failure("User authorization required")
         )
         return null
     }

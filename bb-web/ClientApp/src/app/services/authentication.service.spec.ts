@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { AuthenticationService, Session, UserProfileResponse } from './authentication.service';
+import { Envelope } from '../models/envelope.model';
 
 describe('AuthenticationService', () => {
   let service: AuthenticationService;
@@ -64,16 +65,20 @@ describe('AuthenticationService', () => {
     const initReq = httpTesting.expectOne('/bff/user');
     initReq.flush(null);
 
-    const mockProfile: UserProfileResponse = {
-      subject: 'user-guid-999',
-      name: 'Kevin Jones',
-      email: 'kevin@knowledgespike.com',
-      roles: ['BB.User']
+    const mockProfile: Envelope<UserProfileResponse> = {
+      result: {
+        subject: 'user-guid-999',
+        name: 'Kevin Jones',
+        email: 'kevin@knowledgespike.com',
+        roles: ['BB.User']
+      },
+      errorMessage: '',
+      timeGenerated: new Date().toISOString()
     };
 
-    service.getUserProfile().subscribe((profile) => {
-      expect(profile).toEqual(mockProfile);
-      expect(profile.roles).toContain('BB.User');
+    service.getUserProfile().subscribe((envelope) => {
+      expect(envelope.result).toEqual(mockProfile.result);
+      expect(envelope.result.roles).toContain('BB.User');
     });
 
     const req = httpTesting.expectOne('/api/user/profile');

@@ -1,15 +1,18 @@
 package com.knowledgespike.ballbyball.api.bootstrap
 
 import com.auth0.jwt.interfaces.JWTVerifier
-import com.knowledgespike.ballbyball.api.adapter.`in`.http.registerApiRoutes
-import com.knowledgespike.ballbyball.api.application.port.out.DatabaseHealth
-import com.knowledgespike.ballbyball.api.application.port.out.MatchRepository
-import com.knowledgespike.ballbyball.api.application.service.DefaultMatchService
-import com.knowledgespike.ballbyball.api.application.service.MatchService
 import com.knowledgespike.ballbyball.api.config.DatabaseResources
 import com.knowledgespike.ballbyball.api.config.DatabaseSettings
 import com.knowledgespike.ballbyball.api.config.JwtSettings
-import com.knowledgespike.ballbyball.contracts.ApiError
+import com.knowledgespike.ballbyball.api.feature.health.domain.DatabaseHealth
+import com.knowledgespike.ballbyball.api.feature.health.presentation.routeHealth
+import com.knowledgespike.ballbyball.api.feature.heartbeat.presentation.routeHeartbeat
+import com.knowledgespike.ballbyball.api.feature.matches.domain.repository.MatchRepository
+import com.knowledgespike.ballbyball.api.feature.matches.domain.service.DefaultMatchService
+import com.knowledgespike.ballbyball.api.feature.matches.domain.service.MatchService
+import com.knowledgespike.ballbyball.api.feature.matches.presentation.routeMatches
+import com.knowledgespike.ballbyball.api.feature.user.presentation.routeUser
+import com.knowledgespike.ballbyball.contracts.Envelope
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
@@ -77,12 +80,22 @@ fun Application.moduleWithServices(
             applicationLog.error("Unhandled API request failure", cause)
             call.respond(
                 HttpStatusCode.InternalServerError,
-                ApiError(code = "internal_error", message = "The request could not be completed")
+                Envelope.failure("The request could not be completed")
             )
         }
     }
 
     routing {
-        registerApiRoutes(matchService, databaseHealth)
+        routeHeartbeat()
+        routeHealth(databaseHealth)
+        routeMatches(matchService)
+        routeUser()
     }
+}
+
+fun Route.registerApiRoutes(matchService: MatchService, databaseHealth: DatabaseHealth) {
+    routeHeartbeat()
+    routeHealth(databaseHealth)
+    routeMatches(matchService)
+    routeUser()
 }

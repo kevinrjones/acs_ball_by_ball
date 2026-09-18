@@ -9,7 +9,7 @@ import strikt.assertions.isFalse
 
 class DatabaseResourcesTest {
     @Test
-    fun `database resources start when the database is unavailable`() = runBlocking {
+    fun `database resources start when the database is unavailable`(): Unit = runBlocking {
         DatabaseResources(
             DatabaseSettings(
                 jdbcUrl = "jdbc:mariadb://127.0.0.1:1/unavailable",

@@ -1,4 +1,4 @@
-package com.knowledgespike.ballbyball.api.application.port.out
+package com.knowledgespike.ballbyball.api.feature.matches.domain.repository
 
 import com.knowledgespike.ballbyball.contracts.MatchSummary
 

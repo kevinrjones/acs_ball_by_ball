@@ -3,9 +3,9 @@ package com.knowledgespike.ballbyball.api
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 import com.auth0.jwt.interfaces.JWTVerifier
-import com.knowledgespike.ballbyball.api.application.port.out.DatabaseHealth
-import com.knowledgespike.ballbyball.api.application.port.out.MatchRepository
 import com.knowledgespike.ballbyball.api.bootstrap.moduleWithDependencies
+import com.knowledgespike.ballbyball.api.feature.health.domain.DatabaseHealth
+import com.knowledgespike.ballbyball.api.feature.matches.domain.repository.MatchRepository
 import com.knowledgespike.ballbyball.contracts.MatchSummary
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -70,7 +70,10 @@ class ApiModuleTest {
         val response = client.get("/api/heartbeat/alive")
 
         expectThat(response.status).isEqualTo(HttpStatusCode.OK)
-        expectThat(response.bodyAsText()).contains("\"message\": \"Heartbeat: Alive\"")
+        val body = response.bodyAsText()
+        expectThat(body).contains("\"result\":")
+        expectThat(body).contains("\"timeGenerated\":")
+        expectThat(body).contains("\"message\": \"Heartbeat: Alive\"")
     }
 
     @Test
@@ -91,6 +94,9 @@ class ApiModuleTest {
         }
 
         expectThat(response.status).isEqualTo(HttpStatusCode.BadRequest)
+        val body = response.bodyAsText()
+        expectThat(body).contains("\"errorMessage\": \"limit must be between 1 and 100\"")
+        expectThat(body).contains("\"timeGenerated\":")
     }
 
     @Test
@@ -119,8 +125,11 @@ class ApiModuleTest {
         }
 
         expectThat(response.status).isEqualTo(HttpStatusCode.OK)
-        expectThat(response.bodyAsText()).contains("\"matches\": [")
-        expectThat(response.bodyAsText()).contains("\"fileName\": \"match.json\"")
+        val body = response.bodyAsText()
+        expectThat(body).contains("\"result\":")
+        expectThat(body).contains("\"timeGenerated\":")
+        expectThat(body).contains("\"matches\": [")
+        expectThat(body).contains("\"fileName\": \"match.json\"")
     }
 
     @Test
@@ -154,6 +163,8 @@ class ApiModuleTest {
 
         expectThat(response.status).isEqualTo(HttpStatusCode.OK)
         val body = response.bodyAsText()
+        expectThat(body).contains("\"result\":")
+        expectThat(body).contains("\"timeGenerated\":")
         expectThat(body).contains("\"subject\": \"user-sub-123\"")
         expectThat(body).contains("\"name\": \"Kevin Jones\"")
         expectThat(body).contains("\"email\": \"kevin@knowledgespike.com\"")

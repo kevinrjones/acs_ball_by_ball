@@ -1,5 +1,6 @@
 package com.knowledgespike.ballbyball.web.adapter.out.api
 
+import com.knowledgespike.ballbyball.contracts.Envelope
 import com.knowledgespike.ballbyball.contracts.RecentMatchesResponse
 import com.knowledgespike.ballbyball.web.application.MatchApiClient
 import com.knowledgespike.ballbyball.web.application.MatchApiResult
@@ -31,7 +32,7 @@ class KtorMatchApiClient(
         if (!response.status.isSuccess()) {
             MatchApiResult.Unavailable(response.status)
         } else {
-            MatchApiResult.Success(response.body<RecentMatchesResponse>().matches)
+            MatchApiResult.Success(response.body<Envelope<RecentMatchesResponse>>().result.matches)
         }
     } catch (cause: CancellationException) {
         throw cause

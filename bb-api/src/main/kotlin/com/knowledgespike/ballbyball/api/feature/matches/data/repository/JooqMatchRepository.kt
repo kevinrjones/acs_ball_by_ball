@@ -1,9 +1,9 @@
-package com.knowledgespike.ballbyball.api.adapter.out.jooq
+package com.knowledgespike.ballbyball.api.feature.matches.data.repository
 
-import com.knowledgespike.ballbyball.api.application.port.out.DatabaseHealth
-import com.knowledgespike.ballbyball.api.application.port.out.MatchRepository
+import com.knowledgespike.ballbyball.api.feature.matches.domain.repository.MatchRepository
 import com.knowledgespike.ballbyball.contracts.MatchSummary
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jooq.SQLDialect
@@ -17,8 +17,8 @@ import javax.sql.DataSource
 class JooqMatchRepository(
     dataSource: DataSource,
     dialect: SQLDialect,
-    private val ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.IO,
-) : MatchRepository, DatabaseHealth {
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+) : MatchRepository {
     private val log = LoggerFactory.getLogger(JooqMatchRepository::class.java)
     private val dsl = DSL.using(dataSource, dialect)
     private val dimMatch = table(name("dim_match"))
@@ -28,18 +28,6 @@ class JooqMatchRepository(
     private val matchType = field(name("match_type"), String::class.java)
     private val season = field(name("season"), String::class.java)
     private val matchStartDateKey = field(name("match_start_date_key"), Int::class.javaObjectType)
-
-    override suspend fun isHealthy(): Boolean = withContext(ioDispatcher) {
-        try {
-            dsl.selectOne().fetch()
-            true
-        } catch (cause: CancellationException) {
-            throw cause
-        } catch (cause: Exception) {
-            log.warn("Database health query failed", cause)
-            false
-        }
-    }
 
     override suspend fun recentMatches(limit: Int): List<MatchSummary> = withContext(ioDispatcher) {
         try {

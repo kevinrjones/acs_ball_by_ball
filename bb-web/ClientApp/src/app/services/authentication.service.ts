@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { computed, inject, Injectable, Signal } from '@angular/core';
 import { catchError, defer, Observable, of, shareReplay } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { Envelope } from '../models/envelope.model';
 
 export interface Claim {
   type: string;
@@ -61,7 +62,7 @@ export class AuthenticationService {
     return s ? s.claims.find((c) => c.type === 'bff:logout_url')?.value || undefined : undefined;
   });
 
-  public getUserProfile(): Observable<UserProfileResponse> {
-    return this.http.get<UserProfileResponse>('/api/user/profile');
+  public getUserProfile(): Observable<Envelope<UserProfileResponse>> {
+    return this.http.get<Envelope<UserProfileResponse>>('/api/user/profile');
   }
 }

@@ -2,6 +2,15 @@
 
 ## What was shipped
 
+- Reorganized `bb-api` architecture from horizontal ports-and-adapters layering to vertical **Feature Slices** matching the structure in `acs-api`.
+- Created four distinct feature slices in `bb-api`: `heartbeat` (public liveness), `health` (database health checks), `matches` (recent matches queries), and `user` (protected user profile).
+- Colocated presentation (routes), domain (use-cases, services, repository interfaces), and data (jOOQ repositories) inside each feature directory.
+- Updated `AGENTS.md` and `docs/architecture/applications.md` with guidelines and architectural diagrams for feature slices.
+- Implemented `Envelope<T>` response wrapper across `bb-shared`, `bb-api`, `bb-web`, and the Angular client, returning data payload (`result`), error messaging (`errorMessage`), and response generation timestamp (`timeGenerated`).
+- Updated all API routes (`/health`, `/api/heartbeat/alive`, `/api/matches`, `/api/user/profile`) in `bb-api` to return responses wrapped in `Envelope`.
+- Updated `KtorMatchApiClient` and `WebRoutes` in `bb-web` to unpack and return `Envelope` wrapped payloads.
+- Updated Angular `ClientApp` (`envelope.model.ts`, `MatchService`, `AuthenticationService`, and `AppComponent`) to consume typed `Envelope` responses and surface structured error messages.
+- Implemented unit tests for `Envelope` in `bb-shared`, updated integration tests in `bb-api` and `bb-web`, and updated Angular Karma tests.
 - Implemented three-tier access control model in `bb-api` distinguishing unauthenticated (`/api/heartbeat/alive`, `/health`), machine-authenticated (`/api/matches`), and user-authenticated (`/api/user/profile`) endpoints.
 - Integrated `auth-jwt` in `bb-api` with JWKS key retrieval and claim inspection validating user `sub` and user roles.
 - Integrated `kbff` (Backend-for-Frontend) in `bb-web` for secure HTTP-only encrypted session cookies (`bb_session`), anti-CSRF protection, and OIDC lifecycle (`/bff/login`, `/signin-oidc`, `/bff/user`, `/bff/logout`).
@@ -37,6 +46,79 @@
 - When running `bb-api` locally, ensure `DB_PORT` and `DB_JDBC_URL` in `.env` and `bb-api/.env` point to port `3306` (where the `ballbyball` database runs), rather than `3307`. Port `3307` is used by the Identity Server's container (`identity-local-mariadb-1`), which rejects the `ballbyball` user credentials with `Access denied for user 'ballbyball'@'172.21.0.1'`.
 - Access tokens issued by the Identity Server for client `ballbyball` contain audience `acs-bbb` and scopes `bbb.api` / `bbb.api.read`. In `bb-api`, JWT verification must accept multiple audiences (`withAnyOfAudience`) including both `acs-bbb` and `bb.api`, and scope validation must accept `bbb.api.*` alongside `bb.api.*`. If `JWT_AUDIENCE` was strictly `bb.api`, incoming bearer tokens are rejected with `401 Unauthorized`.
 - In `bb-web`, `HttpClientFactory` previously hardcoded a 5000ms request timeout (`requestTimeoutMillis = 5_000`). When `bb-web` proxies requests like `/api/user/profile` to `bb-api`, `bb-api` verifies the token by fetching JWKS keys from `ids.local:8443`. On macOS, resolving `.local` domains under dual-stack DNS triggers a 5-second multicast DNS (Bonjour) wait for IPv6 unless IPv4 is explicitly preferred (`-Djava.net.preferIPv4Stack=true`), causing total request duration to exceed 5000ms (~5055ms) and `bb-web` to abort with `Request timeout has expired [url=http://localhost:8082/api/user/profile, request_timeout=5000 ms]`. Configured default HTTP client timeouts to 60s (with 30s connect timeout) via `application.yaml` / `.env`, added `-Djava.net.preferIPv4Stack=true` to Gradle JVM args and `applicationDefaultJvmArgs`, and added timeouts to `JwkProviderBuilder`.
+
+## Feature Slices Architecture in bb-api
+
+### Title
+
+Reorganize bb-api into vertical Feature Slices
+
+### Date/time completed
+
+2026-09-18 16:15
+
+### What was shipped
+
+- Reorganized `bb-api` codebase from horizontal ports-and-adapters layering into vertical **Feature Slices** matching the structure in `acs-api`.
+- Created four distinct feature packages under `com.knowledgespike.ballbyball.api.feature`:
+  - `feature.heartbeat`: Public unauthenticated liveness check (`GET /api/heartbeat/alive`).
+  - `feature.health`: Contains `DatabaseHealth` domain interface, `JooqDatabaseHealth` repository implementation, and `HealthRoute` (`GET /health`).
+  - `feature.matches`: Contains `MatchRepository` domain interface, `MatchService` use-case handler, `JooqMatchRepository` data adapter, and `MatchesRoute` (`GET /api/matches`).
+  - `feature.user`: Contains `UserRoute` (`GET /api/user/profile`) secured with JWT and `userProtected` route plugin.
+- Colocated presentation, domain, and data layers within each feature slice, removing monolithic global adapter and application directories.
+- Updated `AGENTS.md` and `docs/architecture/applications.md` documenting Feature Slices rules and layer conventions.
+- Kept cross-cutting infrastructure (database connection pooling, JWT security, server bootstrap) in top-level `config` and `bootstrap` packages.
+
+### Key decisions
+
+- **Colocation by Feature**: Rather than separating controllers, services, and repositories into disparate packages across the codebase, everything unique to a feature is placed in that feature's directory (`feature.<feature_name>`).
+- **Independent Repositories**: Split `JooqMatchRepository` into `JooqMatchRepository` (under `feature.matches.data.repository`) and `JooqDatabaseHealth` (under `feature.health.data.repository`) so health checking is independent of match domain queries.
+
+### Gotchas
+
+- Strikt's assertion builder returned from an expression-body test method (e.g. `= runBlocking { expectThat(...).isFalse() }`) causes JUnit 5 to skip test execution because JUnit 5 requires test methods to return `void`/`Unit`. Explicitly typing the test method as `: Unit` resolves this.
+
+### Test coverage areas
+
+- `ApiModuleTest`: 13 tests covering all four feature routes (`heartbeat`, `health`, `matches`, and `user`) under authenticated, unauthenticated, and error scenarios.
+- `DatabaseResourcesTest`: Integration test verifying database health reporting when database is unavailable.
+- Full `./gradlew check` clean across all modules.
+
+## Envelope response structure across bb-api, bb-web, and Angular client
+
+### Title
+
+Implement Envelope response contract with payload, error message, and generation timestamp
+
+### Date/time completed
+
+2026-09-18 10:55
+
+### What was shipped
+
+- Added `Envelope<T>` contract in `bb-shared` (`com.knowledgespike.ballbyball.contracts.Envelope`) with `result: T`, `errorMessage: String`, and `timeGenerated: Instant` using `kotlin.time.Clock.System.now()`.
+- Implemented `Envelope.success(...)` and `Envelope.failure(...)` companion factory functions.
+- Wrapped all endpoints in `bb-api` (`/health`, `/api/heartbeat/alive`, `/api/matches`, `/api/user/profile`, and security/authorization failures) in `Envelope`.
+- Updated `KtorMatchApiClient` in `bb-web` to unpack `Envelope<RecentMatchesResponse>` and updated `WebRoutes` to wrap responses in `Envelope`.
+- Added `envelope.model.ts` in Angular `ClientApp`, updated `MatchService` and `AuthenticationService` to return `Observable<Envelope<T>>`, and updated `AppComponent` to unwrap `response.result` and display `err?.error?.errorMessage`.
+- Added unit tests for `Envelope` in `bb-shared`, updated integration tests in `ApiModuleTest` and `WebModuleTest`, and updated Karma tests in `ClientApp`.
+
+### Key decisions
+
+- **Standardized envelope structure**: Matched the pattern established in `acs-api` and `acs-web`, ensuring every response includes `result`, `errorMessage`, and `timeGenerated`.
+- **Zero extra datetime libraries**: Used Kotlin's built-in `kotlin.time.Instant` and `kotlin.time.Clock.System.now()`, which are natively serialized to ISO-8601 strings by `kotlinx.serialization`.
+
+### Gotchas
+
+- None.
+
+### Test coverage areas
+
+- `bb-shared`: `EnvelopeTest` (5 tests verifying success, failure, default results, JSON serialization/deserialization with `Instant`).
+- `bb-api`: `ApiModuleTest` (13 tests verifying public, machine, and user routes return valid `Envelope` bodies with `result`, `errorMessage`, and `timeGenerated`).
+- `bb-web`: `WebModuleTest` (12 tests verifying client parsing and route serving).
+- `bb-web/ClientApp`: Karma specs (17 tests verifying `MatchService`, `AuthenticationService`, and `AppComponent` with `Envelope`).
+- Full `./gradlew check` clean across all 4 Gradle modules.
 
 ## Authentication and authorization across bb-web and bb-api
 

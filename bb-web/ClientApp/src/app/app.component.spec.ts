@@ -5,6 +5,7 @@ import { AppComponent } from './app.component';
 import { MatchService } from './services/match.service';
 import { AuthenticationService, Session, UserProfileResponse } from './services/authentication.service';
 import { RecentMatchesResponse } from './models/match.model';
+import { Envelope } from './models/envelope.model';
 
 describe('AppComponent', () => {
   let matchServiceMock: jasmine.SpyObj<MatchService>;
@@ -98,7 +99,13 @@ describe('AppComponent', () => {
       email: 'kevin@knowledgespike.com',
       roles: ['BB.Admin']
     };
-    authServiceMock.getUserProfile.and.returnValue(of(mockProfile));
+    authServiceMock.getUserProfile.and.returnValue(
+      of({
+        result: mockProfile,
+        errorMessage: '',
+        timeGenerated: new Date().toISOString()
+      })
+    );
 
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
@@ -136,7 +143,13 @@ describe('AppComponent', () => {
         }
       ]
     };
-    matchServiceMock.getRecentMatches.and.returnValue(of(mockResponse));
+    matchServiceMock.getRecentMatches.and.returnValue(
+      of({
+        result: mockResponse,
+        errorMessage: '',
+        timeGenerated: new Date().toISOString()
+      })
+    );
 
     fixture.componentInstance.loadRecentMatches();
     fixture.detectChanges();
@@ -153,7 +166,7 @@ describe('AppComponent', () => {
   it('should show error banner when MatchService fails', () => {
     const fixture = TestBed.createComponent(AppComponent);
     matchServiceMock.getRecentMatches.and.returnValue(
-      throwError(() => ({ error: { message: 'Network error' } }))
+      throwError(() => ({ error: { errorMessage: 'Network error' } }))
     );
 
     fixture.componentInstance.loadRecentMatches();
@@ -166,7 +179,13 @@ describe('AppComponent', () => {
 
   it('should show "No matches found" when API returns empty list', () => {
     const fixture = TestBed.createComponent(AppComponent);
-    matchServiceMock.getRecentMatches.and.returnValue(of({ matches: [] }));
+    matchServiceMock.getRecentMatches.and.returnValue(
+      of({
+        result: { matches: [] },
+        errorMessage: '',
+        timeGenerated: new Date().toISOString()
+      })
+    );
 
     fixture.componentInstance.loadRecentMatches();
     fixture.detectChanges();

@@ -80,34 +80,40 @@ flowchart TD
 - **Anti-CSRF Protection**: All proxied mutating requests and user endpoints require `X-CSRF: 1` header verification.
 - **Machine Token Service (`DefaultTokenService`)**: Automatically obtains and caches OAuth2 client-credentials tokens from the Identity Server for background and anonymous API requests.
 
-## Layered structure
+## Architecture: Feature Slices
 
-The applications use a small ports-and-adapters arrangement. It is deliberately
-package-based rather than split into Gradle subprojects: the applications are
-small, but the seams are explicit and can be tested without starting a server or
-database.
+`bb-api` is structured using **Feature Slices** (following the pattern established in `acs-api`). Instead of organizing code by global horizontal technical layers, each distinct feature has its own self-contained directory containing everything related to that feature that is not shared across features:
 
 ```mermaid
-flowchart LR
-    In[Inbound adapter] --> App[Application use case]
-    App --> Port[Outbound port]
-    Port --> Out[Outbound adapter]
-    Bootstrap[Bootstrap and configuration] --> In
-    Bootstrap --> Out
+flowchart TD
+    subgraph FeatureSlice["feature.<feature_name>"]
+        Presentation[presentation: Routes, HTTP handling]
+        Domain[domain: UseCases, Services, Repositories, Models]
+        Data[data: jOOQ Repositories, DB Queries]
+        Presentation --> Domain
+        Data --> Domain
+    end
+    Bootstrap[Shared Bootstrap & Config] --> FeatureSlice
+    SharedContracts[bb-shared Envelope & Contracts] --> FeatureSlice
 ```
 
-The dependency direction is inward:
+Each feature slice contains:
+- `presentation`: Ktor route definitions, parameter parsing and validation, HTTP response mapping.
+- `domain`: Feature services/use cases, domain models, and repository interfaces.
+- `data`: jOOQ repository implementations and database queries.
 
-| Layer                   | `bb-api`                      | `bb-web`                         | Rule                                                                            |
-|-------------------------|-------------------------------|----------------------------------|---------------------------------------------------------------------------------|
-| Bootstrap/configuration | `api.bootstrap`, `api.config` | `web.bootstrap`                  | Creates concrete adapters and installs Ktor plugins.                            |
-| Inbound adapter         | `api.adapter.in.http`         | `web.adapter.in.http`            | Translates HTTP requests/responses; contains no JOOQ or raw `HttpClient` calls. |
-| Application             | `api.application.service`     | `web.application`                | Validates input and coordinates use cases through interfaces.                   |
-| Outbound port           | `api.application.port.out`    | `web.application.MatchApiClient` | Small interfaces owned by the application that needs them.                      |
-| Outbound adapter        | `api.adapter.out.jooq`        | `web.adapter.out.api`            | Implements a port using JOOQ/JDBC or Ktor HTTP.                                 |
+### Feature Layout (`bb-api`)
 
-The `in` package is escaped in Kotlin imports as ``adapter.`in`.http`` because
-`in` is a Kotlin keyword.
+| Feature | Package | Presentation | Domain | Data |
+|---|---|---|---|---|
+| **Heartbeat** | `feature.heartbeat` | `HeartbeatRoute.kt` (`GET /api/heartbeat/alive`) | — | — |
+| **Health** | `feature.health` | `HealthRoute.kt` (`GET /health`) | `DatabaseHealth.kt` | `JooqDatabaseHealth.kt` |
+| **Matches** | `feature.matches` | `MatchesRoute.kt` (`GET /api/matches`) | `MatchRepository.kt`, `MatchService.kt` | `JooqMatchRepository.kt` |
+| **User** | `feature.user` | `UserRoute.kt` (`GET /api/user/profile`) | — | — |
+
+Shared infrastructure and cross-cutting concerns (bootstrap, database connection pool, JWT authentication and verifiers) reside in top-level packages:
+- `bootstrap`: `ApiModule.kt` (Ktor application configuration, route registration), `Security.kt` (JWT authentication, claim validation, userProtected route plugin).
+- `config`: `DatabaseResources.kt`, `DatabaseSettings.kt`, `JwtSettings.kt`.
 
 ### API request flow
 
@@ -148,11 +154,15 @@ Ktor's `singlePageApplication` configurator.
 ### Shared JSON contracts
 
 `bb-shared/src/main/kotlin/com/knowledgespike/ballbyball/contracts/ApiContracts.kt`
-is the only home for JSON classes exchanged with clients. It uses
-`kotlinx.serialization` and currently defines `ApiHealth`, `ApiError`,
-`MatchSummary`, and `RecentMatchesResponse`. Desktop/mobile clients and the web
-adapter consume these same classes; database rows and HTML remain application-
-specific representations.
+and `Envelope.kt` define the JSON classes exchanged between services and clients.
+All API responses are wrapped in a generic `Envelope<T>` contract, which provides:
+- `result: T`: The payload on successful operations (or empty/default on failures).
+- `errorMessage: String`: Error details or validation failure message (empty on success).
+- `timeGenerated: Instant`: The server timestamp when the response was constructed.
+
+The module uses `kotlinx.serialization` and currently defines `Envelope`, `ApiHealth`, `ApiError`,
+`MatchSummary`, `RecentMatchesResponse`, and `UserProfileResponse`. Desktop/mobile clients and the web
+adapter consume these same classes; database rows and HTML remain application-specific representations.
 
 When a new endpoint is added, define its request and response/error contracts in
 `bb-shared` first, validate the request in the API application layer, and keep
@@ -160,18 +170,15 @@ the route limited to transport translation.
 
 ## `bb-api`
 
-`bb-api` has an inbound HTTP adapter, an application `MatchService`, outbound
-`MatchRepository` and `DatabaseHealth` ports, and a JOOQ adapter. The ports are
-small and suspendable; `JooqMatchRepository` runs blocking JOOQ/JDBC work on
-`Dispatchers.IO` rather than on Ktor request threads. The repository selects the
-JOOQ dialect from the configured JDBC URL, uses the warehouse `dim_match` table
-and a Hikari connection pool, and keeps the first query deliberately small;
-generated JOOQ sources can be introduced when the schema and query surface have
-stabilised.
+`bb-api` is composed of four self-contained feature slices (`heartbeat`, `health`, `matches`, and `user`), backed by shared bootstrap and configuration:
+- `feature.heartbeat`: Exposes public liveness heartbeat (`GET /api/heartbeat/alive`).
+- `feature.health`: Contains `DatabaseHealth` domain interface, `JooqDatabaseHealth` repository, and `HealthRoute` (`GET /health`).
+- `feature.matches`: Contains `MatchRepository` domain interface, `MatchService` use-case handler, `JooqMatchRepository` data adapter, and `MatchesRoute` (`GET /api/matches`).
+- `feature.user`: Exposes user-protected profile details (`GET /api/user/profile`).
 
-Hikari is configured not to fail application startup when the database is
-unavailable. `/health` then reports the connection state as `200` or `503`,
-while match-query failures are logged and returned as server errors.
+Blocking JOOQ/JDBC queries in repositories run on `Dispatchers.IO` rather than on Ktor request threads. The repositories select the JOOQ dialect from the configured JDBC URL, use the warehouse `dim_match` table and a Hikari connection pool, and keep queries focused and lightweight.
+
+Hikari is configured not to fail application startup when the database is unavailable. `/health` then reports the connection state as `200` or `503`, while match-query failures are logged and returned as server errors.
 
 Endpoints:
 
