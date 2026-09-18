@@ -9,6 +9,19 @@ data class ApiHealth(
 )
 
 @Serializable
+data class HeartbeatResponse(
+    val message: String
+)
+
+@Serializable
+data class UserProfileResponse(
+    val subject: String,
+    val name: String? = null,
+    val email: String? = null,
+    val roles: List<String> = emptyList()
+)
+
+@Serializable
 data class MatchSummary(
     val matchKey: Long,
     val sourceMatchId: Int,

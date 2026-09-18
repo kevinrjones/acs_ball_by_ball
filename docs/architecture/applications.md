@@ -7,30 +7,78 @@ loader:
 
 | Module   | Responsibility                                                                | Default port |
 |----------|-------------------------------------------------------------------------------|--------------|
-| `bb-api` | Read warehouse data through JOOQ and expose JSON HTTP endpoints               | `8081`       |
-| `bb-web` | Host the Angular SPA front end and translate browser requests into API calls  | `9999`       |
+| `bb-api` | Read warehouse data through JOOQ, verify JWT bearer tokens, expose REST API   | `8081`       |
+| `bb-web` | Host Angular SPA, handle OIDC BFF login/logout sessions, proxy secure requests| `9999`       |
 
 Both applications use the shared `bb-shared` module for serialized HTTP
 contracts. Gradle module registration is kept in `settings.gradle.kts`, and all
 versions are declared in `gradle/libs.versions.toml`.
 
-## Runtime flow
+## Runtime flow & Authentication Architecture
 
 ```mermaid
-flowchart LR
-    Browser[Browser: Angular SPA] --> Web[bb-web :9999]
-    Web -->|HTTP JSON request| API[bb-api :8081]
-    API -->|JOOQ query| DB[(acs_ball_by_ball)]
-    Shared[bb-shared contracts] -.-> Web
-    Shared -.-> API
+flowchart TD
+    subgraph Browser["Browser: Angular 19 SPA"]
+        UI[AppComponent / Header]
+        AuthService[AuthenticationService]
+        Interceptor[CSRF Interceptor]
+    end
+
+    subgraph Web["bb-web :9999 (Ktor BFF)"]
+        KBFF[kbff Auth & Proxy Routes]
+        SessionCookie[Encrypted Session Cookie: bb_session]
+        TokenService[DefaultTokenService]
+        WebRoutes[Static Resources & SPA Shell]
+    end
+
+    subgraph API["bb-api :8081 (Ktor REST)"]
+        JWTVerifier[JWT Verifier - JWKS]
+        ClaimsCheck{Claim Inspector}
+        AliveRoute[GET /api/heartbeat/alive: Public]
+        MatchesRoute[GET /api/matches: Machine/User]
+        UserRoute[GET /api/user/profile: User Only]
+    end
+
+    subgraph Identity["Identity Server (:8443)"]
+        OIDC[OIDC / JWKS Endpoint]
+    end
+
+    UI --> AuthService
+    AuthService -->|GET /bff/user| KBFF
+    UI -->|Redirect /bff/login| KBFF
+    Interceptor -->|Proxied requests + X-CSRF: 1| KBFF
+
+    KBFF -->|Auth Code with PKCE| OIDC
+    TokenService -->|Client Credentials Grant| OIDC
+    JWTVerifier -->|Fetch Public Keys| OIDC
+
+    KBFF -->|Forward User Bearer Token| JWTVerifier
+    TokenService -->|Forward Machine Bearer Token| JWTVerifier
+
+    JWTVerifier --> ClaimsCheck
+    ClaimsCheck -->|No Auth Required| AliveRoute
+    ClaimsCheck -->|Valid Token| MatchesRoute
+    ClaimsCheck -->|Has User Subject & Role| UserRoute
 ```
 
-The web application serves the compiled Angular single page application from
-`ClientApp` (built and synchronized into `static/browser` resources). The browser
-makes JSON requests to `/api/matches`; `bb-web` proxies calls to `/api/matches`
-on `bb-api` and returns the shared `RecentMatchesResponse` contract as JSON.
-Static assets and frontend navigation routes fallback to `index.html` via Ktor's
-`singlePageApplication` support.
+### Three-Tier API Access Model
+1. **Tier 1 (Unauthenticated / Public)**:
+   - `/health`: Database liveness check.
+   - `/api/heartbeat/alive`: Unauthenticated heartbeat returning `{ "message": "Heartbeat: Alive" }`.
+2. **Tier 2 (Machine / BFF Authenticated)**:
+   - `/api/matches`: Protected with `auth-jwt`. Accessible with a valid client-credentials machine token (used by `bb-web` via `DefaultTokenService` when an anonymous visitor browses recent matches) or a logged-in user token.
+3. **Tier 3 (Human User Authenticated)**:
+   - `/api/user/profile`: Protected with `auth-jwt`. Requires verified human user subject claim and assigned user roles. Rejects machine-only tokens with `403 Forbidden` and unauthenticated calls with `401 Unauthorized`.
+
+### Backend-For-Frontend (BFF) Pattern with `kbff`
+`bb-web` implements the Backend-For-Frontend security pattern using `com.knowledgespike:kbff`:
+- **No tokens in browser storage**: Access and refresh tokens are kept server-side in encrypted `bb_session` cookies with `HttpOnly`, `SameSite=Lax`, and `Secure` attributes.
+- **Login (`/bff/login`)**: Generates PKCE code verifier and challenge, redirecting the browser to the Identity Server authorization endpoint.
+- **Callback (`/signin-oidc`)**: Validates the authorization code, exchanges it for access/refresh tokens, and establishes the encrypted session cookie.
+- **Session Info (`/bff/user`)**: Exposes current user claims (`name`, `email`, `sub`), anti-CSRF token, and `bff:logout_url`. Returns `401 Unauthorized` for anonymous visitors.
+- **Logout (`/bff/logout`)**: Clears the session cookie and redirects to the Identity Server end-session endpoint.
+- **Anti-CSRF Protection**: All proxied mutating requests and user endpoints require `X-CSRF: 1` header verification.
+- **Machine Token Service (`DefaultTokenService`)**: Automatically obtains and caches OAuth2 client-credentials tokens from the Identity Server for background and anonymous API requests.
 
 ## Layered structure
 

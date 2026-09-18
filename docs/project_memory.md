@@ -2,6 +2,12 @@
 
 ## What was shipped
 
+- Implemented three-tier access control model in `bb-api` distinguishing unauthenticated (`/api/heartbeat/alive`, `/health`), machine-authenticated (`/api/matches`), and user-authenticated (`/api/user/profile`) endpoints.
+- Integrated `auth-jwt` in `bb-api` with JWKS key retrieval and claim inspection validating user `sub` and user roles.
+- Integrated `kbff` (Backend-for-Frontend) in `bb-web` for secure HTTP-only encrypted session cookies (`bb_session`), anti-CSRF protection, and OIDC lifecycle (`/bff/login`, `/signin-oidc`, `/bff/user`, `/bff/logout`).
+- Implemented `DefaultTokenService` in `bb-web` with OAuth2 client-credentials token caching to supply bearer tokens to `bb-api` for anonymous/background data calls.
+- Implemented reactive `AuthenticationService` and `csrfInterceptor` in Angular `bb-web/ClientApp` using Angular signals (`session`, `isAuthenticated`, `isAnonymous`, `userName`, `email`, `logoutUrl`).
+- Updated Angular header with dynamic Sign In / Sign Out controls and added user profile display component.
 - Replaced HTMX front end in `bb-web` with a modern standalone Angular 19 application in `bb-web/ClientApp`.
 - Preserved all original styling and layout elements (header, brand badge, hero search buttons, match cards, changelog) using Tailwind CSS.
 - Implemented `MatchService` and TypeScript domain models matching shared JSON API contracts (`RecentMatchesResponse`, `MatchSummary`, `ApiError`).
@@ -15,13 +21,62 @@
 
 ## Key decisions
 
+- **Inspect Claims for User Distinction**: Route authorization inspects claims (`sub` and presence of user roles) to differentiate client-credentials machine tokens from human user tokens, avoiding redundant verifier chains.
+- **Backend-for-Frontend (BFF) Pattern**: Kept all access and refresh tokens out of the browser DOM/localStorage by terminating sessions in HTTP-only encrypted cookies via `kbff`.
+- **Dedicated Machine Token Service**: Implemented in-memory cached client credentials token service in `bb-web` so `bb-api` can require authentication on all data endpoints while still serving public visitors.
+- **CSRF Protection**: Functional Angular HTTP interceptor automatically appends `withCredentials: true` and `X-CSRF: 1` header to proxied requests.
 - Each module now owns its plugins, repositories, dependencies, test configuration, and Java/Kotlin 21 configuration.
 - The root build script retains root-level plugin setup, project metadata, and dependency-update version filtering.
 
 ## Gotchas
 
+- In Ktor `testApplication`, redirect follow must be disabled (`followRedirects = false`) when testing external OIDC redirects (`/bff/login`) to prevent resolving external hosts.
+- OIDC discovery responses parsed by Nimbus OIDC SDK require `issuer` and `jwks_uri` fields in mock metadata.
 - The dependency update plugin uses the replacement `io.github.ben-manes.versions` ID.
 - Generated SQL-file schemas must stay aligned with the dialect-specific warehouse migrations.
+
+## Authentication and authorization across bb-web and bb-api
+
+### Title
+
+Implement three-tier JWT authentication, BFF session management with kbff, and reactive Angular authentication controls
+
+### Date/time completed
+
+2026-09-18 08:30
+
+### What was shipped
+
+- Implemented three-tier access control model in `bb-api` distinguishing unauthenticated (`/api/heartbeat/alive`, `/health`), machine-authenticated (`/api/matches`), and user-authenticated (`/api/user/profile`) endpoints.
+- Integrated `auth-jwt` in `bb-api` with JWKS key retrieval and claim inspection validating user `sub` and user roles.
+- Added public `/api/heartbeat/alive` route in `bb-api` returning status `{ "message": "Heartbeat: Alive" }` and secured `/api/matches` for machine/user bearer tokens.
+- Added user-protected `/api/user/profile` route returning user profile details.
+- Integrated `kbff` (Backend-for-Frontend) in `bb-web` for secure HTTP-only encrypted session cookies (`bb_session`), anti-CSRF protection, and OIDC lifecycle (`/bff/login`, `/signin-oidc`, `/bff/user`, `/bff/logout`).
+- Implemented `DefaultTokenService` in `bb-web` with OAuth2 client-credentials token caching to supply bearer tokens to `bb-api` for anonymous/background data calls.
+- Implemented reactive `AuthenticationService` and `csrfInterceptor` in Angular `bb-web/ClientApp` using Angular signals (`session`, `isAuthenticated`, `isAnonymous`, `userName`, `email`, `logoutUrl`).
+- Updated Angular header with dynamic Sign In / Sign Out controls and added user profile display component.
+- Updated documentation in `docs/architecture/applications.md`.
+
+### Key decisions
+
+- **Inspect Claims for User Distinction**: Route authorization inspects claims (`sub` and presence of user roles) to differentiate client-credentials machine tokens from human user tokens, avoiding redundant verifier chains.
+- **Backend-for-Frontend (BFF) Pattern**: Kept all access and refresh tokens out of the browser DOM/localStorage by terminating sessions in HTTP-only encrypted cookies via `kbff`.
+- **Dedicated Machine Token Service**: Implemented in-memory cached client credentials token service in `bb-web` so `bb-api` can require authentication on all data endpoints while still serving public visitors.
+- **CSRF Protection**: Functional Angular HTTP interceptor automatically appends `withCredentials: true` and `X-CSRF: 1` header to proxied requests.
+
+### Gotchas
+
+- In Ktor `testApplication`, redirect follow must be disabled (`followRedirects = false`) when testing external OIDC redirects (`/bff/login`) to prevent resolving external hosts.
+- OIDC discovery responses parsed by Nimbus OIDC SDK require `issuer` and `jwks_uri` fields in mock metadata.
+- Angular's default production optimization enables Beasties `inlineCritical: true`, which inlines critical CSS and rewrites external stylesheets to `media="print" onload="this.media='all'"`. When combined with strict default Content Security Policy headers from `kbff` (`style-src 'self'`, `script-src 'self'`), inline styles and the `onload` handler are blocked, preventing all CSS from applying. Resolving this requires setting `"optimization": { "styles": { "inlineCritical": false } }` in `angular.json` and configuring CSP in `KbffConfigFactory` (`style-src 'self' 'unsafe-inline' fonts.googleapis.com`, `font-src 'self' data: fonts.gstatic.com`).
+- Ktor `monitor` events (`ApplicationStopped`) are hosted on `ApplicationEnvironment` and shared across auto-reloads. Subscribing without checking `if (app == this)` causes the listener from the newly created application to execute when the previous application is stopped during development auto-reload, immediately closing the new `HttpClient` (or `DatabaseResources`) and causing subsequent calls to fail with `JobCancellationException: Parent job is Completed`. The handler must check `if (app == this)` and dispose the registration handle.
+
+### Test coverage areas
+
+- `ApiModuleTest` (10 unit/integration tests): Public `/api/heartbeat/alive`, unauthenticated 401 rejections, machine token access to `/api/matches`, machine token 403 Forbidden on `/api/user/profile`, and user token 200 OK with profile claims.
+- `WebModuleTest` (11 unit/integration tests): `DefaultTokenService` caching, `KtorMatchApiClient` bearer header injection, anonymous `/bff/user` 401, session claim extraction with CSRF tokens, `/bff/login` OIDC redirect, CSP headers, and auto-reload stopping event isolation.
+- Angular unit tests (13 specs): `AuthenticationService` signals under 401/session responses, profile proxy requests, `AppComponent` anonymous Sign In rendering, and authenticated Sign Out + profile display.
+- Clean `./gradlew check` across all modules.
 
 ## Angular frontend migration
 

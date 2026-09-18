@@ -5,6 +5,13 @@ ktor:
     modules:
       - com.knowledgespike.ballbyball.api.bootstrap.ApiModuleKt.module
 
+jwt:
+  jwksUrl: "${JWT_JWKS_URL:https://ids.local:8443/.well-known/openid-configuration/jwks}"
+  issuer: "${JWT_ISSUER:https://ids.local:8443}"
+  realm: "${JWT_REALM:Access to BallByBall API}"
+  audience: "${JWT_AUDIENCE:bb.api}"
+  leewaySeconds: "${JWT_LEEWAY_SECONDS:3}"
+
 database:
   jdbcUrl: "${DB_JDBC_URL:jdbc:mariadb://localhost:3306/acs_ball_by_ball}"
   user: "${DB_USER:acs_ball_by_ball}"
