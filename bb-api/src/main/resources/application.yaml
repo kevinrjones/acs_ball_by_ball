@@ -9,12 +9,12 @@ jwt:
   jwksUrl: "${JWT_JWKS_URL:https://ids.local:8443/.well-known/openid-configuration/jwks}"
   issuer: "${JWT_ISSUER:https://ids.local:8443}"
   realm: "${JWT_REALM:Access to BallByBall API}"
-  audience: "${JWT_AUDIENCE:bb.api}"
+  audience: "${JWT_AUDIENCE:acs-bbb,bbb.api}"
   leewaySeconds: "${JWT_LEEWAY_SECONDS:3}"
   validScopes:
-    - "bb.api"
-    - "bb.api.read"
-    - "bb.api.write"
+    - "bbb.api"
+    - "bbb.api.read"
+    - "bbb.api.write"
 
 database:
   jdbcUrl: "${DB_JDBC_URL:jdbc:mariadb://localhost:3306/acs_ball_by_ball}"

@@ -79,7 +79,9 @@ fun Application.configureSecurity(
                     .build()
 
                 verifier(provider, jwtSettings.issuer) {
-                    withAudience(jwtSettings.audience)
+                    if (jwtSettings.audiences.isNotEmpty()) {
+                        withAnyOfAudience(*jwtSettings.audiences.toTypedArray())
+                    }
                     acceptLeeway(jwtSettings.leewaySeconds)
                 }
             }

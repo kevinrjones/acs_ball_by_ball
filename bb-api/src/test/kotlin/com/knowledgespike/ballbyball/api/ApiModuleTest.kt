@@ -22,22 +22,22 @@ class ApiModuleTest {
     private val algorithm = Algorithm.HMAC256("test-secret-key-for-jwt-verification")
     private val testVerifier: JWTVerifier = JWT.require(algorithm)
         .withIssuer("https://ids.local:8443")
-        .withAudience("bb.api")
+        .withAnyOfAudience("bb.api", "acs-bbb")
         .build()
 
-    private fun createMachineToken(): String = JWT.create()
+    private fun createMachineToken(audience: String = "bb.api", scope: String = "bb.api.read"): String = JWT.create()
         .withIssuer("https://ids.local:8443")
-        .withAudience("bb.api")
+        .withAudience(audience)
         .withClaim("client_id", "bbweb")
-        .withClaim("scope", listOf("bb.api.read"))
+        .withClaim("scope", listOf(scope))
         .sign(algorithm)
 
-    private fun createUserToken(): String = JWT.create()
+    private fun createUserToken(audience: String = "bb.api", scope: String = "bb.api.read"): String = JWT.create()
         .withIssuer("https://ids.local:8443")
-        .withAudience("bb.api")
+        .withAudience(audience)
         .withSubject("user-sub-123")
         .withClaim("client_id", "bbweb")
-        .withClaim("scope", listOf("bb.api.read"))
+        .withClaim("scope", listOf(scope))
         .withClaim("role", listOf("BB.User"))
         .withClaim("name", "Kevin Jones")
         .withClaim("email", "kevin@knowledgespike.com")
@@ -182,6 +182,38 @@ class ApiModuleTest {
         val body = response.bodyAsText()
         expectThat(body).contains("\"subject\": \"user-sub-no-roles\"")
         expectThat(body).contains("\"name\": \"Role-less User\"")
+    }
+
+    @Test
+    fun `matches serializes repository results with machine token having acs-bbb audience and bbb api read scope`() = testApplication {
+        application {
+            moduleWithDependencies(
+                FakeMatchRepository(matches = listOf(MatchSummary(1, 10, "match.json", "TEST", "2026"))),
+                FakeDatabaseHealth(healthy = true),
+                jwtVerifier = testVerifier
+            )
+        }
+
+        val response = client.get("/api/matches?limit=1") {
+            header(HttpHeaders.Authorization, "Bearer ${createMachineToken(audience = "acs-bbb", scope = "bbb.api.read")}")
+        }
+
+        expectThat(response.status).isEqualTo(HttpStatusCode.OK)
+        expectThat(response.bodyAsText()).contains("\"matches\": [")
+    }
+
+    @Test
+    fun `user profile succeeds with user token having acs-bbb audience and bbb api read scope`() = testApplication {
+        application { moduleWithDependencies(FakeMatchRepository(), FakeDatabaseHealth(healthy = true), jwtVerifier = testVerifier) }
+
+        val response = client.get("/api/user/profile") {
+            header(HttpHeaders.Authorization, "Bearer ${createUserToken(audience = "acs-bbb", scope = "bbb.api.read")}")
+        }
+
+        expectThat(response.status).isEqualTo(HttpStatusCode.OK)
+        val body = response.bodyAsText()
+        expectThat(body).contains("\"subject\": \"user-sub-123\"")
+        expectThat(body).contains("\"name\": \"Kevin Jones\"")
     }
 
     private data class FakeMatchRepository(

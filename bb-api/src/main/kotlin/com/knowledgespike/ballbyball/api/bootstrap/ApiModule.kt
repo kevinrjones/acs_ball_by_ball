@@ -55,7 +55,7 @@ fun Application.moduleWithDependencies(
                 jwksUrl = "https://ids.local:8443/.well-known/openid-configuration/jwks",
                 issuer = "https://ids.local:8443",
                 realm = "Access to BallByBall API",
-                audience = "bb.api"
+                audiences = listOf("acs-bbb", "bbb.api")
             )
         }
     moduleWithServices(DefaultMatchService(matchRepository), databaseHealth, settings, jwtVerifier)

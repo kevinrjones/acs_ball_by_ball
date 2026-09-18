@@ -34,6 +34,8 @@
 - OIDC discovery responses parsed by Nimbus OIDC SDK require `issuer` and `jwks_uri` fields in mock metadata.
 - The dependency update plugin uses the replacement `io.github.ben-manes.versions` ID.
 - Generated SQL-file schemas must stay aligned with the dialect-specific warehouse migrations.
+- When running `bb-api` locally, ensure `DB_PORT` and `DB_JDBC_URL` in `.env` and `bb-api/.env` point to port `3306` (where the `ballbyball` database runs), rather than `3307`. Port `3307` is used by the Identity Server's container (`identity-local-mariadb-1`), which rejects the `ballbyball` user credentials with `Access denied for user 'ballbyball'@'172.21.0.1'`.
+- Access tokens issued by the Identity Server for client `ballbyball` contain audience `acs-bbb` and scopes `bbb.api` / `bbb.api.read`. In `bb-api`, JWT verification must accept multiple audiences (`withAnyOfAudience`) including both `acs-bbb` and `bb.api`, and scope validation must accept `bbb.api.*` alongside `bb.api.*`. If `JWT_AUDIENCE` was strictly `bb.api`, incoming bearer tokens are rejected with `401 Unauthorized`.
 
 ## Authentication and authorization across bb-web and bb-api
 
