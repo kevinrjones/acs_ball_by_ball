@@ -56,6 +56,11 @@ Implement three-tier JWT authentication, BFF session management with kbff, and r
 - Implemented reactive `AuthenticationService` and `csrfInterceptor` in Angular `bb-web/ClientApp` using Angular signals (`session`, `isAuthenticated`, `isAnonymous`, `userName`, `email`, `logoutUrl`).
 - Updated Angular header with dynamic Sign In / Sign Out controls and added user profile display component.
 - Updated documentation in `docs/architecture/applications.md`.
+- Refactored security and claim extraction: consolidated duplicate `extractScopes`/`extractRoles` logic into functional `Payload.extractStringOrListClaims` extension, introduced domain `UserPrincipal`, encapsulated user authorization into `userProtected` route-scoped plugin, and made accepted API scopes configurable via `jwt.validScopes`.
+- Optimized `DefaultTokenService` to cache OIDC discovery metadata (`token_endpoint`) using mutex protection and filter OIDC identity scopes automatically instead of hardcoding one-off conditionals.
+- Hardened Angular `csrfInterceptor` to only attach credentials and `X-CSRF` headers to internal/relative requests, protecting external endpoints.
+- Extracted static mock data out of `AppComponent` into dedicated fixture `sample-matches.fixture.ts`.
+- Deduplicated `apiBaseUrl` configuration between `KbffConfigFactory` and `WebModule`, and bound HTTP client lifecycle in `moduleWithApiClient`.
 
 ### Key decisions
 
@@ -73,9 +78,9 @@ Implement three-tier JWT authentication, BFF session management with kbff, and r
 
 ### Test coverage areas
 
-- `ApiModuleTest` (10 unit/integration tests): Public `/api/heartbeat/alive`, unauthenticated 401 rejections, machine token access to `/api/matches`, machine token 403 Forbidden on `/api/user/profile`, and user token 200 OK with profile claims.
-- `WebModuleTest` (11 unit/integration tests): `DefaultTokenService` caching, `KtorMatchApiClient` bearer header injection, anonymous `/bff/user` 401, session claim extraction with CSRF tokens, `/bff/login` OIDC redirect, CSP headers, and auto-reload stopping event isolation.
-- Angular unit tests (13 specs): `AuthenticationService` signals under 401/session responses, profile proxy requests, `AppComponent` anonymous Sign In rendering, and authenticated Sign Out + profile display.
+- `ApiModuleTest` (11 unit/integration tests): Public `/api/heartbeat/alive`, unauthenticated 401 rejections, machine token access to `/api/matches`, machine token 403 Forbidden on `/api/user/profile`, user token 200 OK with profile claims, and user token without explicit roles 200 OK.
+- `WebModuleTest` (11 unit/integration tests): `DefaultTokenService` caching & single discovery resolution, `KtorMatchApiClient` bearer header injection, anonymous `/bff/user` 401, session claim extraction with CSRF tokens, `/bff/login` OIDC redirect, CSP headers, and auto-reload stopping event isolation.
+- Angular unit tests (17 specs): `AuthenticationService` signals under 401/session responses, profile proxy requests, `AppComponent` anonymous Sign In rendering, authenticated Sign Out + profile display, and `csrfInterceptor` relative/external request filtering.
 - Clean `./gradlew check` across all modules.
 
 ## Angular frontend migration

@@ -11,6 +11,10 @@ jwt:
   realm: "${JWT_REALM:Access to BallByBall API}"
   audience: "${JWT_AUDIENCE:bb.api}"
   leewaySeconds: "${JWT_LEEWAY_SECONDS:3}"
+  validScopes:
+    - "bb.api"
+    - "bb.api.read"
+    - "bb.api.write"
 
 database:
   jdbcUrl: "${DB_JDBC_URL:jdbc:mariadb://localhost:3306/acs_ball_by_ball}"

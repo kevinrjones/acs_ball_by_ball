@@ -161,6 +161,29 @@ class ApiModuleTest {
         expectThat(body).contains("\"BB.User\"")
     }
 
+    @Test
+    fun `user profile succeeds with user token without explicit roles`() = testApplication {
+        val userWithoutRolesToken = JWT.create()
+            .withIssuer("https://ids.local:8443")
+            .withAudience("bb.api")
+            .withSubject("user-sub-no-roles")
+            .withClaim("client_id", "bbweb")
+            .withClaim("scope", listOf("bb.api.read"))
+            .withClaim("name", "Role-less User")
+            .sign(algorithm)
+
+        application { moduleWithDependencies(FakeMatchRepository(), FakeDatabaseHealth(healthy = true), jwtVerifier = testVerifier) }
+
+        val response = client.get("/api/user/profile") {
+            header(HttpHeaders.Authorization, "Bearer $userWithoutRolesToken")
+        }
+
+        expectThat(response.status).isEqualTo(HttpStatusCode.OK)
+        val body = response.bodyAsText()
+        expectThat(body).contains("\"subject\": \"user-sub-no-roles\"")
+        expectThat(body).contains("\"name\": \"Role-less User\"")
+    }
+
     private data class FakeMatchRepository(
         val matches: List<MatchSummary> = emptyList()
     ) : MatchRepository {

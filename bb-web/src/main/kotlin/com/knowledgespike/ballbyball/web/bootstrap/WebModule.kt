@@ -6,6 +6,7 @@ import com.knowledgespike.ballbyball.web.adapter.out.api.KtorMatchApiClient
 import com.knowledgespike.ballbyball.web.adapter.out.service.DefaultTokenService
 import com.knowledgespike.ballbyball.web.application.MatchApiClient
 import com.knowledgespike.ballbyball.web.config.KbffConfigFactory
+import com.knowledgespike.ballbyball.web.config.apiBaseUrl
 import com.knowledgespike.ballbyball.web.domain.service.TokenService
 import com.knowledgespike.feature.kbff.data.repository.InMemoryKbffSessionStorage
 import com.knowledgespike.feature.kbff.domain.model.KbffConfiguration
@@ -33,9 +34,7 @@ import kotlinx.serialization.json.Json
 fun Application.module() {
     val isDevelopment = environment.config.propertyOrNull("ktor.development")?.getString() == "true"
     val bffConfig = KbffConfigFactory.fromConfig(environment.config, isDevelopment)
-    val apiBaseUrl = environment.config.propertyOrNull("api.baseUrl")?.getString()?.trimEnd('/')
-        ?: environment.config.propertyOrNull("kbff.api.baseUrl")?.getString()?.trimEnd('/')
-        ?: "http://localhost:8081"
+    val apiBaseUrl = bffConfig.apiBaseUrl
 
     val httpClient = HttpClientFactory.create()
     val appInstance = this
@@ -61,9 +60,19 @@ fun Application.module() {
     )
 }
 
-fun Application.moduleWithApiClient(matchApiClient: MatchApiClient) {
+fun Application.moduleWithApiClient(matchApiClient: MatchApiClient, client: HttpClient? = null) {
     val defaultConfig = KbffConfigFactory.defaultConfiguration(isDevelopment = true)
-    val defaultClient = HttpClientFactory.create()
+    val defaultClient = client ?: HttpClientFactory.create()
+    if (client == null) {
+        val appInstance = this
+        var stopSubscription: DisposableHandle? = null
+        stopSubscription = monitor.subscribe(ApplicationStopped) { app ->
+            if (app == appInstance) {
+                defaultClient.close()
+                stopSubscription?.dispose()
+            }
+        }
+    }
     val defaultOidc = OidcService(defaultClient, defaultConfig)
     moduleWithDependencies(
         matchApiClient = matchApiClient,

@@ -130,11 +130,13 @@ class WebModuleTest {
     @Test
     fun `default token service fetches client credentials token and caches it`() = runBlocking {
         var callCount = 0
+        var discoveryCount = 0
         val mockHttpClient = HttpClient(MockEngine) {
             engine {
                 addHandler { request ->
                     when (request.url.encodedPath) {
                         "/.well-known/openid-configuration" -> {
+                            discoveryCount++
                             respond(
                                 content = """{"token_endpoint": "https://ids.local:8443/connect/token"}""",
                                 status = HttpStatusCode.OK,
@@ -161,7 +163,7 @@ class WebModuleTest {
                 authority = "https://ids.local:8443"
                 clientId = "bbweb"
                 clientSecret = "secret"
-                scopes = listOf("bb.api.read")
+                scopes = listOf("openid", "profile", "bb.api.read")
             }
         }
 
@@ -172,6 +174,7 @@ class WebModuleTest {
         expectThat(token1).isEqualTo("token-xyz-123")
         expectThat(token2).isEqualTo("token-xyz-123")
         expectThat(callCount).isEqualTo(1) // Token was served from in-memory cache on second call
+        expectThat(discoveryCount).isEqualTo(1) // Discovery endpoint cached and called only once
         mockHttpClient.close()
     }
 

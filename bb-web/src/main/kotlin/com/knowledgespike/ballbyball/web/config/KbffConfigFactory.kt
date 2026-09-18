@@ -33,25 +33,33 @@ object KbffConfigFactory {
         return cspParts.joinToString("; ")
     }
 
-    fun defaultConfiguration(isDevelopment: Boolean = true): KbffConfiguration = KbffConfiguration().apply {
-        environment(isProduction = !isDevelopment)
-        oidc {
-            authority = "https://ids.local:8443"
-            clientId = "bbweb"
-            clientSecret = "secret"
-            scopes = listOf("openid", "profile", "bb.api", "bb.api.read")
-            redirectUri = "http://localhost:8080/signin-oidc"
-            postLogoutRedirectUri = "http://localhost:8080/"
-            sslTrustAll = false
-        }
-        proxy {
-            endpoint("/api", "http://localhost:8081/api")
-        }
-        security {
-            csrfHeaderName = "X-CSRF"
-            csp = buildCsp(isDevelopment)
+    fun defaultConfiguration(isDevelopment: Boolean = true, apiBaseUrl: String = "http://localhost:8081"): KbffConfiguration {
+        val cleanedBaseUrl = apiBaseUrl.trimEnd('/')
+        return KbffConfiguration().apply {
+            environment(isProduction = !isDevelopment)
+            oidc {
+                authority = "https://ids.local:8443"
+                clientId = "bbweb"
+                clientSecret = "secret"
+                scopes = listOf("openid", "profile", "bb.api", "bb.api.read")
+                redirectUri = "http://localhost:8080/signin-oidc"
+                postLogoutRedirectUri = "http://localhost:8080/"
+                sslTrustAll = false
+            }
+            proxy {
+                endpoint("/api", "$cleanedBaseUrl/api")
+            }
+            security {
+                csrfHeaderName = "X-CSRF"
+                csp = buildCsp(isDevelopment)
+            }
         }
     }
+
+    fun resolveApiBaseUrl(config: ApplicationConfig): String =
+        (config.propertyOrNull("api.baseUrl")?.getString()
+            ?: config.propertyOrNull("kbff.api.baseUrl")?.getString()
+            ?: "http://localhost:8081").trimEnd('/')
 
     fun fromConfig(config: ApplicationConfig, isDevelopment: Boolean = false): KbffConfiguration {
         val authority = config.propertyOrNull("kbff.oidc.authority")?.getString() ?: "https://ids.local:8443"
@@ -62,10 +70,7 @@ object KbffConfigFactory {
         val postLogoutRedirectUri = config.propertyOrNull("kbff.oidc.postLogoutRedirectUri")?.getString() ?: "http://localhost:8080/"
         val sslCertificatePath = config.propertyOrNull("kbff.oidc.sslCertificatePath")?.getString()
 
-        val apiBaseUrl = config.propertyOrNull("api.baseUrl")?.getString()
-            ?: config.propertyOrNull("kbff.api.baseUrl")?.getString()
-            ?: "http://localhost:8081"
-
+        val apiBaseUrl = resolveApiBaseUrl(config)
         val csrfHeader = config.propertyOrNull("kbff.security.csrfHeaderName")?.getString() ?: "X-CSRF"
 
         return KbffConfiguration().apply {
@@ -81,7 +86,7 @@ object KbffConfigFactory {
                 this.sslCertificatePath = sslCertificatePath
             }
             proxy {
-                endpoint("/api", "${apiBaseUrl.trimEnd('/')}/api")
+                endpoint("/api", "$apiBaseUrl/api")
             }
             security {
                 csrfHeaderName = csrfHeader
@@ -90,3 +95,7 @@ object KbffConfigFactory {
         }
     }
 }
+
+val KbffConfiguration.apiBaseUrl: String
+    get() = proxy.endpoints.firstOrNull { it.path == "/api" }?.targetUrl?.removeSuffix("/api")?.trimEnd('/')
+        ?: "http://localhost:8081"

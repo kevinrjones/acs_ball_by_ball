@@ -5,8 +5,8 @@ import com.knowledgespike.ballbyball.api.application.service.MatchService
 import com.knowledgespike.ballbyball.api.application.service.RecentMatchesRequest
 import com.knowledgespike.ballbyball.api.application.service.RecentMatchesResult
 import com.knowledgespike.ballbyball.api.bootstrap.AUTH_JWT
-import com.knowledgespike.ballbyball.api.bootstrap.extractRoles
 import com.knowledgespike.ballbyball.api.bootstrap.requireUserPrincipal
+import com.knowledgespike.ballbyball.api.bootstrap.userProtected
 import com.knowledgespike.ballbyball.contracts.ApiError
 import com.knowledgespike.ballbyball.contracts.ApiHealth
 import com.knowledgespike.ballbyball.contracts.HeartbeatResponse
@@ -53,22 +53,20 @@ fun Route.registerApiRoutes(
             }
 
             // User-only authenticated route
-            get("/user/profile") {
-                val principal = call.requireUserPrincipal() ?: return@get
-                val sub = principal.payload.subject ?: principal.payload.getClaim("sub")?.asString() ?: ""
-                val name = principal.payload.getClaim("name")?.asString()
-                val email = principal.payload.getClaim("email")?.asString()
-                val roles = extractRoles(principal)
+            userProtected {
+                get("/user/profile") {
+                    val user = call.requireUserPrincipal() ?: return@get
 
-                call.respond(
-                    HttpStatusCode.OK,
-                    UserProfileResponse(
-                        subject = sub,
-                        name = name,
-                        email = email,
-                        roles = roles
+                    call.respond(
+                        HttpStatusCode.OK,
+                        UserProfileResponse(
+                            subject = user.id,
+                            name = user.name,
+                            email = user.email,
+                            roles = user.roles
+                        )
                     )
-                )
+                }
             }
         }
     }

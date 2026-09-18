@@ -129,3 +129,4 @@ design
 **/node_modules/
 **/ClientApp/dist/
 **/.angular/
+.output.txt
