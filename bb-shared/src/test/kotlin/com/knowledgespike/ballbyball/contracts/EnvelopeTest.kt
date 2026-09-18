@@ -49,7 +49,7 @@ class EnvelopeTest {
 
     @Test
     fun `envelope serializes to and from json preserving instant and payload`() {
-        val payload = UserProfileResponse(
+        val payload = UserProfileResponse.of(
             subject = "user-123",
             name = "Kevin",
             email = "kevin@test.com",
@@ -76,5 +76,17 @@ class EnvelopeTest {
         expectThat(deserialized.result).isEqualTo("")
         expectThat(deserialized.errorMessage).isEqualTo("Not authorized")
         expectThat(deserialized.timeGenerated).isEqualTo(original.timeGenerated)
+    }
+
+    @Test
+    fun `failure with non-empty list of domain errors formats comma separated message`() {
+        val errors = arrow.core.nonEmptyListOf(
+            com.knowledgespike.ballbyball.types.error.LimitError("limit must be between 1 and 100"),
+            com.knowledgespike.ballbyball.types.error.MatchTypeError("matchType must not be blank")
+        )
+        val envelope = Envelope.failure(errors)
+
+        expectThat(envelope.result).isEqualTo("")
+        expectThat(envelope.errorMessage).isEqualTo("limit must be between 1 and 100, matchType must not be blank")
     }
 }

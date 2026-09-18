@@ -120,26 +120,43 @@ Shared infrastructure and cross-cutting concerns (bootstrap, database connection
 ```mermaid
 sequenceDiagram
     participant Client as Desktop/mobile or web client
-    participant Route as HTTP route
+    participant Route as HTTP route (Boundary Validation)
     participant Service as MatchService
     participant Repo as MatchRepository
     participant DB as Warehouse
     Client ->> Route: GET /api/matches?limit=value
-    Route ->> Service: RecentMatchesRequest
-    Service ->> Service: Parse MatchLimit (1..100)
-    Service ->> Repo: recentMatches(limit)
-    Repo ->> DB: JOOQ query on dim_match
-    DB -->> Repo: rows
-    Repo -->> Service: MatchSummary list
-    Service -->> Route: success or validation result
-    Route -->> Client: shared JSON response or ApiError
+    Route ->> Route: Arrow fold: Limit(rawLimit)
+    alt Invalid Limit
+        Route -->> Client: 400 Bad Request + Envelope.failure(error)
+    else Valid Limit
+        Route ->> Service: recentMatches(limit: Limit)
+        Service ->> Repo: recentMatches(limit: Limit)
+        Repo ->> DB: JOOQ query on dim_match
+        DB -->> Repo: rows
+        Repo -->> Service: MatchSummary list
+        Service -->> Route: MatchSummary list
+        Route -->> Client: 200 OK + Envelope.success(RecentMatchesResponse)
+    end
 ```
 
-`MatchLimit` is a validated inline value type. Expected client errors are
-returned as the shared `ApiError` contract with `400 Bad Request`; unexpected
-adapter failures are logged by `StatusPages` and returned as a generic shared
-`ApiError` with `500 Internal Server Error`. Cancellation is never converted to
+`Limit` is a validated inline value type (`@JvmInline value class`). Boundary validation
+is performed directly in the presentation route layer using Arrow (`fold` / `Raise`).
+Invalid client parameters immediately return `400 Bad Request` with `Envelope.failure(...)`;
+unexpected adapter failures are logged by `StatusPages` and returned as a generic
+`Envelope.failure(...)` with `500 Internal Server Error`. Cancellation is never converted to
 an error response.
+
+### Tiny Types and Domain Boundaries
+
+The application enforces strong typing at compile-time with zero runtime overhead using Kotlin value classes (`@JvmInline value class`):
+- `Limit`: Encapsulates query limit bounds (`1..100`, default `10`).
+- `MatchKey`: Encapsulates unique match surrogate keys (`> 0`).
+- `SourceMatchId`: Encapsulates external match identifiers (`>= 0`).
+- `MatchType`: Encapsulates non-blank cricket match types (e.g. `Test`, `ODI`, `T20`).
+- `Season`: Encapsulates non-blank cricket seasons (e.g. `2023/24`, `1992`).
+- `UserId`: Encapsulates non-blank user subject identifiers.
+
+Boundary validation uses Arrow's `Raise` and `Either` DSL. All value classes declare private constructors and companion factory methods (`invoke` with `Raise`, `of` returning `Either`, and `from` for validated internal mapping). In multi-parameter endpoints, `zipOrAccumulate` accumulates all parameter validation failures into a `NonEmptyList<Error>`. Domain services and repositories only accept validated tiny types, making illegal arguments unrepresentable in the domain layer.
 
 ### Web request flow
 

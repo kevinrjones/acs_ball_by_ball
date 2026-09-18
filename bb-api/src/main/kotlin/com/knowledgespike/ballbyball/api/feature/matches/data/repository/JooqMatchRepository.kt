@@ -2,6 +2,11 @@ package com.knowledgespike.ballbyball.api.feature.matches.data.repository
 
 import com.knowledgespike.ballbyball.api.feature.matches.domain.repository.MatchRepository
 import com.knowledgespike.ballbyball.contracts.MatchSummary
+import com.knowledgespike.ballbyball.types.values.Limit
+import com.knowledgespike.ballbyball.types.values.MatchKey
+import com.knowledgespike.ballbyball.types.values.MatchType
+import com.knowledgespike.ballbyball.types.values.Season
+import com.knowledgespike.ballbyball.types.values.SourceMatchId
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -29,21 +34,21 @@ class JooqMatchRepository(
     private val season = field(name("season"), String::class.java)
     private val matchStartDateKey = field(name("match_start_date_key"), Int::class.javaObjectType)
 
-    override suspend fun recentMatches(limit: Int): List<MatchSummary> = withContext(ioDispatcher) {
+    override suspend fun recentMatches(limit: Limit): List<MatchSummary> = withContext(ioDispatcher) {
         try {
             dsl.select(matchKey, sourceMatchId, fileName, matchType, season)
                 .from(dimMatch)
                 .orderBy(matchStartDateKey.desc().nullsLast(), matchKey.desc())
-                .limit(limit)
+                .limit(limit.value)
                 .fetch { record ->
                     MatchSummary(
-                        matchKey = requireNotNull(record.get(matchKey)) { "dim_match.match_key must not be null" },
-                        sourceMatchId = requireNotNull(record.get(sourceMatchId)) {
+                        matchKey = MatchKey.from(requireNotNull(record.get(matchKey)) { "dim_match.match_key must not be null" }),
+                        sourceMatchId = SourceMatchId.from(requireNotNull(record.get(sourceMatchId)) {
                             "dim_match.source_match_id must not be null"
-                        },
+                        }),
                         fileName = requireNotNull(record.get(fileName)) { "dim_match.file_name must not be null" },
-                        matchType = requireNotNull(record.get(matchType)) { "dim_match.match_type must not be null" },
-                        season = requireNotNull(record.get(season)) { "dim_match.season must not be null" }
+                        matchType = MatchType.from(requireNotNull(record.get(matchType)) { "dim_match.match_type must not be null" }),
+                        season = Season.from(requireNotNull(record.get(season)) { "dim_match.season must not be null" })
                     )
                 }
         } catch (cause: CancellationException) {

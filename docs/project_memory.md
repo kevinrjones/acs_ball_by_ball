@@ -2,6 +2,13 @@
 
 ## What was shipped
 
+- Adopted a **Sealed Class Error Hierarchy** rooted in `@Serializable sealed class Error(val message: String)` matching `acs-api`, providing a shared `message` across all domain, validation, and persistence errors.
+- Updated `.junie/AGENTS.md` guidelines to prefer sealed class error hierarchies over sealed interfaces.
+- Introduced **Tiny Types** via Kotlin inline value classes (`@JvmInline value class`) across `bb-shared` and `bb-api` (`Limit`, `MatchKey`, `SourceMatchId`, `MatchType`, `Season`, `UserId`).
+- Implemented **Boundary Validation** at the HTTP presentation layer using **Arrow** (`Either`, `Raise`, and `zipOrAccumulate`).
+- Created domain error hierarchy in `bb-shared` (`Error`, `LimitError`, `MatchKeyError`, `SourceMatchIdError`, `MatchTypeError`, `SeasonError`, `UserIdError`).
+- Added routing response helpers in `bb-api` (`respondBadRequest`, `respondOk`) matching patterns from `acs-api`.
+- Refactored `MatchesRoute` and `UserRoute` to validate incoming parameters at the presentation boundary before passing strongly typed values to domain services and repositories.
 - Reorganized `bb-api` architecture from horizontal ports-and-adapters layering to vertical **Feature Slices** matching the structure in `acs-api`.
 - Created four distinct feature slices in `bb-api`: `heartbeat` (public liveness), `health` (database health checks), `matches` (recent matches queries), and `user` (protected user profile).
 - Colocated presentation (routes), domain (use-cases, services, repository interfaces), and data (jOOQ repositories) inside each feature directory.
@@ -30,6 +37,9 @@
 
 ## Key decisions
 
+- **Zero-Allocation Tiny Types**: Implemented domain types (`Limit`, `MatchKey`, `SourceMatchId`, `MatchType`, `Season`, `UserId`) as `@JvmInline value class` to eradicate primitive obsession at compile-time without runtime object allocation overhead.
+- **Boundary Validation with Arrow**: Parameter parsing and validation is strictly isolated at the presentation layer (Ktor routes). Untrusted parameters are parsed using Arrow's `Raise` and `Either` DSL, returning `400 Bad Request` with `Envelope.failure(...)` immediately on validation errors, and passing only validated tiny types to domain services.
+- **Encapsulated Construction**: Private constructors prevent illegal values from ever being instantiated, while companion factory methods (`invoke` with `Raise`, `of` returning `Either`, and `from` with `require`) support both boundary validation and internal mapping.
 - **Inspect Claims for User Distinction**: Route authorization inspects claims (`sub` and presence of user roles) to differentiate client-credentials machine tokens from human user tokens, avoiding redundant verifier chains.
 - **Backend-for-Frontend (BFF) Pattern**: Kept all access and refresh tokens out of the browser DOM/localStorage by terminating sessions in HTTP-only encrypted cookies via `kbff`.
 - **Dedicated Machine Token Service**: Implemented in-memory cached client credentials token service in `bb-web` so `bb-api` can require authentication on all data endpoints while still serving public visitors.
@@ -46,6 +56,74 @@
 - When running `bb-api` locally, ensure `DB_PORT` and `DB_JDBC_URL` in `.env` and `bb-api/.env` point to port `3306` (where the `ballbyball` database runs), rather than `3307`. Port `3307` is used by the Identity Server's container (`identity-local-mariadb-1`), which rejects the `ballbyball` user credentials with `Access denied for user 'ballbyball'@'172.21.0.1'`.
 - Access tokens issued by the Identity Server for client `ballbyball` contain audience `acs-bbb` and scopes `bbb.api` / `bbb.api.read`. In `bb-api`, JWT verification must accept multiple audiences (`withAnyOfAudience`) including both `acs-bbb` and `bb.api`, and scope validation must accept `bbb.api.*` alongside `bb.api.*`. If `JWT_AUDIENCE` was strictly `bb.api`, incoming bearer tokens are rejected with `401 Unauthorized`.
 - In `bb-web`, `HttpClientFactory` previously hardcoded a 5000ms request timeout (`requestTimeoutMillis = 5_000`). When `bb-web` proxies requests like `/api/user/profile` to `bb-api`, `bb-api` verifies the token by fetching JWKS keys from `ids.local:8443`. On macOS, resolving `.local` domains under dual-stack DNS triggers a 5-second multicast DNS (Bonjour) wait for IPv6 unless IPv4 is explicitly preferred (`-Djava.net.preferIPv4Stack=true`), causing total request duration to exceed 5000ms (~5055ms) and `bb-web` to abort with `Request timeout has expired [url=http://localhost:8082/api/user/profile, request_timeout=5000 ms]`. Configured default HTTP client timeouts to 60s (with 30s connect timeout) via `application.yaml` / `.env`, added `-Djava.net.preferIPv4Stack=true` to Gradle JVM args and `applicationDefaultJvmArgs`, and added timeouts to `JwkProviderBuilder`.
+
+## Sealed Class Error Hierarchy in bb-shared
+
+### Title
+
+Adopt Sealed Class Error Hierarchy matching acs-api
+
+### Date/time completed
+
+2026-09-18 16:55
+
+### What was shipped
+
+- Refactored domain error hierarchy in `bb-shared` from `sealed interface Error` to `sealed class Error(val message: String)` matching `acs-api`.
+- Retained domain-specific error classes (`LimitError`, `MatchKeyError`, `SourceMatchIdError`, `MatchTypeError`, `SeasonError`, `UserIdError`, `ValidationError`) and added `DatabaseError(val stackTrace: String, message: String)`.
+- Updated `.junie/AGENTS.md` to document the sealed class error hierarchy pattern with common `message` property.
+
+### Key decisions
+
+- **Sealed Class over Sealed Interface**: Standardizes `val message: String` at the root of the hierarchy so all error instances expose `message` without needing custom interface property implementations.
+- **Subclass Constructor Forwarding**: Subclasses forward the descriptive message to `Error(message)` while optionally storing specialized error context (such as invalid input values or database stack traces).
+
+### Test coverage areas
+
+- `ValueClassesTest` in `bb-shared`: Validates error types and messages returned from Arrow Raise boundary validation.
+- `EnvelopeTest` in `bb-shared`: Validates error message aggregation (`NonEmptyList<Error>`) in `Envelope.failure`.
+- `ApiModuleTest` in `bb-api`: Validates 400 Bad Request error envelopes with domain error messages.
+
+## Tiny Types and Boundary Validation with Arrow in bb-api and bb-shared
+
+### Title
+
+Implement Tiny Types with Kotlin value classes and Arrow boundary validation
+
+### Date/time completed
+
+2026-09-18 16:35
+
+### What was shipped
+
+- Introduced domain **Tiny Types** using Kotlin inline value classes (`@JvmInline value class`) in `bb-shared`:
+  - `Limit`: Encapsulates query limit constraints (1..100, default 10).
+  - `MatchKey`: Encapsulates positive database match surrogate keys (> 0).
+  - `SourceMatchId`: Encapsulates non-negative external match IDs (>= 0).
+  - `MatchType`: Encapsulates non-blank match format types.
+  - `Season`: Encapsulates non-blank cricket season strings.
+  - `UserId`: Encapsulates non-blank user subject identifiers.
+- Added typed `Error` hierarchy in `bb-shared` (`Error`, `LimitError`, `MatchKeyError`, `SourceMatchIdError`, `MatchTypeError`, `SeasonError`, `UserIdError`).
+- Configured Arrow (`arrow-core 2.2.3`) across `bb-shared` and `bb-api`.
+- Implemented **Boundary Validation** at the presentation layer in `MatchesRoute` and `UserRoute` using Arrow `fold` and `Raise` DSL.
+- Updated `MatchService` and `MatchRepository` to accept validated `Limit` instances, making invalid arguments unrepresentable in the domain layer.
+- Added route response helpers in `bb-api` (`respondBadRequest` and `respondOk`).
+- Updated `Envelope.failure` to support `NonEmptyList<Error>`.
+- Updated `AGENTS.md` and `docs/architecture/applications.md` with guidelines on tiny types and boundary validation with Arrow.
+
+### Key decisions
+
+- **Zero Runtime Allocation**: Inlined value classes compile to primitive types on the JVM while preventing primitive obsession at compile time.
+- **Boundary Validation Only**: Domain use cases and repository ports receive pre-validated value classes; HTTP query/path parameter parsing occurs strictly in route adapters.
+- **Arrow Raise DSL**: Value class companion objects implement `operator fun invoke(value: RawType?)` in `Raise<Error>` context, allowing functional composition via `fold` and `zipOrAccumulate`.
+- **Wire Compatibility**: Value classes serialize directly as primitive values under `kotlinx.serialization`, maintaining wire and JSON schema compatibility with Angular and external clients.
+
+### Test coverage areas
+
+- `ValueClassesTest` in `bb-shared`: Unit tests for range validation, blank rejection, JSON serialization, and `zipOrAccumulate` multi-error accumulation.
+- `EnvelopeTest` in `bb-shared`: Tests for `NonEmptyList<Error>` error message formatting and typed envelope deserialization.
+- `ApiModuleTest` in `bb-api`: 14 tests covering route authorization, valid/invalid limits (400 responses), and user profile extraction.
+- Full `./gradlew check` clean across all modules including Karma Angular tests.
 
 ## Feature Slices Architecture in bb-api
 

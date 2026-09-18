@@ -1,5 +1,7 @@
 package com.knowledgespike.ballbyball.contracts
 
+import arrow.core.NonEmptyList
+import com.knowledgespike.ballbyball.types.error.Error
 import kotlin.time.Clock
 import kotlin.time.Instant
 import kotlinx.serialization.Serializable
@@ -20,6 +22,13 @@ data class Envelope<T>(
 
         fun failure(message: String): Envelope<String> =
             Envelope(result = "", errorMessage = message, timeGenerated = Clock.System.now())
+
+        fun failure(errors: NonEmptyList<Error>): Envelope<String> =
+            Envelope(
+                result = "",
+                errorMessage = errors.joinToString(", ") { it.message },
+                timeGenerated = Clock.System.now()
+            )
 
         fun <T> failure(message: String, defaultResult: T): Envelope<T> =
             Envelope(result = defaultResult, errorMessage = message, timeGenerated = Clock.System.now())

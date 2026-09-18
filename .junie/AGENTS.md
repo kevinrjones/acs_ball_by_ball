@@ -40,8 +40,7 @@ data class OidcConfiguration(
 ``` 
 
 - When building DSLs prefer the use of context receivers to make the DSLs easier to construct and read
-- When creating errors prefer to sealed classes and sealed interfaces for the error hierarchy
-- Prefer sealed interfaces over sealed classes where possible
+- When creating errors prefer a sealed class hierarchy (e.g. `sealed class Error(val message: String)`) matching the pattern in `acs-api`, providing a common `message` property across all domain and validation errors
 - Prefer to use the type system where possible, for example use **Tiny Types** in thd code where you can rather than
   scattering say 'Int' or 'String' types throughout the code
 - Use these tiny types as a validation mechanism
@@ -112,6 +111,73 @@ Each feature slice is structured into:
 2. **Shared Infrastructure & Core**: Cross-cutting concerns that are shared across features (such as server bootstrap, database connection pooling/configuration, security/JWT verification plugins, common HTTP helpers, and shared serialization models like `Envelope`) live in top-level shared packages (e.g. `bootstrap`, `config`, or `bb-shared`).
 3. **Encapsulated Dependencies**: Features define their dependencies (such as repository interfaces) in their `domain` layer and implement them in their `data` layer.
 4. **Independent Evolution**: Adding, modifying, or removing a feature touches only that feature's directory, avoiding cascading modifications across unrelated domains.
+
+## Tiny Types (Value Classes) and Boundary Validation
+
+The codebase enforces **Tiny Types** using Kotlin inline value classes (`@JvmInline value class`) combined with functional boundary validation via **Arrow** (`Either`, `Raise`, and `zipOrAccumulate`).
+
+### Core Principles
+1. **Zero-Allocation Strong Typing**: Domain concepts that wrap primitives (such as IDs, limits, codes, seasons, and user identifiers) must be defined as `@JvmInline value class` (e.g. `Limit`, `MatchKey`, `SourceMatchId`, `MatchType`, `Season`, `UserId`). On the JVM they compile to raw primitives, incurring zero runtime object allocation overhead.
+2. **Serialization Transparency**: Value classes annotated with `@Serializable` serialize directly as their underlying primitive values in `kotlinx.serialization`. JSON contracts on the wire remain standard primitives (numbers, strings) for seamless client compatibility.
+3. **Encapsulated Construction & Invariants**:
+   - Constructors should be `private` to prevent unvalidated instantiation.
+   - Companion `invoke` operators with Arrow `Raise`:
+     ```kotlin
+     context(raise: Raise<LimitError>)
+     operator fun invoke(value: String?): Limit
+     ```
+   - Factory methods returning Arrow `Either`:
+     ```kotlin
+     fun of(value: Int): Either<LimitError, Limit> = either { invoke(value) }
+     fun fromRaw(value: String?): Either<LimitError, Limit> = either { invoke(value) }
+     ```
+   - Validated internal factory methods (`from`) for trusted internal mappings (such as jOOQ SQL record mapping):
+     ```kotlin
+     fun from(value: Int): Limit {
+         require(value in MIN_LIMIT..MAX_LIMIT) { "limit must be between $MIN_LIMIT and $MAX_LIMIT" }
+         return Limit(value)
+     }
+     ```
+
+### Boundary Validation at Presentation Layer
+1. **Validate at the Edge**: Untrusted HTTP request parameters (query parameters, path segments, request headers) must be parsed and validated at the **presentation boundary** (Ktor route handlers) before invoking domain services or repositories.
+2. **Arrow Raise DSL & `fold`**: Use Arrow's `fold` or `either` blocks at the route entry point:
+   ```kotlin
+   get("/matches") {
+       fold(
+           block = { Limit(call.request.queryParameters["limit"]) },
+           recover = { error -> call.respondBadRequest(error.message) },
+           transform = { limit ->
+               val matches = matchService.recentMatches(limit)
+               call.respondOk(RecentMatchesResponse(matches = matches))
+           }
+       )
+   }
+   ```
+3. **Multi-Parameter Accumulation (`zipOrAccumulate`)**: When an endpoint requires validating multiple parameters, use `zipOrAccumulate` to aggregate all errors into a `NonEmptyList<Error>` so clients receive complete feedback on all invalid fields in a single response:
+   ```kotlin
+   fold(
+       block = {
+           zipOrAccumulate(
+               { Limit(call.request.queryParameters["limit"]) },
+               { MatchType(call.request.queryParameters["matchType"]) }
+           ) { limit, matchType -> Pair(limit, matchType) }
+       },
+       recover = { errors -> call.respondBadRequest(errors) },
+       transform = { (limit, matchType) -> ... }
+   )
+   ```
+4. **Structured Error Hierarchy**: Domain errors extend a sealed class matching `acs-api`:
+   ```kotlin
+   @Serializable
+   sealed class Error(val message: String)
+
+   class LimitError(message: String, val limit: String? = null) : Error(message)
+   class MatchTypeError(message: String, val matchType: String? = null) : Error(message)
+   class DatabaseError(val stackTrace: String, message: String) : Error(message)
+   ```
+   All domain, validation, and persistence errors inherit from `Error(message)` so they share a common `message` property and can be formatted and logged uniformly.
+5. **Pure Domain Services**: Domain use cases, services, and repositories accept only validated tiny types (`Limit`, `MatchKey`), ensuring illegal states are completely unrepresentable inside the core business logic.
 
 ## Testing Strategies
 

@@ -27,6 +27,7 @@ dependencies {
     implementation(libs.kotlin.coroutines)
     implementation(libs.kotlin.reflect)
     implementation(libs.kotlinx.serialization)
+    implementation(libs.arrow.core)
     implementation(libs.hikari.cp)
 }
 

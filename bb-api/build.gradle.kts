@@ -12,6 +12,7 @@ version = "0.1.0"
 dependencies {
     implementation(project(":bb-shared"))
 
+    implementation(libs.arrow.core)
     implementation(libs.ktor.server.call.logging)
     implementation(libs.ktor.server.config.yaml)
     implementation(libs.ktor.server.content.negotiation)

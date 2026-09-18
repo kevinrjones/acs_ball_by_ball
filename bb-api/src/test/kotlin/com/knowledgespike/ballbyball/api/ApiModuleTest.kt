@@ -7,6 +7,7 @@ import com.knowledgespike.ballbyball.api.bootstrap.moduleWithDependencies
 import com.knowledgespike.ballbyball.api.feature.health.domain.DatabaseHealth
 import com.knowledgespike.ballbyball.api.feature.matches.domain.repository.MatchRepository
 import com.knowledgespike.ballbyball.contracts.MatchSummary
+import com.knowledgespike.ballbyball.types.values.Limit
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
@@ -114,7 +115,7 @@ class ApiModuleTest {
     fun `matches serializes repository results with machine token`() = testApplication {
         application {
             moduleWithDependencies(
-                FakeMatchRepository(matches = listOf(MatchSummary(1, 10, "match.json", "TEST", "2026"))),
+                FakeMatchRepository(matches = listOf(MatchSummary.of(1, 10, "match.json", "TEST", "2026"))),
                 FakeDatabaseHealth(healthy = true),
                 jwtVerifier = testVerifier
             )
@@ -199,7 +200,7 @@ class ApiModuleTest {
     fun `matches serializes repository results with machine token having acs-bbb audience and bbb api read scope`() = testApplication {
         application {
             moduleWithDependencies(
-                FakeMatchRepository(matches = listOf(MatchSummary(1, 10, "match.json", "TEST", "2026"))),
+                FakeMatchRepository(matches = listOf(MatchSummary.of(1, 10, "match.json", "TEST", "2026"))),
                 FakeDatabaseHealth(healthy = true),
                 jwtVerifier = testVerifier
             )
@@ -230,7 +231,7 @@ class ApiModuleTest {
     private data class FakeMatchRepository(
         val matches: List<MatchSummary> = emptyList()
     ) : MatchRepository {
-        override suspend fun recentMatches(limit: Int): List<MatchSummary> = matches.take(limit)
+        override suspend fun recentMatches(limit: Limit): List<MatchSummary> = matches.take(limit.value)
     }
 
     private data class FakeDatabaseHealth(val healthy: Boolean) : DatabaseHealth {

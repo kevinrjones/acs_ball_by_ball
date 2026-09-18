@@ -6,6 +6,7 @@ import com.auth0.jwt.interfaces.JWTVerifier
 import com.auth0.jwt.interfaces.Payload
 import com.knowledgespike.ballbyball.api.config.JwtSettings
 import com.knowledgespike.ballbyball.contracts.Envelope
+import com.knowledgespike.ballbyball.types.values.UserId
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
@@ -50,11 +51,20 @@ val UserAuthorizationPlugin = createRouteScopedPlugin("UserAuthorizationPlugin")
  * Domain principal representing an authenticated human user with verified identity claims.
  */
 data class UserPrincipal(
-    val id: String,
+    val id: UserId,
     val name: String? = null,
     val email: String? = null,
     val roles: List<String> = emptyList()
 ) {
+    companion object {
+        fun of(
+            id: String,
+            name: String? = null,
+            email: String? = null,
+            roles: List<String> = emptyList()
+        ): UserPrincipal = UserPrincipal(UserId.from(id), name, email, roles)
+    }
+
     fun hasRole(role: String): Boolean = roles.any { it.equals(role, ignoreCase = true) }
 }
 
@@ -143,7 +153,7 @@ fun JWTPrincipal.toUserPrincipal(): UserPrincipal? {
     val roles = payload.extractStringOrListClaims("role", "roles")
 
     return UserPrincipal(
-        id = sub,
+        id = UserId.from(sub),
         name = name,
         email = email,
         roles = roles

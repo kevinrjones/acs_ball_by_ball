@@ -47,7 +47,7 @@ class WebModuleTest {
                     respond(
                         content = Json.encodeToString(
                             Envelope.success(
-                                RecentMatchesResponse(listOf(MatchSummary(1, 10, "match.json", "TEST", "2026")))
+                                RecentMatchesResponse(listOf(MatchSummary.of(1, 10, "match.json", "TEST", "2026")))
                             )
                         ),
                         status = HttpStatusCode.OK,
