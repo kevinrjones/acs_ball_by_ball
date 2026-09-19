@@ -1,8 +1,8 @@
 .git
 .gradle
 .idea
-build
-**/build
+**/build/**
+!**/build/install/**
 *.log
 .DS_Store
 .env
