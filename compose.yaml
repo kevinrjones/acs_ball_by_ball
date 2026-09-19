@@ -26,7 +26,7 @@ services:
     container_name: ballbyball-api
     build:
       context: .
-      dockerfile: bb-api/Dockerfile
+      dockerfile: bbb-api/Dockerfile
       target: final
     restart: unless-stopped
     ports:
@@ -47,7 +47,7 @@ services:
     container_name: ballbyball-web
     build:
       context: .
-      dockerfile: bb-web/Dockerfile
+      dockerfile: bbb-web/Dockerfile
       target: final
     restart: unless-stopped
     ports:
@@ -65,7 +65,7 @@ services:
     container_name: ballbyball-update-database
     build:
       context: .
-      dockerfile: bb-update-database/Dockerfile
+      dockerfile: bbb-update-database/Dockerfile
       target: final
     environment:
       DB_JDBC_URL: jdbc:mariadb://mariadb:3306/${DB_NAME:-acs_ball_by_ball}

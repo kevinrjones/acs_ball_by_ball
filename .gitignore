@@ -119,8 +119,8 @@ gradle-app.setting
 # gradle/wrapper/gradle-wrapper.properties
 
 temp/**
-bb-update-database/sql/**
-bb-update-database/csv/**
+bbb-update-database/sql/**
+bbb-update-database/csv/**
 .env
 
 design

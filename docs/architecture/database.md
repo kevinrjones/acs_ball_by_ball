@@ -3,7 +3,7 @@
 ## Scope
 
 This document describes the warehouse schema created by the dialect-specific
-migrations in `bb-update-database/migrations/{mysql,postgres,sqlite}`.
+migrations in `bbb-update-database/migrations/{mysql,postgres,sqlite}`.
 
 The MySQL and PostgreSQL migrations create the dimensional warehouse in the
 `cricsheet` database/schema. SQLite stores the same tables in its `main`
@@ -501,7 +501,7 @@ contain the warehouse keys allocated by the output adapter.
 
 The parser depends on the dialect-neutral `OutputAdapter` contract. Adapter
 implementations are grouped under
-`bb-update-database/src/main/kotlin/com/knowledgespike/ballbyball/parse/database/adapter`:
+`bbb-update-database/src/main/kotlin/com/knowledgespike/ballbyball/parse/database/adapter`:
 
 | Package | Responsibility |
 | --- | --- |
@@ -540,6 +540,6 @@ and a transaction around generated rows.
 The authoritative DDL for this document is the matching
 `2__initial_warehouse.sql` in the selected dialect directory:
 
-- `bb-update-database/migrations/mysql/2__initial_warehouse.sql`
-- `bb-update-database/migrations/postgres/2__initial_warehouse.sql`
-- `bb-update-database/migrations/sqlite/2__initial_warehouse.sql`
+- `bbb-update-database/migrations/mysql/2__initial_warehouse.sql`
+- `bbb-update-database/migrations/postgres/2__initial_warehouse.sql`
+- `bbb-update-database/migrations/sqlite/2__initial_warehouse.sql`

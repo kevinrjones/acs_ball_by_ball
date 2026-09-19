@@ -21,10 +21,10 @@ dependencyResolutionManagement {
 rootProject.name = "BallByBall"
 
 listOf(
-    "bb-update-database",
-    "bb-shared",
-    "bb-api",
-    "bb-web",
+    "bbb-update-database",
+    "bbb-shared",
+    "bbb-api",
+    "bbb-web",
 ).forEach { projectName ->
     if (rootDir.resolve(projectName).isDirectory) {
         include(projectName)

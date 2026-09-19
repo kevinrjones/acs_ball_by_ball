@@ -1,5 +1,71 @@
 # Project Memory
 
+## Task: Rename bb-shared to bbb-shared
+
+### Title
+
+Rename bb-shared module to bbb-shared
+
+### Date/time completed
+
+2026-09-19 09:38
+
+### What was shipped
+
+- Renamed `bb-shared` directory to `bbb-shared`.
+- Updated `settings.gradle.kts` module inclusion list.
+- Updated `bbb-api/build.gradle.kts`, `bbb-web/build.gradle.kts`, and `bbb-update-database/build.gradle.kts` project dependencies to reference `:bbb-shared`.
+- Updated Dockerfiles across all three services (`bbb-api/Dockerfile`, `bbb-web/Dockerfile`, `bbb-update-database/Dockerfile`) to copy `bbb-shared/`.
+- Updated GitHub Actions CI/CD workflows (`build-bbb-api.yml`, `build-bbb-web.yml`, `build-bbb-update-database.yml`) path filters.
+- Updated documentation and guidelines (`docs/architecture/applications.md`, `.junie/AGENTS.md`).
+
+### Key decisions
+
+- Aligned all subprojects under consistent `bbb-` naming prefix (`bbb-shared`, `bbb-api`, `bbb-web`, `bbb-update-database`).
+
+### Gotchas
+
+- When renaming Gradle subprojects, ensure Docker build contexts and multi-stage COPY paths are updated alongside `settings.gradle.kts` and inter-project dependencies.
+
+### Test coverage areas
+
+- `./gradlew clean check --no-daemon`: Verified multi-module compilation and test suite execution.
+
+## Task: Rename Projects from bb-XXX to bbb-XXX
+
+### Title
+
+Rename projects from bb-XXX to bbb-XXX (bbb-api, bbb-web, bbb-update-database)
+
+### Date/time completed
+
+2026-09-19 09:05
+
+### What was shipped
+
+- Renamed the three subprojects from `bb-api`, `bb-web`, and `bb-update-database` to `bbb-api`, `bbb-web`, and `bbb-update-database`.
+- Updated `settings.gradle.kts` module inclusion list.
+- Updated all Dockerfiles (`Dockerfile` and `Dockerfile.ci` for each of the three subprojects) with new paths and binary entrypoints.
+- Updated `compose.yaml` build paths and container configurations.
+- Updated GitHub Actions CI/CD workflows (`build-bbb-api.yml`, `build-bbb-web.yml`, `build-bbb-update-database.yml`).
+- Updated `.gitignore` and `.idea/sqldialects.xml`.
+- Updated source code references for `.env` lookup paths, HikariCP pool names, and output adapter comments.
+- Updated database setup scripts and runbook documentation (`README-DEV.md`, `SETUP-DB.md`, `applications.md`, `database.md`).
+
+### Key decisions
+
+- Retained `bb-shared` module name as requested (renaming the three `bb-XXX` services).
+- Maintained consistent `bbb-` naming across Gradle tasks, Docker build definitions, CI workflow triggers/artifacts, and documentation.
+
+### Gotchas
+
+- When subprojects are renamed, Gradle configuration cache must recompute and installDist distribution paths change from `build/install/bb-XXX` to `build/install/bbb-XXX`.
+
+### Test coverage areas
+
+- `./gradlew clean check --no-daemon`: Ran all multi-module checks and tests (JVM and Angular/Karma).
+- `./gradlew :bbb-api:installDist :bbb-web:installDist :bbb-update-database:installDist --no-daemon`: Verified distribution packaging and binary generation for all three projects.
+
 ## What was shipped
 
 - Gated the match scorecard links on potted match score cards on the home page so they are strictly visible only if the user is authenticated.

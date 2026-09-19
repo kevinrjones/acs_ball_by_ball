@@ -188,7 +188,7 @@ migrate_mariadb() {
             FLYWAY_URL="jdbc:mariadb://127.0.0.1:$MARIADB_PORT/$MARIADB_DATABASE" \
             FLYWAY_USER="$MARIADB_USER" \
             FLYWAY_PASSWORD="$MARIADB_PASSWORD" \
-            "$GRADLEW" :bb-update-database:flywayMigrate --no-daemon
+            "$GRADLEW" :bbb-update-database:flywayMigrate --no-daemon
     )
 }
 
@@ -199,7 +199,7 @@ migrate_postgres() {
             FLYWAY_URL="jdbc:postgresql://127.0.0.1:$POSTGRES_PORT/$POSTGRES_DATABASE" \
             FLYWAY_USER="$POSTGRES_USER" \
             FLYWAY_PASSWORD="$POSTGRES_PASSWORD" \
-            "$GRADLEW" :bb-update-database:flywayMigrate --no-daemon
+            "$GRADLEW" :bbb-update-database:flywayMigrate --no-daemon
     )
 }
 
@@ -239,7 +239,7 @@ load_database() {
     printf 'Loading Ball-by-Ball data into %s\n' "$database_name"
     (
         cd "$ROOT_DIR"
-        "$GRADLEW" :bb-update-database:run --no-daemon --args="$args"
+        "$GRADLEW" :bbb-update-database:run --no-daemon --args="$args"
     )
 }
 

@@ -5,12 +5,12 @@
 The repository contains two Ktor applications alongside the existing data
 loader:
 
-| Module   | Responsibility                                                                | Default port |
-|----------|-------------------------------------------------------------------------------|--------------|
-| `bb-api` | Read warehouse data through JOOQ, verify JWT bearer tokens, expose REST API   | `8081`       |
-| `bb-web` | Host Angular SPA, handle OIDC BFF login/logout sessions, proxy secure requests| `9999`       |
+| Module    | Responsibility                                                                | Default port |
+|-----------|-------------------------------------------------------------------------------|--------------|
+| `bbb-api` | Read warehouse data through JOOQ, verify JWT bearer tokens, expose REST API   | `8081`       |
+| `bbb-web` | Host Angular SPA, handle OIDC BFF login/logout sessions, proxy secure requests| `9999`       |
 
-Both applications use the shared `bb-shared` module for serialized HTTP
+Both applications use the shared `bbb-shared` module for serialized HTTP
 contracts. Gradle module registration is kept in `settings.gradle.kts`, and all
 versions are declared in `gradle/libs.versions.toml`.
 
@@ -24,14 +24,14 @@ flowchart TD
         Interceptor[CSRF Interceptor]
     end
 
-    subgraph Web["bb-web :9999 (Ktor BFF)"]
+    subgraph Web["bbb-web :9999 (Ktor BFF)"]
         KBFF[kbff Auth & Proxy Routes]
         SessionCookie[Encrypted Session Cookie: bb_session]
         TokenService[DefaultTokenService]
         WebRoutes[Static Resources & SPA Shell]
     end
 
-    subgraph API["bb-api :8081 (Ktor REST)"]
+    subgraph API["bbb-api :8081 (Ktor REST)"]
         JWTVerifier[JWT Verifier - JWKS]
         ClaimsCheck{Claim Inspector}
         AliveRoute[GET /api/heartbeat/alive: Public]
@@ -66,12 +66,12 @@ flowchart TD
    - `/health`: Database liveness check.
    - `/api/heartbeat/alive`: Unauthenticated heartbeat returning `{ "message": "Heartbeat: Alive" }`.
 2. **Tier 2 (Machine / BFF Authenticated)**:
-   - `/api/matches`: Protected with `auth-jwt`. Accessible with a valid client-credentials machine token (used by `bb-web` via `DefaultTokenService` when an anonymous visitor browses recent matches) or a logged-in user token.
+   - `/api/matches`: Protected with `auth-jwt`. Accessible with a valid client-credentials machine token (used by `bbb-web` via `DefaultTokenService` when an anonymous visitor browses recent matches) or a logged-in user token.
 3. **Tier 3 (Human User Authenticated)**:
    - `/api/user/profile`: Protected with `auth-jwt`. Requires verified human user subject claim and assigned user roles. Rejects machine-only tokens with `403 Forbidden` and unauthenticated calls with `401 Unauthorized`.
 
 ### Backend-For-Frontend (BFF) Pattern with `kbff`
-`bb-web` implements the Backend-For-Frontend security pattern using `com.knowledgespike:kbff`:
+`bbb-web` implements the Backend-For-Frontend security pattern using `com.knowledgespike:kbff`:
 - **No tokens in browser storage**: Access and refresh tokens are kept server-side in encrypted `bb_session` cookies with `HttpOnly`, `SameSite=Lax`, and `Secure` attributes.
 - **Login (`/bff/login`)**: Generates PKCE code verifier and challenge, redirecting the browser to the Identity Server authorization endpoint.
 - **Callback (`/signin-oidc`)**: Validates the authorization code, exchanges it for access/refresh tokens, and establishes the encrypted session cookie.
@@ -82,7 +82,7 @@ flowchart TD
 
 ## Architecture: Feature Slices
 
-`bb-api` is structured using **Feature Slices** (following the pattern established in `acs-api`). Instead of organizing code by global horizontal technical layers, each distinct feature has its own self-contained directory containing everything related to that feature that is not shared across features:
+`bbb-api` is structured using **Feature Slices** (following the pattern established in `acs-api`). Instead of organizing code by global horizontal technical layers, each distinct feature has its own self-contained directory containing everything related to that feature that is not shared across features:
 
 ```mermaid
 flowchart TD
@@ -94,7 +94,7 @@ flowchart TD
         Data --> Domain
     end
     Bootstrap[Shared Bootstrap & Config] --> FeatureSlice
-    SharedContracts[bb-shared Envelope & Contracts] --> FeatureSlice
+    SharedContracts[bbb-shared Envelope & Contracts] --> FeatureSlice
 ```
 
 Each feature slice contains:
@@ -102,7 +102,7 @@ Each feature slice contains:
 - `domain`: Feature services/use cases, domain models, and repository interfaces.
 - `data`: jOOQ repository implementations and database queries.
 
-### Feature Layout (`bb-api`)
+### Feature Layout (`bbb-api`)
 
 | Feature | Package | Presentation | Domain | Data |
 |---|---|---|---|---|
@@ -170,7 +170,7 @@ Ktor's `singlePageApplication` configurator.
 
 ### Shared JSON contracts
 
-`bb-shared/src/main/kotlin/com/knowledgespike/ballbyball/contracts/ApiContracts.kt`
+`bbb-shared/src/main/kotlin/com/knowledgespike/ballbyball/contracts/ApiContracts.kt`
 and `Envelope.kt` define the JSON classes exchanged between services and clients.
 All API responses are wrapped in a generic `Envelope<T>` contract, which provides:
 - `result: T`: The payload on successful operations (or empty/default on failures).
@@ -182,12 +182,12 @@ The module uses `kotlinx.serialization` and currently defines `Envelope`, `ApiHe
 adapter consume these same classes; database rows and HTML remain application-specific representations.
 
 When a new endpoint is added, define its request and response/error contracts in
-`bb-shared` first, validate the request in the API application layer, and keep
+`bbb-shared` first, validate the request in the API application layer, and keep
 the route limited to transport translation.
 
-## `bb-api`
+## `bbb-api`
 
-`bb-api` is composed of four self-contained feature slices (`heartbeat`, `health`, `matches`, and `user`), backed by shared bootstrap and configuration:
+`bbb-api` is composed of four self-contained feature slices (`heartbeat`, `health`, `matches`, and `user`), backed by shared bootstrap and configuration:
 - `feature.heartbeat`: Exposes public liveness heartbeat (`GET /api/heartbeat/alive`).
 - `feature.health`: Contains `DatabaseHealth` domain interface, `JooqDatabaseHealth` repository, and `HealthRoute` (`GET /health`).
 - `feature.matches`: Contains `MatchRepository` domain interface, `MatchService` use-case handler, `JooqMatchRepository` data adapter, and `MatchesRoute` (`GET /api/matches`).
@@ -225,16 +225,16 @@ export DB_USER=acs_ball_by_ball
 export DB_PASSWORD='acs_ball_by_ball-local-password'
 ```
 
-## `bb-web`
+## `bbb-web`
 
-`bb-web` owns the static browser entry point and an application `MatchApiClient`
+`bbb-web` owns the static browser entry point and an application `MatchApiClient`
 port. Its inbound `/matches` route asks the port for shared `MatchSummary`
 values, passes them to the pure HTML renderer, and returns `text/html` for HTMX.
 The production `KtorMatchApiClient` has bounded request, connection, and socket
 timeouts. API status failures, connection failures, timeouts, and malformed JSON
 are mapped to `502 Bad Gateway`; cancellation is preserved. The client is
 closed with the application lifecycle in the bootstrap module and can be
-replaced in tests without starting `bb-api`.
+replaced in tests without starting `bbb-api`.
 
 | Variable       | Default                 | Purpose                     |
 |----------------|-------------------------|-----------------------------|
@@ -243,8 +243,8 @@ replaced in tests without starting `bb-api`.
 
 Both applications use `application.yaml` and Ktor's YAML configuration module.
 Environment substitutions use the `${ENV:default}` form. The files are
-`bb-api/src/main/resources/application.yaml` and
-`bb-web/src/main/resources/application.yaml`.
+`bbb-api/src/main/resources/application.yaml` and
+`bbb-web/src/main/resources/application.yaml`.
 
 ## Running locally
 
@@ -254,14 +254,14 @@ Start the API with a migrated database available:
 DB_JDBC_URL='jdbc:mariadb://localhost:3307/acs_ball_by_ball' \
 DB_USER=acs_ball_by_ball \
 DB_PASSWORD='acs_ball_by_ball-local-password' \
-./gradlew :bb-api:run --no-daemon
+./gradlew :bbb-api:run --no-daemon
 ```
 
 In another shell, start the web application:
 
 ```bash
 API_BASE_URL=http://localhost:8081 \
-./gradlew :bb-web:run --no-daemon
+./gradlew :bbb-web:run --no-daemon
 ```
 
 Open `http://localhost:9999`, select **Load recent matches**, and verify that
@@ -279,5 +279,5 @@ application validation and HTML rendering can be tested without Ktor. Run both
 suites with:
 
 ```bash
-./gradlew :bb-api:test :bb-web:test --no-daemon
+./gradlew :bbb-api:test :bbb-web:test --no-daemon
 ```

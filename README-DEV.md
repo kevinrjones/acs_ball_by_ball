@@ -40,19 +40,19 @@ Run the complete verification suite:
 Run the database-loader tests only:
 
 ```bash
-./gradlew :bb-update-database:test --no-daemon
+./gradlew :bbb-update-database:test --no-daemon
 ```
 
 Compile the loader without running it:
 
 ```bash
-./gradlew :bb-update-database:compileKotlin --no-daemon
+./gradlew :bbb-update-database:compileKotlin --no-daemon
 ```
 
 Display the parser command-line help:
 
 ```bash
-./gradlew :bb-update-database:run --no-daemon --args="-h"
+./gradlew :bbb-update-database:run --no-daemon --args="-h"
 ```
 
 Check dependency updates and refresh the version catalog when required:
@@ -65,7 +65,7 @@ Check dependency updates and refresh the version catalog when required:
 ## Database schema
 
 The database schema is created by the Flyway migrations in the dialect-specific
-directories under `bb-update-database/migrations`: `mysql`, `postgres`, and
+directories under `bbb-update-database/migrations`: `mysql`, `postgres`, and
 `sqlite`. MySQL remains the default. Select another directory with
 `FLYWAY_DATABASE` (or `-Pmigration.database`) and configure the connection through
 environment variables rather than putting credentials in a command history.
@@ -74,7 +74,7 @@ environment variables rather than putting credentials in a command history.
 export FLYWAY_URL="jdbc:mariadb://${DB_HOST}:${DB_PORT}/${DB_NAME}"
 export FLYWAY_USER="$DB_USER"
 export FLYWAY_PASSWORD="$DB_PASSWORD"
-./gradlew :bb-update-database:flywayMigrate --no-daemon
+./gradlew :bbb-update-database:flywayMigrate --no-daemon
 ```
 
 For PostgreSQL, use the PostgreSQL JDBC URL and migration directory:
@@ -84,7 +84,7 @@ export FLYWAY_DATABASE=postgres
 export FLYWAY_URL="jdbc:postgresql://localhost:5432/cricsheet"
 export FLYWAY_USER=cricsheet
 export FLYWAY_PASSWORD='change-me'
-./gradlew :bb-update-database:flywayMigrate --no-daemon
+./gradlew :bbb-update-database:flywayMigrate --no-daemon
 ```
 
 For SQLite, point the SQLite JDBC URL at a database file. SQLite has no
@@ -95,7 +95,7 @@ transaction so the first migration statement can enable foreign keys:
 ```bash
 export FLYWAY_DATABASE=sqlite
 export FLYWAY_URL="jdbc:sqlite:/path/to/cricsheet.db"
-./gradlew :bb-update-database:flywayMigrate --no-daemon \
+./gradlew :bbb-update-database:flywayMigrate --no-daemon \
   -Pflyway.executeInTransaction=false
 ```
 
@@ -115,7 +115,7 @@ mariadb --host="$DB_HOST" --port="$DB_PORT" \
 All parser runs use the Gradle application task:
 
 ```bash
-./gradlew :bb-update-database:run --no-daemon --args="<options>"
+./gradlew :bbb-update-database:run --no-daemon --args="<options>"
 ```
 
 | Option                     | Required            | Description                                                                   |
@@ -137,7 +137,7 @@ All parser runs use the Gradle application task:
 Run the parser with `CSV` output and a destination directory:
 
 ```bash
-./gradlew :bb-update-database:run --no-daemon \
+./gradlew :bbb-update-database:run --no-daemon \
   --args="--outputType CSV --baseDirectory $CRICSHEET_DIR --playerRegistry $PLAYER_REGISTRY --csvDir $CSV_DIR"
 ```
 
@@ -205,7 +205,7 @@ handling explicitly before loading it into an existing warehouse).
 Write an executable MariaDB SQL script instead of CSV:
 
 ```bash
-./gradlew :bb-update-database:run --no-daemon \
+./gradlew :bbb-update-database:run --no-daemon \
   --args="--outputType SQL_FILE --baseDirectory $CRICSHEET_DIR --playerRegistry $PLAYER_REGISTRY --outputFile $SQL_FILE"
 ```
 
@@ -230,7 +230,7 @@ also use dialect-specific conflict handling as a final safeguard.
 Generate a PostgreSQL script by selecting the PostgreSQL adapter:
 
 ```bash
-./gradlew :bb-update-database:run --no-daemon \
+./gradlew :bbb-update-database:run --no-daemon \
   --args="--outputType SQL_FILE --database postgres --baseDirectory $CRICSHEET_DIR --playerRegistry $PLAYER_REGISTRY --outputFile $SQL_FILE"
 ```
 
@@ -246,7 +246,7 @@ psql --host=localhost --port=5432 --username="$DB_USER" --dbname=cricsheet \
 Generate and load a SQLite script:
 
 ```bash
-./gradlew :bb-update-database:run --no-daemon \
+./gradlew :bbb-update-database:run --no-daemon \
   --args="--outputType SQL_FILE --database sqlite --baseDirectory $CRICSHEET_DIR --playerRegistry $PLAYER_REGISTRY --outputFile $SQL_FILE"
 sqlite3 /path/to/cricsheet.db < "$SQL_FILE"
 ```
@@ -255,21 +255,21 @@ SQLite scripts enable foreign keys, use `INTEGER PRIMARY KEY AUTOINCREMENT`,
 and start a SQLite transaction after the schema has been recreated.
 
 The SQL-file adapters are implemented in the dialect-specific packages under
-`bb-update-database/src/main/kotlin/com/knowledgespike/ballbyball/parse/database/adapter`.
+`bbb-update-database/src/main/kotlin/com/knowledgespike/ballbyball/parse/database/adapter`.
 The direct JDBC adapters are selected automatically from the `jdbc:mariadb:`,
 `jdbc:mysql:`, `jdbc:postgresql:`, or `jdbc:sqlite:` connection prefix.
 
 Write directly to MariaDB through the JDBC adapter:
 
 ```bash
-./gradlew :bb-update-database:run --no-daemon \
+./gradlew :bbb-update-database:run --no-daemon \
   --args="--outputType DATABASE --baseDirectory $CRICSHEET_DIR --playerRegistry $PLAYER_REGISTRY --connectionString jdbc:mariadb://${DB_HOST}:${DB_PORT}/${DB_NAME} --userName $DB_USER --password $DB_PASSWORD"
 ```
 
 Write directly to PostgreSQL through the JDBC adapter:
 
 ```bash
-./gradlew :bb-update-database:run --no-daemon \
+./gradlew :bbb-update-database:run --no-daemon \
   --args="--outputType DATABASE --baseDirectory $CRICSHEET_DIR --playerRegistry $PLAYER_REGISTRY --connectionString jdbc:postgresql://localhost:5432/cricsheet --userName $DB_USER --password $DB_PASSWORD"
 ```
 
@@ -277,7 +277,7 @@ Write directly to SQLite through the JDBC adapter. The SQLite JDBC URL should
 point to the migrated database file; username and password are not required:
 
 ```bash
-./gradlew :bb-update-database:run --no-daemon \
+./gradlew :bbb-update-database:run --no-daemon \
   --args="--outputType DATABASE --baseDirectory $CRICSHEET_DIR --playerRegistry $PLAYER_REGISTRY --connectionString jdbc:sqlite:/path/to/cricsheet.db"
 ```
 
@@ -299,14 +299,14 @@ Run the JOOQ-backed API against a migrated local database:
 DB_JDBC_URL='jdbc:mariadb://localhost:3307/acs_ball_by_ball' \
 DB_USER=acs_ball_by_ball \
 DB_PASSWORD='acs_ball_by_ball-local-password' \
-./gradlew :bb-api:run --no-daemon
+./gradlew :bbb-api:run --no-daemon
 ```
 
 Run the static HTMX web application in a second shell:
 
 ```bash
 API_BASE_URL=http://localhost:8081 \
-./gradlew :bb-web:run --no-daemon
+./gradlew :bbb-web:run --no-daemon
 ```
 
 The browser-facing application listens on port `8080` and the API listens on
@@ -323,9 +323,9 @@ Gateway`. The complete database container setup remains in
 
 A full development environment is available using Docker Compose in `compose.yaml`. This brings up:
 - **MariaDB 11.4** database configured with database `acs_ball_by_ball`, user `ballbyball`, password `p4ssw0rd`, and auto-initializes relational and dimensional warehouse schemas from `docker/mariadb/init/`.
-- **bb-api** listening on port `8081` connected to the database.
-- **bb-web** listening on port `8080` connected to `bb-api`.
-- **bb-update-database** container runnable on demand with the `tools` profile.
+- **bbb-api** listening on port `8081` connected to the database.
+- **bbb-web** listening on port `8080` connected to `bbb-api`.
+- **bbb-update-database** container runnable on demand with the `tools` profile.
 
 ### Start the development stack (MariaDB, API, Web)
 
@@ -335,7 +335,7 @@ docker compose up -d --build
 
 Access the web interface at `http://localhost:8080` and the API at `http://localhost:8081`.
 
-### Run database updates with bb-update-database in Docker
+### Run database updates with bbb-update-database in Docker
 
 Place Cricsheet JSON/CSV files in `./data` (or set `DATA_DIR` in `.env`), then run:
 
@@ -362,9 +362,9 @@ docker compose down -v
 Workflows are located in `.github/workflows/`:
 
 - **CI (`ci.yml`)**: Runs `./gradlew clean check` on all pull requests and pushes to `main`.
-- **BB-API (`build-bb-api.yml`)**: Builds and checks `bb-api`, creates install distribution artifacts, and on version tags (`v*.*.*`) builds and pushes multi-architecture (`linux/amd64`, `linux/arm64`) Docker images to Docker Hub.
-- **BB-Web (`build-bb-web.yml`)**: Builds and checks `bb-web`, creates install distribution artifacts, and pushes Docker images on version tags.
-- **BB-Update-Database (`build-bb-update-database.yml`)**: Builds and checks `bb-update-database`, creates distribution artifacts, and pushes Docker images on version tags.
+- **BBB-API (`build-bbb-api.yml`)**: Builds and checks `bbb-api`, creates install distribution artifacts, and on version tags (`v*.*.*`) builds and pushes multi-architecture (`linux/amd64`, `linux/arm64`) Docker images to Docker Hub.
+- **BBB-Web (`build-bbb-web.yml`)**: Builds and checks `bbb-web`, creates install distribution artifacts, and pushes Docker images on version tags.
+- **BBB-Update-Database (`build-bbb-update-database.yml`)**: Builds and checks `bbb-update-database`, creates distribution artifacts, and pushes Docker images on version tags.
 - **Reusable Workflows & Actions**:
   - `reusable-gradle.yml` & `reusable-docker.yml`
   - Composite actions in `.github/workflows/actions/` (`setup-jdk`, `use-gradle`, `docker-push`)

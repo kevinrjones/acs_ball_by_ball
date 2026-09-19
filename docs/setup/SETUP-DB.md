@@ -232,7 +232,7 @@ FLYWAY_DATABASE=mysql \
 FLYWAY_URL=jdbc:mariadb://127.0.0.1:3307/cricsheet \
 FLYWAY_USER=cricsheet \
 FLYWAY_PASSWORD="$MARIADB_PASSWORD" \
-./gradlew :bb-update-database:flywayMigrate --no-daemon
+./gradlew :bbb-update-database:flywayMigrate --no-daemon
 ```
 
 PostgreSQL selects its own migration directory:
@@ -242,7 +242,7 @@ FLYWAY_DATABASE=postgres \
 FLYWAY_URL=jdbc:postgresql://127.0.0.1:5433/cricsheet \
 FLYWAY_USER=cricsheet \
 FLYWAY_PASSWORD="$POSTGRES_PASSWORD" \
-./gradlew :bb-update-database:flywayMigrate --no-daemon
+./gradlew :bbb-update-database:flywayMigrate --no-daemon
 ```
 
 Each target receives `1__initial_tables.sql` and the complete
@@ -258,7 +258,7 @@ output. It selects the adapter from the JDBC URL, so MariaDB uses the MariaDB
 adapter and PostgreSQL uses the PostgreSQL adapter:
 
 ```bash
-./gradlew :bb-update-database:run --no-daemon \
+./gradlew :bbb-update-database:run --no-daemon \
   --args="--outputType DATABASE \
     --baseDirectory $CRICSHEET_DIR \
     --playerRegistry $PLAYER_REGISTRY \
@@ -271,7 +271,7 @@ The PostgreSQL invocation is the same except for the PostgreSQL JDBC URL and
 password:
 
 ```bash
-./gradlew :bb-update-database:run --no-daemon \
+./gradlew :bbb-update-database:run --no-daemon \
   --args="--outputType DATABASE \
     --baseDirectory $CRICSHEET_DIR \
     --playerRegistry $PLAYER_REGISTRY \
@@ -364,5 +364,5 @@ overridden for any shared or non-disposable environment.
 - `README-DEV.md` — parser, adapter, migration, and output-mode reference.
 - `docs/architecture/database.md` — warehouse tables, relationships, grains,
   and loading order.
-- `bb-update-database/migrations/mysql` — MariaDB-compatible migrations.
-- `bb-update-database/migrations/postgres` — PostgreSQL migrations.
+- `bbb-update-database/migrations/mysql` — MariaDB-compatible migrations.
+- `bbb-update-database/migrations/postgres` — PostgreSQL migrations.

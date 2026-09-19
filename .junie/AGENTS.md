@@ -108,7 +108,7 @@ Each feature slice is structured into:
 
 ### Rules for Feature Slices
 1. **Feature Colocation**: Code that changes together stays together. All routes, services, and queries for a given feature are located inside its feature folder.
-2. **Shared Infrastructure & Core**: Cross-cutting concerns that are shared across features (such as server bootstrap, database connection pooling/configuration, security/JWT verification plugins, common HTTP helpers, and shared serialization models like `Envelope`) live in top-level shared packages (e.g. `bootstrap`, `config`, or `bb-shared`).
+2. **Shared Infrastructure & Core**: Cross-cutting concerns that are shared across features (such as server bootstrap, database connection pooling/configuration, security/JWT verification plugins, common HTTP helpers, and shared serialization models like `Envelope`) live in top-level shared packages (e.g. `bootstrap`, `config`, or `bbb-shared`).
 3. **Encapsulated Dependencies**: Features define their dependencies (such as repository interfaces) in their `domain` layer and implement them in their `data` layer.
 4. **Independent Evolution**: Adding, modifying, or removing a feature touches only that feature's directory, avoiding cascading modifications across unrelated domains.
 
@@ -316,13 +316,13 @@ For each sprint/task
 
 # Contributor navigation
 
-Read `docs/architecture/applications.md` before changing `bb-api`, `bb-web`,
-or their `bb-shared` JSON contracts. It is the architecture map for the
+Read `docs/architecture/applications.md` before changing `bbb-api`, `bbb-web`,
+or their `bbb-shared` JSON contracts. It is the architecture map for the
 feature slices, runtime flows, validation/error handling, and test seams.
 
 - Organize features into vertical slices (`feature.<feature_name>`) containing their presentation (routes), domain (use cases/repositories), and data (jOOQ persistence) layers.
-- Shared infrastructure (database connection pools, JWT security configuration, application bootstrap) belongs in shared packages (`config`, `bootstrap`) or `bb-shared`.
-- Define JSON request/response/error types in `bb-shared` with
+- Shared infrastructure (database connection pools, JWT security configuration, application bootstrap) belongs in shared packages (`config`, `bootstrap`) or `bbb-shared`.
+- Define JSON request/response/error types in `bbb-shared` with
   `kotlinx.serialization`.
 - Run `./gradlew clean check --no-daemon` after application changes.
 

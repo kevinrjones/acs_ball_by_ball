@@ -1,0 +1,24 @@
+# syntax=docker/dockerfile:1
+
+################################################################################
+# CI Dockerfile for bbb-update-database
+# Expects pre-built installDist artifacts in bbb-update-database/build/install/bbb-update-database
+################################################################################
+FROM eclipse-temurin:21-jre-alpine AS final
+
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
+    mkdir -p /opt/app/logging /opt/app/logs /data && \
+    chown -R appuser:appgroup /opt/app /data
+
+WORKDIR /opt/app
+
+COPY bbb-update-database/build/install/bbb-update-database /opt/app/
+COPY bbb-update-database/src/main/resources/logback.xml /opt/app/logging/logback.xml
+COPY bbb-update-database/migrations /opt/app/migrations
+
+RUN chown -R appuser:appgroup /opt/app
+
+USER appuser
+
+ENTRYPOINT ["/opt/app/bin/bbb-update-database"]
+CMD ["-h"]
