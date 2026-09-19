@@ -157,13 +157,6 @@ fun JWTPrincipal.toUserPrincipal(): UserPrincipal? {
 }
 
 /**
- * Inspects token claims to determine if the caller is an authenticated human user,
- * distinguishing them from a machine / client-credentials token.
- */
-fun isUserPrincipal(principal: JWTPrincipal): Boolean =
-    principal.toUserPrincipal() != null
-
-/**
  * Retrieves the cached UserPrincipal from call attributes if already validated by userProtected.
  */
 fun ApplicationCall.userPrincipal(): UserPrincipal? = attributes.getOrNull(UserPrincipalKey)

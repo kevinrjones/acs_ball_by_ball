@@ -202,6 +202,9 @@ class JooqMatchRepository(
     }
 
     companion object {
+        private val MATCH_DATE_FORMATTER: DateTimeFormatter =
+            DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH)
+
         fun calculateTeamScore(
             inningsList: List<org.jooq.Record>,
             ballsPerOver: Int
@@ -274,14 +277,12 @@ class JooqMatchRepository(
 
         fun formatDateText(dateText: String?, calendarDate: LocalDate?): String {
             if (calendarDate != null) {
-                val formatter = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH)
-                return calendarDate.format(formatter)
+                return calendarDate.format(MATCH_DATE_FORMATTER)
             }
             if (dateText.isNullOrBlank()) return "MISSING"
             val parsed = runCatching { LocalDate.parse(dateText.trim()) }.getOrNull()
             return if (parsed != null) {
-                val formatter = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH)
-                parsed.format(formatter)
+                parsed.format(MATCH_DATE_FORMATTER)
             } else {
                 dateText
             }

@@ -1,7 +1,6 @@
 package com.knowledgespike.ballbyball.api.feature.user.presentation
 
 import com.knowledgespike.ballbyball.api.bootstrap.AUTH_JWT
-import com.knowledgespike.ballbyball.api.bootstrap.requireUserPrincipal
 import com.knowledgespike.ballbyball.api.bootstrap.userPrincipal
 import com.knowledgespike.ballbyball.api.bootstrap.userProtected
 import com.knowledgespike.ballbyball.api.routing.respondOk
