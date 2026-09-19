@@ -23,7 +23,7 @@
         </encoder>
     </appender>
     <logger name="com.knowledgespike" level="trace"/>
-    <root level="trace">
+    <root level="debug">
         <appender-ref ref="STDOUT"/>
         <appender-ref ref="FILE-ROLLING"/>
         <appender-ref ref="LOGSTASH"/>
@@ -34,12 +34,4 @@
     <logger name="io.ktor.server.auth.Authentication" level="info"/>
     <logger name="io.ktor.server.plugins.statuspages.StatusPages" level="info"/>
     <logger name="io.ktor.server.plugins.callid.CallId " level="info"/>
-    <logger name="com.zaxxer.hikari.HikariConfig" level="info"/>
-    <logger name="com.zaxxer.hikari.pool.PoolBase" level="info"/>
-    <logger name="com.zaxxer.hikari.pool.HikariPool" level="info"/>
-    <logger name="com.zaxxer.hikari.util.DriverDataSource" level="info"/>
-    <logger name="com.zaxxer.hikari.HikariDataSource" level="info"/>
-    <logger name="org.mariadb" level="info"/>
-    <logger name="org.jooq.impl" level="info"/>
-    <logger name="org.jooq.tools.LoggerListener" level="debug"/>
 </configuration>

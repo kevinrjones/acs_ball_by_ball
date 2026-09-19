@@ -133,7 +133,7 @@
                     </span>
                 </div>
                 <div class="flex items-center gap-3">
-                    <span class="text-xs font-medium text-slate-500">10 Sept 2026</span>
+                    <span class="text-xs font-medium text-slate-500">{{ latestDateRange }}</span>
                     <button
                         (click)="loadRecentMatches()"
                         [disabled]="isLoading()"
@@ -174,20 +174,41 @@
                         @for (match of matches(); track match.matchKey) {
                             <article class="bg-white rounded-xl p-4 border border-slate-200/90 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
                                 <div class="flex items-center justify-between gap-3 text-xs mb-2">
-                                    <span class="font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">{{ match.matchType }}</span>
+                                    <span class="font-semibold px-2 py-0.5 rounded border" [ngClass]="getBadgeClass(match.format)">{{ match.competition || 'MISSING' }}</span>
                                     <div class="flex items-center gap-1.5 text-slate-400 group-hover:text-emerald-700 transition-colors">
-                                        <span class="text-xs text-slate-400">Season {{ match.season }}</span>
+                                        <span class="text-xs text-slate-400">{{ match.date || 'MISSING' }}</span>
+                                        @if (authService.isAuthenticated()) {
+                                            <a class="match-card__link cursor-pointer hover:text-slate-700 inline-flex items-center" [routerLink]="['/scorecard/cardbyid', match.matchKey]" title="View scorecard">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+                                                </svg>
+                                            </a>
+                                        }
                                     </div>
                                 </div>
                                 <div class="space-y-1.5 py-1">
                                     <div class="flex justify-between items-center text-sm">
-                                        <span class="font-bold text-slate-900">{{ match.fileName }}</span>
-                                        <span class="text-xs text-slate-500 font-normal">ID: {{ match.sourceMatchId }}</span>
+                                        <span [class.font-bold]="match.isTeam1Winner" [class.font-medium]="!match.isTeam1Winner" [class.text-slate-900]="match.isTeam1Winner" [class.text-slate-700]="!match.isTeam1Winner">{{ match.team1 || 'MISSING' }}</span>
+                                        <span class="tracking-tight" [class.font-bold]="match.isTeam1Winner" [class.font-semibold]="!match.isTeam1Winner" class="text-slate-900">
+                                            {{ match.score1 || 'MISSING' }}
+                                            @if (match.overs1) {
+                                                <span class="text-xs text-slate-500 font-normal ml-1">{{ match.overs1 }}</span>
+                                            }
+                                        </span>
+                                    </div>
+                                    <div class="flex justify-between items-center text-sm">
+                                        <span [class.font-bold]="match.isTeam2Winner" [class.font-medium]="!match.isTeam2Winner" [class.text-slate-900]="match.isTeam2Winner" [class.text-slate-700]="!match.isTeam2Winner">{{ match.team2 || 'MISSING' }}</span>
+                                        <span class="tracking-tight" [class.font-bold]="match.isTeam2Winner" [class.font-semibold]="!match.isTeam2Winner" class="text-slate-900">
+                                            {{ match.score2 || 'MISSING' }}
+                                            @if (match.overs2) {
+                                                <span class="text-xs text-slate-500 font-normal ml-1">{{ match.overs2 }}</span>
+                                            }
+                                        </span>
                                     </div>
                                 </div>
                                 <div class="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-                                    <p class="font-semibold text-emerald-700">Match #{{ match.matchKey }}</p>
-                                    <span class="text-slate-400 uppercase text-[10px] font-medium tracking-wider">{{ match.matchType }}</span>
+                                    <p class="font-semibold text-emerald-700">{{ match.result || 'MISSING' }}</p>
+                                    <span class="text-slate-400 uppercase text-[10px] font-medium tracking-wider">{{ match.format || 'MISSING' }}</span>
                                 </div>
                             </article>
                         }
@@ -200,9 +221,13 @@
                                 <span class="font-semibold px-2 py-0.5 rounded border" [ngClass]="match.badgeClass">{{ match.competition }}</span>
                                 <div class="flex items-center gap-1.5 text-slate-400 group-hover:text-emerald-700 transition-colors">
                                     <span class="text-xs text-slate-400">{{ match.date }}</span>
-                                    <svg class="w-4 h-4 cursor-pointer hover:text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
-                                    </svg>
+                                    @if (authService.isAuthenticated()) {
+                                        <a class="match-card__link cursor-pointer hover:text-slate-700 inline-flex items-center" [routerLink]="['/scorecard']" title="View scorecard">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+                                            </svg>
+                                        </a>
+                                    }
                                 </div>
                             </div>
                             <div class="space-y-1.5 py-1">
@@ -249,51 +274,11 @@
                 <!-- Changelog Item 1 -->
                 <article class="bg-white rounded-xl p-4 border border-slate-200/90 shadow-sm hover:border-slate-300 transition-colors">
                     <div class="flex items-baseline justify-between mb-1.5">
-                        <h3 class="text-sm font-bold text-slate-900">Ported Code to Kotlin</h3>
-                        <span class="text-xs font-medium text-slate-400 whitespace-nowrap ml-2">1st June 2026</span>
+                        <h3 class="text-sm font-bold text-slate-900">Initial Page</h3>
+                        <span class="text-xs font-medium text-slate-400 whitespace-nowrap ml-2">19th September 2026</span>
                     </div>
                     <p class="text-xs text-slate-600 leading-relaxed">
-                        Fixed several bugs, especially around sorting when switching between the main search pages
-                    </p>
-                </article>
-                <!-- Changelog Item 2 -->
-                <article class="bg-white rounded-xl p-4 border border-slate-200/90 shadow-sm hover:border-slate-300 transition-colors">
-                    <div class="flex items-baseline justify-between mb-1.5">
-                        <h3 class="text-sm font-bold text-slate-900">Ported Code to Kotlin</h3>
-                        <span class="text-xs font-medium text-slate-400 whitespace-nowrap ml-2">4th April 2026</span>
-                    </div>
-                    <p class="text-xs text-slate-600 leading-relaxed">
-                        No new functionality but I have ported the codebase to Kotlin, improving maintainability and performance.
-                    </p>
-                </article>
-                <!-- Changelog Item 3 -->
-                <article class="bg-white rounded-xl p-4 border border-slate-200/90 shadow-sm hover:border-slate-300 transition-colors">
-                    <div class="flex items-baseline justify-between mb-1.5">
-                        <h3 class="text-sm font-bold text-slate-900">Improved Code</h3>
-                        <span class="text-xs font-medium text-slate-400 whitespace-nowrap ml-2">24th February 2026</span>
-                    </div>
-                    <p class="text-xs text-slate-600 leading-relaxed">
-                        No new functionality but I have fixed a lot of underlying issues and improved a ton of code
-                    </p>
-                </article>
-                <!-- Changelog Item 4 -->
-                <article class="bg-white rounded-xl p-4 border border-slate-200/90 shadow-sm hover:border-slate-300 transition-colors">
-                    <div class="flex items-baseline justify-between mb-1.5">
-                        <h3 class="text-sm font-bold text-slate-900">Added Officials</h3>
-                        <span class="text-xs font-medium text-slate-400 whitespace-nowrap ml-2">9th February 2026</span>
-                    </div>
-                    <p class="text-xs text-slate-600 leading-relaxed">
-                        Added 'Officials Records', so we can now search for officials in the same way that we search for team records, batting records or bowling records. We've also added an officials 'page' so that the details of officials can be viewed. And finally there's a search page for officials that is similar to the search for players.
-                    </p>
-                </article>
-                <!-- Changelog Item 5 -->
-                <article class="bg-white rounded-xl p-4 border border-slate-200/90 shadow-sm hover:border-slate-300 transition-colors">
-                    <div class="flex items-baseline justify-between mb-1.5">
-                        <h3 class="text-sm font-bold text-slate-900">Added Partnership by Position</h3>
-                        <span class="text-xs font-medium text-slate-400 whitespace-nowrap ml-2">26th January 2026</span>
-                    </div>
-                    <p class="text-xs text-slate-600 leading-relaxed">
-                        Added partnerships by position for players, so you can see how well they've done with any partner for each wicket.
+                        Started work on the Ball-by-Ball app[licationn
                     </p>
                 </article>
             </div>

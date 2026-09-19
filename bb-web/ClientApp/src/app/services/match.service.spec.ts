@@ -38,7 +38,19 @@ describe('MatchService', () => {
             sourceMatchId: 101,
             matchType: 'T20',
             season: '2026',
-            fileName: 'match1.json'
+            fileName: 'match1.json',
+            competition: 'T20 Blast',
+            date: '1 Sept 2026',
+            team1: 'Surrey',
+            score1: '160-4',
+            overs1: '(20ov)',
+            isTeam1Winner: true,
+            team2: 'Somerset',
+            score2: '150-8',
+            overs2: '(20ov)',
+            isTeam2Winner: false,
+            result: 'Surrey won by 10 runs',
+            format: 't20'
           }
         ]
       },

@@ -17,7 +17,7 @@ fun Route.routeMatches(matchService: MatchService) {
         route("/api") {
             get("/matches") {
                 fold(
-                    block = { Limit(call.request.queryParameters["limit"]) },
+                    block = { Limit(call.request.queryParameters["days"] ?: call.request.queryParameters["limit"]) },
                     recover = { error -> call.respondBadRequest(error.message) },
                     transform = { limit ->
                         val matches = matchService.recentMatches(limit)

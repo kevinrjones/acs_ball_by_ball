@@ -1,5 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { MatchService } from './services/match.service';
 import { MatchSummary } from './models/match.model';
 import { AuthenticationService, UserProfileResponse } from './services/authentication.service';
@@ -10,7 +11,7 @@ export type { SampleMatch };
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })
@@ -30,14 +31,37 @@ export class AppComponent implements OnInit {
   readonly sampleMatches: SampleMatch[] = SAMPLE_MATCHES;
 
   ngOnInit(): void {
-    // Optionally load recent matches on start or leave manual trigger
+    this.loadRecentMatches();
+  }
+
+  getBadgeClass(format?: string): string {
+    const f = (format || '').toLowerCase();
+    if (f.includes('women')) return 'text-rose-900 bg-rose-50 border-rose-200/70';
+    if (f.includes('t20')) return 'text-emerald-800 bg-emerald-50 border-emerald-100';
+    if (f.includes('fc') || f.includes('test')) return 'text-indigo-900 bg-indigo-50 border-indigo-200';
+    if (f.includes('odi') || f.includes('lista')) return 'text-blue-900 bg-blue-50 border-blue-200';
+    return 'text-slate-700 bg-slate-100 border-slate-200';
+  }
+
+  get latestDateRange(): string {
+    if (this.hasLoaded() && this.matches().length > 0) {
+      const dates = this.matches()
+        .map(m => m.date)
+        .filter((d): d is string => typeof d === 'string' && d.length > 0 && d !== 'MISSING');
+      if (dates.length > 0) {
+        const first = dates[0];
+        const last = dates[dates.length - 1];
+        return first === last ? first : `${last} - ${first}`;
+      }
+    }
+    return 'Last 10 Days';
   }
 
   loadRecentMatches(): void {
     this.isLoading.set(true);
     this.errorMessage.set(null);
 
-    this.matchService.getRecentMatches(8).subscribe({
+    this.matchService.getRecentMatches(10).subscribe({
       next: (response) => {
         this.matches.set(response.result.matches);
         this.hasLoaded.set(true);

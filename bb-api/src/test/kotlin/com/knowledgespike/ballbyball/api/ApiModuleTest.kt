@@ -215,6 +215,50 @@ class ApiModuleTest {
     }
 
     @Test
+    fun `matches endpoint serializes full match details and supports days parameter`() = testApplication {
+        val sampleMatch = MatchSummary.of(
+            matchKey = 20251,
+            sourceMatchId = 20251,
+            fileName = "1548895.json",
+            matchType = "witt",
+            season = "2026",
+            competition = "Women's Asia Cup",
+            date = "1 Sept 2026",
+            team1 = "Pakistan",
+            score1 = "119-9",
+            overs1 = "(20ov)",
+            isTeam1Winner = true,
+            team2 = "Thailand",
+            score2 = "84-8",
+            overs2 = "(20ov)",
+            isTeam2Winner = false,
+            result = "Pakistan won by 35 runs",
+            format = "women's t20i"
+        )
+        application {
+            moduleWithDependencies(
+                FakeMatchRepository(matches = listOf(sampleMatch)),
+                FakeDatabaseHealth(healthy = true),
+                jwtVerifier = testVerifier
+            )
+        }
+
+        val response = client.get("/api/matches?days=10") {
+            header(HttpHeaders.Authorization, "Bearer ${createMachineToken()}")
+        }
+
+        expectThat(response.status).isEqualTo(HttpStatusCode.OK)
+        val body = response.bodyAsText()
+        expectThat(body).contains("\"competition\": \"Women's Asia Cup\"")
+        expectThat(body).contains("\"team1\": \"Pakistan\"")
+        expectThat(body).contains("\"score1\": \"119-9\"")
+        expectThat(body).contains("\"team2\": \"Thailand\"")
+        expectThat(body).contains("\"score2\": \"84-8\"")
+        expectThat(body).contains("\"result\": \"Pakistan won by 35 runs\"")
+        expectThat(body).contains("\"format\": \"women's t20i\"")
+    }
+
+    @Test
     fun `user profile succeeds with user token having acs-bbb audience and bbb api read scope`() = testApplication {
         application { moduleWithDependencies(FakeMatchRepository(), FakeDatabaseHealth(healthy = true), jwtVerifier = testVerifier) }
 

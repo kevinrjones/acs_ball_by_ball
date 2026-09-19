@@ -41,7 +41,19 @@ data class MatchSummary(
     val sourceMatchId: SourceMatchId,
     val fileName: String,
     val matchType: MatchType,
-    val season: Season
+    val season: Season,
+    val competition: String = "MISSING",
+    val date: String = "MISSING",
+    val team1: String = "MISSING",
+    val score1: String = "MISSING",
+    val overs1: String? = null,
+    val isTeam1Winner: Boolean = false,
+    val team2: String = "MISSING",
+    val score2: String = "MISSING",
+    val overs2: String? = null,
+    val isTeam2Winner: Boolean = false,
+    val result: String = "MISSING",
+    val format: String = "MISSING"
 ) {
     companion object {
         fun of(
@@ -49,13 +61,37 @@ data class MatchSummary(
             sourceMatchId: Int,
             fileName: String,
             matchType: String,
-            season: String
+            season: String,
+            competition: String = "MISSING",
+            date: String = "MISSING",
+            team1: String = "MISSING",
+            score1: String = "MISSING",
+            overs1: String? = null,
+            isTeam1Winner: Boolean = false,
+            team2: String = "MISSING",
+            score2: String = "MISSING",
+            overs2: String? = null,
+            isTeam2Winner: Boolean = false,
+            result: String = "MISSING",
+            format: String = "MISSING"
         ): MatchSummary = MatchSummary(
             MatchKey.from(matchKey),
             SourceMatchId.from(sourceMatchId),
             fileName,
             MatchType.from(matchType),
-            Season.from(season)
+            Season.from(season),
+            competition,
+            date,
+            team1,
+            score1,
+            overs1,
+            isTeam1Winner,
+            team2,
+            score2,
+            overs2,
+            isTeam2Winner,
+            result,
+            format
         )
     }
 }

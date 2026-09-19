@@ -2,6 +2,15 @@
 
 ## What was shipped
 
+- Gated the match scorecard links on potted match score cards on the home page so they are strictly visible only if the user is authenticated.
+- Updated `AppComponent` and `app.component.html` in `bb-web/ClientApp` to import `RouterLink` and wrap the scorecard link in `@if (authService.isAuthenticated())`.
+- Added unit tests in `app.component.spec.ts` verifying that the scorecard link is omitted for unauthenticated users and rendered with appropriate route targets when authenticated.
+- Implemented real-time latest match querying in `bb-api` (`JooqMatchRepository`) selecting matches based on the dates played for the last 10 days.
+- Aggregated innings totals (runs, wickets, legal balls, and completed/partial overs) across `fact_delivery` and `dim_innings` for both competing teams, supporting both single-innings and multi-innings formats.
+- Formatted match results (victory margins in runs/wickets/innings, ties, draws, no results) and competition descriptors, falling back gracefully to `"MISSING"` when attributes are absent.
+- Extended `MatchSummary` in `bb-shared` and `bb-web/ClientApp` to carry all match summary data while preserving full backwards compatibility through default arguments.
+- Updated Angular `AppComponent` and `app.component.html` to render live matches using the full card layout on initial application load with dynamic format badge styling and date range display.
+- Added unit and integration tests covering repository score calculations, date formatting, full match endpoint JSON serialization, and live MariaDB queries.
 - Fixed parenthesized player name parsing bug in `Database.kt` where `substringBefore` was incorrectly called on an uninitialized empty string, ensuring player names like `Bob Willis (sub)` are properly parsed instead of erased.
 - Optimized `Translate.kt` to perform direct map lookups on `cricSheet.info.registry.people` (`O(1)`), eliminating linear list filtering (`O(N)`) and imperative mutable map/list accumulation.
 - Simplified powerplay calculations in `Database.kt` to use functional `mapIndexed` instead of mutable list accumulation and manual counter variables.
@@ -63,6 +72,70 @@
 - When running `bb-api` locally, ensure `DB_PORT` and `DB_JDBC_URL` in `.env` and `bb-api/.env` point to port `3306` (where the `ballbyball` database runs), rather than `3307`. Port `3307` is used by the Identity Server's container (`identity-local-mariadb-1`), which rejects the `ballbyball` user credentials with `Access denied for user 'ballbyball'@'172.21.0.1'`.
 - Access tokens issued by the Identity Server for client `ballbyball` contain audience `acs-bbb` and scopes `bbb.api` / `bbb.api.read`. In `bb-api`, JWT verification must accept multiple audiences (`withAnyOfAudience`) including both `acs-bbb` and `bb.api`, and scope validation must accept `bbb.api.*` alongside `bb.api.*`. If `JWT_AUDIENCE` was strictly `bb.api`, incoming bearer tokens are rejected with `401 Unauthorized`.
 - In `bb-web`, `HttpClientFactory` previously hardcoded a 5000ms request timeout (`requestTimeoutMillis = 5_000`). When `bb-web` proxies requests like `/api/user/profile` to `bb-api`, `bb-api` verifies the token by fetching JWKS keys from `ids.local:8443`. On macOS, resolving `.local` domains under dual-stack DNS triggers a 5-second multicast DNS (Bonjour) wait for IPv6 unless IPv4 is explicitly preferred (`-Djava.net.preferIPv4Stack=true`), causing total request duration to exceed 5000ms (~5055ms) and `bb-web` to abort with `Request timeout has expired [url=http://localhost:8082/api/user/profile, request_timeout=5000 ms]`. Configured default HTTP client timeouts to 60s (with 30s connect timeout) via `application.yaml` / `.env`, added `-Djava.net.preferIPv4Stack=true` to Gradle JVM args and `applicationDefaultJvmArgs`, and added timeouts to `JwkProviderBuilder`.
+
+## Feature: Scorecard Link Conditional Visibility
+
+### Title
+
+Conditionally render scorecard links on potted match cards only for authenticated users
+
+### Date/time completed
+
+2026-09-19 07:05
+
+### What was shipped
+
+- Gated the match scorecard link icon on each potted match card on the home page behind `@if (authService.isAuthenticated())`.
+- Wrapped the scorecard link icon in an `<a class="match-card__link" [routerLink]="['/scorecard/cardbyid', match.matchKey]" title="View scorecard">` tag.
+- Imported `RouterLink` into standalone `AppComponent`.
+- Added unit tests in `app.component.spec.ts` testing authenticated and unauthenticated states.
+
+### Key decisions
+
+- **Preserve Unauthenticated Home Page**: Unauthenticated visitors can view all potted match scores and recent match data, but the link to drill down into detailed scorecards is rendered only when a user is signed in.
+
+### Gotchas
+
+- When using `RouterLink` in standalone Angular component tests, `provideRouter([])` must be configured in `TestBed`.
+
+### Test coverage areas
+
+- `app.component.spec.ts`: Unit tests verifying that `.match-card__link` is absent when anonymous and present with correct href when authenticated.
+
+## Feature: List Latest Matches from Database
+
+### Title
+
+List latest matches based on played date for the last 10 days using JOOQ
+
+### Date/time completed
+
+2026-09-18 22:05
+
+### What was shipped
+
+- Implemented real-time latest match querying in `bb-api` (`JooqMatchRepository`) selecting matches based on the dates played for the last 10 days.
+- Aggregated innings totals (runs, wickets, legal balls, and completed/partial overs) across `fact_delivery` and `dim_innings` for both competing teams, supporting both single-innings and multi-innings formats.
+- Formatted match results (victory margins in runs/wickets/innings, ties, draws, no results) and competition descriptors, falling back gracefully to `"MISSING"` when attributes are absent.
+- Extended `MatchSummary` in `bb-shared` and `bb-web/ClientApp` to carry all match summary data while preserving full backwards compatibility through default arguments.
+- Updated Angular `AppComponent` and `app.component.html` to render live matches using the full card layout on initial application load with dynamic format badge styling and date range display.
+- Added unit and integration tests covering repository score calculations, date formatting, full match endpoint JSON serialization, and live MariaDB queries.
+
+### Key decisions
+
+- **Two-Phase Query for Match Descriptors and Delivery Aggregation**: Queried match metadata on the most recent 10 dates first, followed by grouped delivery aggregation on those match keys. This prevents Cartesian joins across deliveries and delivers sub-20ms response times.
+- **Graceful Fallback to MISSING**: Any absent match fields (competition, teams, scores, results, overs) fall back to `"MISSING"` in both the API layer and the UI template.
+
+### Gotchas
+
+- Java's `DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ENGLISH)` formats September as `"Sep"`, not `"Sept"`.
+
+### Test coverage areas
+
+- `JooqMatchRepositoryTest` in `bb-api`: 7 unit tests covering team score calculations, result formatting, format mapping, and date parsing.
+- `JooqMatchRepositoryIntegrationTest` in `bb-api`: Live query execution against `acs_ball_by_ball` in MariaDB.
+- `ApiModuleTest` in `bb-api`: Verifying `/api/matches?days=10` JSON envelope serialization.
+- `AppComponent` and `MatchService` in `bb-web/ClientApp`: 18 Karma unit tests passing with ChromeHeadless.
 
 ## Database Parser and Configuration Cleanup
 
