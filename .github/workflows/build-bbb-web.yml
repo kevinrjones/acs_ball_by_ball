@@ -27,6 +27,7 @@ jobs:
       build-task: ':bbb-web:check :bbb-web:installDist'
       upload-artifact-name: 'bbb-web-dist'
       upload-artifact-path: 'bbb-web/build/install/bbb-web'
+      create-release: true
 
   docker-publish:
     needs: gradle

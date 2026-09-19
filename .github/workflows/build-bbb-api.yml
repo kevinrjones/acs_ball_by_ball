@@ -27,6 +27,7 @@ jobs:
       build-task: ':bbb-api:check :bbb-api:installDist'
       upload-artifact-name: 'bbb-api-dist'
       upload-artifact-path: 'bbb-api/build/install/bbb-api'
+      create-release: true
 
   docker-publish:
     needs: gradle

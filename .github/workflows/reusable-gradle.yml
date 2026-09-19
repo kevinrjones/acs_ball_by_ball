@@ -32,10 +32,14 @@ on:
       release-files:
         required: false
         type: string
+      generate-release-notes:
+        required: false
+        type: boolean
+        default: true
       create-release:
         required: false
         type: boolean
-        default: false
+        default: true
 
 jobs:
   build:
@@ -74,6 +78,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Download build artifacts
+        if: ${{ inputs.upload-artifact-path != '' }}
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.upload-artifact-name }}
@@ -85,3 +90,4 @@ jobs:
           body: ${{ inputs.release-body }}
           files: ${{ inputs.release-files }}
           tag_name: ${{ github.ref_name }}
+          generate_release_notes: ${{ inputs.generate-release-notes }}

@@ -27,6 +27,7 @@ jobs:
       build-task: ':bbb-update-database:check :bbb-update-database:installDist'
       upload-artifact-name: 'bbb-update-database-dist'
       upload-artifact-path: 'bbb-update-database/build/install/bbb-update-database'
+      create-release: true
 
   docker-publish:
     needs: gradle
