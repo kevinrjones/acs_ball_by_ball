@@ -49,6 +49,11 @@ jobs:
           name: ${{ inputs.artifact-name }}
           path: ${{ inputs.artifact-path }}
 
+      - name: Ensure executable permissions on binaries
+        if: ${{ inputs.artifact-name != '' }}
+        run: chmod -R +x ${{ inputs.artifact-path }}/bin || true
+        shell: bash
+
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:

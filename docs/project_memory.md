@@ -1,5 +1,36 @@
 # Project Memory
 
+## Task: Fix Entrypoint Permissions and Container Image Packaging
+
+### Title
+
+Ensure executable permissions on container entrypoint binaries and add compose entrypoint wrappers
+
+### Date/time completed
+
+2026-09-21 08:00
+
+### What was shipped
+
+- Confirmed that published container images (`knowledgespike/bbb-api`, `knowledgespike/bbb-web`, and `knowledgespike/bbb-update-database`) had non-executable permissions (`0644`) on `/opt/app/bin/*` binaries, causing `exec: ...: permission denied` on startup when run directly.
+- Updated `compose.yaml` with shell entrypoint wrappers (`chmod +x /opt/app/bin/bbb-* && exec /opt/app/bin/bbb-*`) for `api`, `web`, and `update-database` services to ensure containers run even if prebuilt images lack executable permissions.
+- Updated upstream build definitions in `bbb-api/Dockerfile`, `bbb-api/Dockerfile.ci`, `bbb-web/Dockerfile`, `bbb-web/Dockerfile.ci`, `bbb-update-database/Dockerfile`, and `bbb-update-database/Dockerfile.ci` to explicitly set `chmod +x /opt/app/bin/*` before changing ownership to `appuser:appgroup`.
+- Updated GitHub Actions workflow `.github/workflows/reusable-docker.yml` to restore executable permissions on downloaded distribution artifacts (`chmod -R +x ${{ inputs.artifact-path }}/bin || true`) before Docker image creation.
+
+### Key decisions
+
+- Fixed both layers: immediate runtime safety in docker compose via entrypoint wrappers, plus permanent upstream resolution in the Dockerfiles and CI packaging pipeline so future image builds produce executable binaries by default.
+
+### Gotchas
+
+- GitHub Actions `download-artifact@v4` unpacks artifact files with default runner umask (0644), stripping the executable bit set during `installDist`. Ensuring `chmod +x` in both the CI workflow before build and inside the final image Dockerfile prevents regression regardless of how distribution binaries are copied.
+
+### Test coverage areas
+
+- Docker container execution tests confirming non-executable permissions on published images and successful execution with the entrypoint wrapper.
+- `docker compose config --dry-run` verifying YAML validity and execution parameter passing.
+- Full `./gradlew check` across all modules (`bbb-shared`, `bbb-update-database`, `bbb-api`, and `bbb-web`).
+
 ## Task: Rename bb-shared to bbb-shared
 
 ### Title

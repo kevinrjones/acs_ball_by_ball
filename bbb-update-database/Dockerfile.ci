@@ -16,7 +16,7 @@ COPY bbb-update-database/build/install/bbb-update-database /opt/app/
 COPY bbb-update-database/src/main/resources/logback.xml /opt/app/logging/logback.xml
 COPY bbb-update-database/migrations /opt/app/migrations
 
-RUN chown -R appuser:appgroup /opt/app
+RUN chmod +x /opt/app/bin/* && chown -R appuser:appgroup /opt/app
 
 USER appuser
 

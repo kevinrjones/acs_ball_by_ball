@@ -29,6 +29,12 @@ services:
       dockerfile: bbb-api/Dockerfile
       target: final
     restart: unless-stopped
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        chmod +x /opt/app/bin/bbb-api
+        exec /opt/app/bin/bbb-api
     ports:
       - "${API_PORT:-8081}:8081"
     environment:
@@ -50,6 +56,12 @@ services:
       dockerfile: bbb-web/Dockerfile
       target: final
     restart: unless-stopped
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        chmod +x /opt/app/bin/bbb-web
+        exec /opt/app/bin/bbb-web
     ports:
       - "${WEB_PORT:-8080}:8080"
     environment:
@@ -67,6 +79,13 @@ services:
       context: .
       dockerfile: bbb-update-database/Dockerfile
       target: final
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        chmod +x /opt/app/bin/bbb-update-database
+        exec /opt/app/bin/bbb-update-database "$$@"
+      - _
     environment:
       DB_JDBC_URL: jdbc:mariadb://mariadb:3306/${DB_NAME:-acs_ball_by_ball}
       DB_USER: ${DB_USER:-ballbyball}

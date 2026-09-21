@@ -36,7 +36,7 @@ WORKDIR /opt/app
 COPY --from=build /source/bbb-api/build/install/bbb-api /opt/app/
 COPY --from=build /source/bbb-api/src/main/resources/logback.xml /opt/app/logging/logback.xml
 
-RUN chown -R appuser:appgroup /opt/app
+RUN chmod +x /opt/app/bin/* && chown -R appuser:appgroup /opt/app
 
 USER appuser
 

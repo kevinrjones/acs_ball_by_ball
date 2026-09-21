@@ -35,7 +35,7 @@ WORKDIR /opt/app
 
 COPY --from=build /source/bbb-web/build/install/bbb-web /opt/app/
 
-RUN chown -R appuser:appgroup /opt/app
+RUN chmod +x /opt/app/bin/* && chown -R appuser:appgroup /opt/app
 
 USER appuser
 
