@@ -4,6 +4,7 @@ import com.knowledgespike.feature.kbff.domain.model.KbffConfiguration
 import io.ktor.server.config.ApplicationConfig
 
 object KbffConfigFactory {
+    const val DEFAULT_REGISTRATION_URL = "https://ids.local:8443/identity/account/register"
     fun buildCsp(isDevelopment: Boolean): String {
         val defaultSrc = "default-src 'self'"
         val scriptSrc = "script-src 'self' 'unsafe-inline'"
@@ -95,6 +96,10 @@ object KbffConfigFactory {
         }
     }
 }
+
+fun ApplicationConfig.resolveRegistrationUrl(): String =
+    propertyOrNull("kbff.oidc.registrationUrl")?.getString()?.takeIf(String::isNotBlank)
+        ?: KbffConfigFactory.DEFAULT_REGISTRATION_URL
 
 val KbffConfiguration.apiBaseUrl: String
     get() = proxy.endpoints.firstOrNull { it.path == "/api" }?.targetUrl?.removeSuffix("/api")?.trimEnd('/')

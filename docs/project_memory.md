@@ -1,65 +1,37 @@
 # Project Memory
 
-## Task: Repair merged Angular build regression
+## Task: Repair authentication navigation and signup configuration
 
 ### Title
 
-Restore client-side routing and deployment-aware signup after merge
+Restore client routing and configure authentication registration explicitly
 
 ### Date/time completed
 
-2026-09-24 12:48
-
-### What was shipped
-
-- Restored the `RouterLink` import required by the standalone `AppComponent` template.
-- Restored the same-origin `/bff/signup` link and updated its Angular regression expectation.
-
-### Key decisions
-
-- Kept the existing Ktor signup redirect as the single deployment-aware registration boundary.
-- Fixed only the Angular changes lost during the merge; no server route changes were needed.
-
-### Gotchas
-
-- A clean Git working tree can still contain an internally inconsistent merge result when one side of a prior change is missing.
-- Angular standalone components must explicitly import every directive used by their templates.
-
-### Test coverage areas
-
-- Angular production build and 22 browser tests.
-- Full `./gradlew clean check --no-daemon` across all modules.
-
-## Task: Fix user menu navigation and signup configuration
-
-### Title
-
-Restore scorecard routing and make signup deployment-aware
-
-### Date/time completed
-
-2026-09-24 12:43
+2026-09-24 12:58
 
 ### What was shipped
 
 - Restored the standalone Angular `RouterLink` import so authenticated scorecard links compile and render correctly.
 - Replaced the hardcoded frontend identity-server signup URL with a same-origin BFF redirect.
-- Added BFF coverage proving signup redirects to the configured OIDC authority, including a non-development authority.
+- Added an explicit `kbff.oidc.registrationUrl` setting and environment override for the registration destination.
+- Moved the signup redirect into a dedicated authentication route alongside the BFF authentication routes.
+- Added coverage for configuration lookup and redirect behavior independent of the OIDC authority.
 
 ### Key decisions
 
-- Kept identity configuration server-side by deriving the registration target from `bffConfig.oidc.authority`.
+- Kept identity configuration server-side and no longer inferred registration from the OIDC authority.
 - Used `/bff/signup` as the stable browser contract, avoiding environment-specific identity hosts in the Angular bundle.
 
 ### Gotchas
 
 - Standalone Angular components must explicitly import every template directive, including `RouterLink`.
-- The Ktor `MockEngine` used by the redirect test requires a request handler even though the tested route does not make an outbound request.
+- Registration URLs may use a path different from the OIDC authority, so they must be configured independently.
 
 ### Test coverage areas
 
 - Angular compilation and user-menu rendering, including authenticated scorecard links.
-- BFF signup redirect configuration and existing web/API behavior.
+- BFF configuration lookup, signup redirect behavior, and existing web/API behavior.
 - `./gradlew clean check --no-daemon`, `npm run build`, and `npm test -- --watch=false --browsers=ChromeHeadless` all pass.
 
 ## Task: Add dynamic application metadata to the bbb-web footer

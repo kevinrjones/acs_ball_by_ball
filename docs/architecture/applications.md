@@ -26,6 +26,7 @@ flowchart TD
 
     subgraph Web["bbb-web :9999 (Ktor BFF)"]
         KBFF[kbff Auth & Proxy Routes]
+        AuthRoutes[Signup Redirect]
         SessionCookie[Encrypted Session Cookie: bb_session]
         TokenService[DefaultTokenService]
         WebRoutes[Static Resources & SPA Shell]
@@ -46,9 +47,11 @@ flowchart TD
     UI --> AuthService
     AuthService -->|GET /bff/user| KBFF
     UI -->|Redirect /bff/login| KBFF
+    UI -->|Redirect /bff/signup| AuthRoutes
     Interceptor -->|Proxied requests + X-CSRF: 1| KBFF
 
     KBFF -->|Auth Code with PKCE| OIDC
+    AuthRoutes -->|Configured registration URL| OIDC
     TokenService -->|Client Credentials Grant| OIDC
     JWTVerifier -->|Fetch Public Keys| OIDC
 
@@ -170,6 +173,10 @@ the build-generated `version.properties` resource, allowing the Angular footer
 to show the latest data-response time, application version, and build date.
 Static single page application assets and index fallbacks are handled via
 Ktor's `singlePageApplication` configurator.
+Authentication-specific signup behavior is owned by
+`web.adapter.in.http.AuthenticationRoutes`, which redirects `/bff/signup` to the
+explicit `kbff.oidc.registrationUrl` setting rather than deriving a path from
+the OIDC authority.
 
 ### Shared JSON contracts
 

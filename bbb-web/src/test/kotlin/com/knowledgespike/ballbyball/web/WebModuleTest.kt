@@ -12,6 +12,7 @@ import com.knowledgespike.ballbyball.web.application.ApplicationMetadataService
 import com.knowledgespike.ballbyball.web.bootstrap.moduleWithApiClient
 import com.knowledgespike.ballbyball.web.bootstrap.moduleWithDependencies
 import com.knowledgespike.ballbyball.web.config.KbffConfigFactory
+import com.knowledgespike.ballbyball.web.config.resolveRegistrationUrl
 import com.knowledgespike.ballbyball.web.domain.service.TokenService
 import com.knowledgespike.feature.kbff.data.repository.InMemoryKbffSessionStorage
 import com.knowledgespike.feature.kbff.domain.model.KbffClaim
@@ -392,7 +393,8 @@ class WebModuleTest {
                 bffConfig = config,
                 oidcService = oidcService,
                 sessionStorage = InMemoryKbffSessionStorage(),
-                httpClient = mockHttpClient
+                httpClient = mockHttpClient,
+                registrationUrl = "https://identity.example.com/account/create"
             )
         }
 
@@ -403,9 +405,19 @@ class WebModuleTest {
 
         expectThat(response.status).isEqualTo(HttpStatusCode.Found)
         expectThat(response.headers[HttpHeaders.Location])
-            .isEqualTo("https://identity.example.com/identity/account/register")
+            .isEqualTo("https://identity.example.com/account/create")
         mockHttpClient.close()
         testClient.close()
+    }
+
+    @Test
+    fun `registration URL is read from explicit oidc configuration`() {
+        val config = MapApplicationConfig(
+            "kbff.oidc.registrationUrl" to "https://identity.example.com/account/create"
+        )
+
+        expectThat(config.resolveRegistrationUrl())
+            .isEqualTo("https://identity.example.com/account/create")
     }
 
     @Test

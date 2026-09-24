@@ -1,6 +1,7 @@
 package com.knowledgespike.ballbyball.web.bootstrap
 
 import com.knowledgespike.ballbyball.web.adapter.`in`.http.registerWebRoutes
+import com.knowledgespike.ballbyball.web.adapter.`in`.http.registerAuthenticationRoutes
 import com.knowledgespike.ballbyball.web.adapter.out.api.HttpClientFactory
 import com.knowledgespike.ballbyball.web.adapter.out.api.KtorMatchApiClient
 import com.knowledgespike.ballbyball.web.adapter.out.service.DefaultTokenService
@@ -8,6 +9,7 @@ import com.knowledgespike.ballbyball.web.application.MatchApiClient
 import com.knowledgespike.ballbyball.web.config.KbffConfigFactory
 import com.knowledgespike.ballbyball.web.application.ApplicationMetadataService
 import com.knowledgespike.ballbyball.web.config.apiBaseUrl
+import com.knowledgespike.ballbyball.web.config.resolveRegistrationUrl
 import com.knowledgespike.feature.kbff.data.repository.InMemoryKbffSessionStorage
 import com.knowledgespike.feature.kbff.domain.model.KbffConfiguration
 import com.knowledgespike.feature.kbff.domain.model.KbffSession
@@ -31,6 +33,7 @@ import kotlinx.serialization.json.Json
 fun Application.module() {
     val isDevelopment = environment.config.propertyOrNull("ktor.development")?.getString() == "true"
     val bffConfig = KbffConfigFactory.fromConfig(environment.config, isDevelopment)
+    val registrationUrl = environment.config.resolveRegistrationUrl()
     val apiBaseUrl = bffConfig.apiBaseUrl
 
     val httpClient = HttpClientFactory.fromConfig(environment.config)
@@ -53,7 +56,8 @@ fun Application.module() {
         bffConfig = bffConfig,
         oidcService = oidcService,
         sessionStorage = sessionStorage,
-        httpClient = httpClient
+        httpClient = httpClient,
+        registrationUrl = registrationUrl
     )
 }
 
@@ -81,7 +85,8 @@ fun Application.moduleWithApiClient(
         oidcService = defaultOidc,
         sessionStorage = InMemoryKbffSessionStorage(),
         httpClient = defaultClient,
-        applicationMetadataService = applicationMetadataService
+        applicationMetadataService = applicationMetadataService,
+        registrationUrl = KbffConfigFactory.DEFAULT_REGISTRATION_URL
     )
 }
 
@@ -91,7 +96,8 @@ fun Application.moduleWithDependencies(
     oidcService: OidcService,
     sessionStorage: KbffSessionStorage,
     httpClient: HttpClient,
-    applicationMetadataService: ApplicationMetadataService = ApplicationMetadataService(matchApiClient)
+    applicationMetadataService: ApplicationMetadataService = ApplicationMetadataService(matchApiClient),
+    registrationUrl: String = KbffConfigFactory.DEFAULT_REGISTRATION_URL
 ) {
     install(CallLogging)
     install(ContentNegotiation) {
@@ -125,7 +131,8 @@ fun Application.moduleWithDependencies(
 
     routing {
         kbffAuthRoutes(oidcService, bffConfig, "/bff/login", "/signin-oidc")
+        registerAuthenticationRoutes(registrationUrl)
         kbffProxyRoutes(bffConfig, httpClient, oidcService)
-        registerWebRoutes(matchApiClient, applicationMetadataService, bffConfig.oidc.authority)
+        registerWebRoutes(matchApiClient, applicationMetadataService)
     }
 }

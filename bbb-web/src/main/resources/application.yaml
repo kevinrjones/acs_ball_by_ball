@@ -27,6 +27,7 @@ kbff:
       - "bbb.api.read"
     redirectUri: "${OIDC_REDIRECT_URI:http://localhost:8080/signin-oidc}"
     postLogoutRedirectUri: "${OIDC_POST_LOGOUT_REDIRECT_URI:http://localhost:8080/}"
+    registrationUrl: "${OIDC_REGISTRATION_URL:https://ids.local:8443/identity/account/register}"
     sslCertificatePath: "${OIDC_CERT_PATH:}"
   api:
     baseUrl: "${API_BASE_URL:http://localhost:8081}"

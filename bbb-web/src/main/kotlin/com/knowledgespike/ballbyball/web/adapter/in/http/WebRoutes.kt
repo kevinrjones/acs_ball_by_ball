@@ -8,15 +8,13 @@ import com.knowledgespike.ballbyball.web.application.ApplicationMetadataService
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.http.content.singlePageApplication
 import io.ktor.server.response.respond
-import io.ktor.server.response.respondRedirect
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.route
 
 fun Route.registerWebRoutes(
     matchApiClient: MatchApiClient,
-    applicationMetadataService: ApplicationMetadataService = ApplicationMetadataService(matchApiClient),
-    oidcAuthority: String
+    applicationMetadataService: ApplicationMetadataService = ApplicationMetadataService(matchApiClient)
 ) {
     suspend fun io.ktor.server.application.ApplicationCall.respondMatches() {
         when (val result = matchApiClient.recentMatches()) {
@@ -40,10 +38,6 @@ fun Route.registerWebRoutes(
         get("/metadata") {
             call.respond(HttpStatusCode.OK, Envelope.success(applicationMetadataService.metadata()))
         }
-    }
-
-    get("/bff/signup") {
-        call.respondRedirect("${oidcAuthority.trimEnd('/')}/identity/account/register")
     }
 
     get("/matches") { call.respondMatches() }
