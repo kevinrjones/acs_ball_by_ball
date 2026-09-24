@@ -5,25 +5,12 @@ import com.auth0.jwk.JwkProviderBuilder
 import com.auth0.jwt.interfaces.JWTVerifier
 import com.auth0.jwt.interfaces.Payload
 import com.knowledgespike.ballbyball.api.config.JwtSettings
-import com.knowledgespike.ballbyball.contracts.Envelope
-import com.knowledgespike.ballbyball.types.values.UserId
-import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
-import io.ktor.server.application.ApplicationCall
-import io.ktor.server.application.createRouteScopedPlugin
 import io.ktor.server.application.install
 import io.ktor.server.auth.Authentication
-import io.ktor.server.auth.AuthenticationChecked
 import io.ktor.server.auth.jwt.JWTCredential
 import io.ktor.server.auth.jwt.JWTPrincipal
 import io.ktor.server.auth.jwt.jwt
-import io.ktor.server.auth.principal
-import io.ktor.server.response.respond
-import io.ktor.server.routing.Route
-import io.ktor.server.routing.RouteSelector
-import io.ktor.server.routing.RouteSelectorEvaluation
-import io.ktor.server.routing.RoutingResolveContext
-import io.ktor.util.AttributeKey
 import org.slf4j.LoggerFactory
 import java.net.URI
 import java.util.concurrent.TimeUnit
@@ -31,38 +18,6 @@ import java.util.concurrent.TimeUnit
 const val AUTH_JWT = "auth-jwt"
 
 private val logger = LoggerFactory.getLogger("com.knowledgespike.ballbyball.api.bootstrap.Security")
-
-val UserPrincipalKey: AttributeKey<UserPrincipal> = AttributeKey("UserPrincipal")
-
-/**
- * Route-scoped plugin that validates user authorization after authentication has verified the bearer token.
- */
-val UserAuthorizationPlugin = createRouteScopedPlugin("UserAuthorizationPlugin") {
-    on(AuthenticationChecked) { call ->
-        call.requireUserPrincipal()
-    }
-}
-
-/**
- * Domain principal representing an authenticated human user with verified identity claims.
- */
-data class UserPrincipal(
-    val id: UserId,
-    val name: String? = null,
-    val email: String? = null,
-    val roles: List<String> = emptyList()
-) {
-    companion object {
-        fun of(
-            id: String,
-            name: String? = null,
-            email: String? = null,
-            roles: List<String> = emptyList()
-        ): UserPrincipal = UserPrincipal(UserId.from(id), name, email, roles)
-    }
-
-    fun hasRole(role: String): Boolean = roles.any { it.equals(role, ignoreCase = true) }
-}
 
 /**
  * Configures JWT bearer authentication against OIDC identity provider.
@@ -125,82 +80,3 @@ fun Payload.extractStringOrListClaims(vararg claimNames: String): List<String> =
  */
 fun extractScopes(credential: JWTCredential): List<String> =
     credential.payload.extractStringOrListClaims("scope", "scp")
-
-/**
- * Extracts assigned user roles from 'role' or 'roles' claims.
- */
-fun extractRoles(principal: JWTPrincipal): List<String> =
-    principal.payload.extractStringOrListClaims("role", "roles")
-
-/**
- * Maps a verified JWTPrincipal into a domain UserPrincipal,
- * distinguishing human users from machine / client-credentials tokens.
- */
-fun JWTPrincipal.toUserPrincipal(): UserPrincipal? {
-    val sub = payload.subject ?: payload.getClaim("sub")?.asString()
-    val clientId = payload.getClaim("client_id")?.asString()
-
-    if (sub.isNullOrBlank() || (clientId != null && sub == clientId)) {
-        return null
-    }
-
-    val name = payload.getClaim("name")?.asString()
-    val email = payload.getClaim("email")?.asString()
-    val roles = payload.extractStringOrListClaims("role", "roles")
-
-    return UserPrincipal(
-        id = UserId.from(sub),
-        name = name,
-        email = email,
-        roles = roles
-    )
-}
-
-/**
- * Retrieves the cached UserPrincipal from call attributes if already validated by userProtected.
- */
-fun ApplicationCall.userPrincipal(): UserPrincipal? = attributes.getOrNull(UserPrincipalKey)
-
-/**
- * Validates that the active request contains a verified human user principal.
- * Responds with 401 Unauthorized if missing, or 403 Forbidden if called with a machine token.
- */
-suspend fun ApplicationCall.requireUserPrincipal(): UserPrincipal? {
-    val cached = userPrincipal()
-    if (cached != null) return cached
-
-    val jwtPrincipal = principal<JWTPrincipal>()
-    if (jwtPrincipal == null) {
-        respond(
-            HttpStatusCode.Unauthorized,
-            Envelope.failure("Authentication required")
-        )
-        return null
-    }
-
-    val user = jwtPrincipal.toUserPrincipal()
-    if (user == null) {
-        respond(
-            HttpStatusCode.Forbidden,
-            Envelope.failure("User authorization required")
-        )
-        return null
-    }
-
-    attributes.put(UserPrincipalKey, user)
-    return user
-}
-
-/**
- * Route extension that encapsulates user-only authorization, ensuring non-user calls
- * are rejected before route handlers execute.
- */
-fun Route.userProtected(build: Route.() -> Unit): Route {
-    val route = createChild(object : RouteSelector() {
-        override suspend fun evaluate(context: RoutingResolveContext, segmentIndex: Int) =
-            RouteSelectorEvaluation.Constant
-    })
-    route.install(UserAuthorizationPlugin)
-    route.build()
-    return route
-}

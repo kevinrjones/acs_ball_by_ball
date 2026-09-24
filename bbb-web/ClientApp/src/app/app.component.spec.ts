@@ -4,7 +4,7 @@ import {provideRouter} from '@angular/router';
 import {NEVER, of, throwError} from 'rxjs';
 import {AppComponent} from './app.component';
 import {MatchService} from './services/match.service';
-import {AuthenticationService, Session, UserProfileResponse} from './services/authentication.service';
+import {AuthenticationService, Session} from './services/authentication.service';
 import {ApplicationMetadataService} from './services/application-metadata.service';
 import {RecentMatchesResponse} from './models/match.model';
 
@@ -17,7 +17,7 @@ describe('AppComponent', () => {
   beforeEach(async () => {
     matchServiceMock = jasmine.createSpyObj<MatchService>('MatchService', ['getRecentMatches']);
     matchServiceMock.getRecentMatches.and.returnValue(NEVER);
-    authServiceMock = jasmine.createSpyObj<AuthenticationService>('AuthenticationService', ['getSession', 'getUserProfile']);
+    authServiceMock = jasmine.createSpyObj<AuthenticationService>('AuthenticationService', ['getSession']);
     applicationMetadataServiceMock = jasmine.createSpyObj<ApplicationMetadataService>('ApplicationMetadataService', ['getMetadata']);
     applicationMetadataServiceMock.getMetadata.and.returnValue(NEVER);
 
@@ -102,7 +102,6 @@ describe('AppComponent', () => {
     expect(compiled.querySelector('#login-button')).toBeNull();
     expect(compiled.querySelector('#signup-button')).toBeNull();
     expect(compiled.querySelector('#sign-out-button')).toBeNull();
-    expect(compiled.querySelector('[data-purpose="user-profile-section"]')).toBeNull();
 
     (userMenuTrigger as HTMLButtonElement).click();
     fixture.detectChanges();
@@ -142,7 +141,6 @@ describe('AppComponent', () => {
     expect(signOutBtn).toBeTruthy();
     expect(signOutBtn?.textContent).toContain('Logout');
     expect(signOutBtn?.getAttribute('href')).toBe('/bff/logout?id=123');
-    expect(compiled.querySelector('[data-purpose="user-profile-section"]')).toBeTruthy();
   });
 
   it('should close the user menu when clicking outside or pressing Escape', () => {
@@ -167,36 +165,6 @@ describe('AppComponent', () => {
     expect(compiled.querySelector('.user-menu-panel')).toBeNull();
   });
 
-  it('should load user profile when loadUserProfile is invoked', () => {
-    sessionSignal.set({
-      claims: [{ type: 'sub', value: 'user-1' }, { type: 'name', value: 'Kevin Jones' }]
-    });
-    const mockProfile: UserProfileResponse = {
-      subject: 'user-1',
-      name: 'Kevin Jones',
-      email: 'kevin@knowledgespike.com',
-      roles: ['BB.Admin']
-    };
-    authServiceMock.getUserProfile.and.returnValue(
-      of({
-        result: mockProfile,
-        errorMessage: '',
-        timeGenerated: new Date().toISOString()
-      })
-    );
-
-    const fixture = TestBed.createComponent(AppComponent);
-    fixture.detectChanges();
-
-    fixture.componentInstance.loadUserProfile();
-    fixture.detectChanges();
-
-    expect(authServiceMock.getUserProfile).toHaveBeenCalled();
-    expect(fixture.componentInstance.userProfile()).toEqual(mockProfile);
-
-    const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('#user-profile-card')?.textContent).toContain('BB.Admin');
-  });
 
   it('should display a loading overlay without sample matches while API request is pending', () => {
     const fixture = TestBed.createComponent(AppComponent);

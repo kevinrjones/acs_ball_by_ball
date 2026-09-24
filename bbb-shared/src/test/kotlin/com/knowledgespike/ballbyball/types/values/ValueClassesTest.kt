@@ -99,14 +99,6 @@ class ValueClassesTest {
         expectThat(blankSeason.isLeft()).isTrue()
     }
 
-    @Test
-    fun `UserId rejects blank strings`() {
-        val user = UserId.of("user-123")
-        expectThat((user as Either.Right).value.value).isEqualTo("user-123")
-
-        val blankUser = UserId.fromRaw(" ")
-        expectThat(blankUser.isLeft()).isTrue()
-    }
 
     @Test
     fun `MatchSummary serializes with value classes as primitive JSON values`() {

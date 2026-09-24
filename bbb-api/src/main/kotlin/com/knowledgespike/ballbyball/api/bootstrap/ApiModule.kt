@@ -11,7 +11,6 @@ import com.knowledgespike.ballbyball.api.feature.matches.domain.repository.Match
 import com.knowledgespike.ballbyball.api.feature.matches.domain.service.DefaultMatchService
 import com.knowledgespike.ballbyball.api.feature.matches.domain.service.MatchService
 import com.knowledgespike.ballbyball.api.feature.matches.presentation.routeMatches
-import com.knowledgespike.ballbyball.api.feature.user.presentation.routeUser
 import com.knowledgespike.ballbyball.contracts.Envelope
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
@@ -88,6 +87,5 @@ fun Application.moduleWithServices(
         routeHeartbeat()
         routeHealth(databaseHealth)
         routeMatches(matchService)
-        routeUser()
     }
 }

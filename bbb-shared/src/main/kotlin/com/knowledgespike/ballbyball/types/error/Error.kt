@@ -10,6 +10,5 @@ class MatchKeyError(message: String, val matchKey: Long? = null) : Error(message
 class SourceMatchIdError(message: String, val sourceMatchId: Int? = null) : Error(message)
 class MatchTypeError(message: String, val matchType: String? = null) : Error(message)
 class SeasonError(message: String, val season: String? = null) : Error(message)
-class UserIdError(message: String, val userId: String? = null) : Error(message)
 class ValidationError(message: String) : Error(message)
 class DatabaseError(val stackTrace: String, message: String) : Error(message)

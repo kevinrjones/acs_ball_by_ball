@@ -2,7 +2,6 @@ import { HttpClient } from '@angular/common/http';
 import { computed, inject, Injectable, Signal } from '@angular/core';
 import { catchError, defer, Observable, of, shareReplay } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { Envelope } from '../models/envelope.model';
 
 export interface Claim {
   type: string;
@@ -11,13 +10,6 @@ export interface Claim {
 }
 
 export type Session = { claims: Claim[]; csrfToken?: string } | null;
-
-export interface UserProfileResponse {
-  subject: string;
-  name?: string | null;
-  email?: string | null;
-  roles?: string[];
-}
 
 const ANONYMOUS: Session = null;
 const CACHE_SIZE = 1;
@@ -62,7 +54,4 @@ export class AuthenticationService {
     return s ? s.claims.find((c) => c.type === 'bff:logout_url')?.value || undefined : undefined;
   });
 
-  public getUserProfile(): Observable<Envelope<UserProfileResponse>> {
-    return this.http.get<Envelope<UserProfileResponse>>('/api/user/profile');
-  }
 }

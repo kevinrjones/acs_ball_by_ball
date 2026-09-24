@@ -4,7 +4,6 @@ import com.knowledgespike.ballbyball.types.values.MatchKey
 import com.knowledgespike.ballbyball.types.values.MatchType
 import com.knowledgespike.ballbyball.types.values.Season
 import com.knowledgespike.ballbyball.types.values.SourceMatchId
-import com.knowledgespike.ballbyball.types.values.UserId
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -17,23 +16,6 @@ data class ApiHealth(
 data class HeartbeatResponse(
     val message: String
 )
-
-@Serializable
-data class UserProfileResponse(
-    val subject: UserId,
-    val name: String? = null,
-    val email: String? = null,
-    val roles: List<String> = emptyList()
-) {
-    companion object {
-        fun of(
-            subject: String,
-            name: String? = null,
-            email: String? = null,
-            roles: List<String> = emptyList()
-        ): UserProfileResponse = UserProfileResponse(UserId.from(subject), name, email, roles)
-    }
-}
 
 @Serializable
 data class MatchSummary(

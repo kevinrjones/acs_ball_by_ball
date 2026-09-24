@@ -1,8 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { AuthenticationService, Session, UserProfileResponse } from './authentication.service';
-import { Envelope } from '../models/envelope.model';
+import { AuthenticationService, Session } from './authentication.service';
 
 describe('AuthenticationService', () => {
   let service: AuthenticationService;
@@ -60,29 +59,4 @@ describe('AuthenticationService', () => {
     expect(service.logoutUrl()).toBe('/bff/logout?sid=test-csrf');
   });
 
-  it('should request /api/user/profile via proxy', () => {
-    service = TestBed.inject(AuthenticationService);
-    const initReq = httpTesting.expectOne('/bff/user');
-    initReq.flush(null);
-
-    const mockProfile: Envelope<UserProfileResponse> = {
-      result: {
-        subject: 'user-guid-999',
-        name: 'Kevin Jones',
-        email: 'kevin@knowledgespike.com',
-        roles: ['BB.User']
-      },
-      errorMessage: '',
-      timeGenerated: new Date().toISOString()
-    };
-
-    service.getUserProfile().subscribe((envelope) => {
-      expect(envelope.result).toEqual(mockProfile.result);
-      expect(envelope.result.roles).toContain('BB.User');
-    });
-
-    const req = httpTesting.expectOne('/api/user/profile');
-    expect(req.request.method).toBe('GET');
-    req.flush(mockProfile);
-  });
 });

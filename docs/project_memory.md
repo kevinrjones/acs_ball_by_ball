@@ -1,5 +1,36 @@
 # Project Memory
 
+## Task: Remove protected profile test flow
+
+### Title
+
+Remove the test-only protected profile UI and API
+
+### Date/time completed
+
+2026-09-24 13:47
+
+### What was shipped
+
+- Removed the authenticated home-page profile section and `Fetch Protected Profile` action from `bbb-web`.
+- Removed the Angular profile request, state, response model, and dedicated client/component tests.
+- Removed the `/api/user/profile` route, profile-only authorization helpers, shared profile contract, `UserId` tiny type, and dedicated API/shared tests.
+- Updated the current application architecture documentation to describe the remaining heartbeat, health, and matches slices.
+
+### Key decisions
+
+- Kept the BFF session endpoint and authenticated header controls because they support real login/logout behavior rather than the removed test flow.
+- Kept JWT authentication and scope validation required by the matches endpoint, removing only human-profile authorization logic.
+
+### Gotchas
+
+- Historical authentication implementation plans retain references to the profile endpoint as records of the original scope; the current architecture map no longer advertises it.
+
+### Test coverage areas
+
+- Angular home-page and authentication-service tests no longer expose or request the profile flow.
+- API tests continue covering public heartbeat, protected matches, validation, and health behavior.
+
 ## Task: Repair authentication navigation and signup configuration
 
 ### Title

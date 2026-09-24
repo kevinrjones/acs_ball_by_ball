@@ -37,7 +37,6 @@ flowchart TD
         ClaimsCheck{Claim Inspector}
         AliveRoute[GET /api/heartbeat/alive: Public]
         MatchesRoute[GET /api/matches: Machine/User]
-        UserRoute[GET /api/user/profile: User Only]
     end
 
     subgraph Identity["Identity Server (:8443)"]
@@ -61,7 +60,6 @@ flowchart TD
     JWTVerifier --> ClaimsCheck
     ClaimsCheck -->|No Auth Required| AliveRoute
     ClaimsCheck -->|Valid Token| MatchesRoute
-    ClaimsCheck -->|Has User Subject & Role| UserRoute
 ```
 
 ### Three-Tier API Access Model
@@ -70,8 +68,6 @@ flowchart TD
    - `/api/heartbeat/alive`: Unauthenticated heartbeat returning `{ "message": "Heartbeat: Alive" }`.
 2. **Tier 2 (Machine / BFF Authenticated)**:
    - `/api/matches`: Protected with `auth-jwt`. Accessible with a valid client-credentials machine token (used by `bbb-web` via `DefaultTokenService` when an anonymous visitor browses recent matches) or a logged-in user token.
-3. **Tier 3 (Human User Authenticated)**:
-   - `/api/user/profile`: Protected with `auth-jwt`. Requires verified human user subject claim and assigned user roles. Rejects machine-only tokens with `403 Forbidden` and unauthenticated calls with `401 Unauthorized`.
 
 ### Backend-For-Frontend (BFF) Pattern with `kbff`
 `bbb-web` implements the Backend-For-Frontend security pattern using `com.knowledgespike:kbff`:
@@ -112,10 +108,9 @@ Each feature slice contains:
 | **Heartbeat** | `feature.heartbeat` | `HeartbeatRoute.kt` (`GET /api/heartbeat/alive`) | — | — |
 | **Health** | `feature.health` | `HealthRoute.kt` (`GET /health`) | `DatabaseHealth.kt` | `JooqDatabaseHealth.kt` |
 | **Matches** | `feature.matches` | `MatchesRoute.kt` (`GET /api/matches`) | `MatchRepository.kt`, `MatchService.kt` | `JooqMatchRepository.kt` |
-| **User** | `feature.user` | `UserRoute.kt` (`GET /api/user/profile`) | — | — |
 
 Shared infrastructure and cross-cutting concerns (bootstrap, database connection pool, JWT authentication and verifiers) reside in top-level packages:
-- `bootstrap`: `ApiModule.kt` (Ktor application configuration, route registration), `Security.kt` (JWT authentication, claim validation, userProtected route plugin).
+- `bootstrap`: `ApiModule.kt` (Ktor application configuration, route registration), `Security.kt` (JWT authentication and scope validation).
 - `config`: `DatabaseResources.kt`, `DatabaseSettings.kt`, `JwtSettings.kt`.
 
 ### API request flow
@@ -157,7 +152,6 @@ The application enforces strong typing at compile-time with zero runtime overhea
 - `SourceMatchId`: Encapsulates external match identifiers (`>= 0`).
 - `MatchType`: Encapsulates non-blank cricket match types (e.g. `Test`, `ODI`, `T20`).
 - `Season`: Encapsulates non-blank cricket seasons (e.g. `2023/24`, `1992`).
-- `UserId`: Encapsulates non-blank user subject identifiers.
 
 Boundary validation uses Arrow's `Raise` and `Either` DSL. All value classes declare private constructors and companion factory methods (`invoke` with `Raise`, `of` returning `Either`, and `from` for validated internal mapping). In multi-parameter endpoints, `zipOrAccumulate` accumulates all parameter validation failures into a `NonEmptyList<Error>`. Domain services and repositories only accept validated tiny types, making illegal arguments unrepresentable in the domain layer.
 
@@ -188,7 +182,7 @@ All API responses are wrapped in a generic `Envelope<T>` contract, which provide
 - `timeGenerated: Instant`: The server timestamp when the response was constructed.
 
 The module uses `kotlinx.serialization` and currently defines `Envelope`, `ApiHealth`, `ApiError`,
-`MatchSummary`, `RecentMatchesResponse`, `ApplicationMetadata`, and `UserProfileResponse`. Desktop/mobile clients and the web
+`MatchSummary`, `RecentMatchesResponse`, and `ApplicationMetadata`. Desktop/mobile clients and the web
 adapter consume these same classes; database rows and HTML remain application-specific representations.
 
 When a new endpoint is added, define its request and response/error contracts in
@@ -197,11 +191,10 @@ the route limited to transport translation.
 
 ## `bbb-api`
 
-`bbb-api` is composed of four self-contained feature slices (`heartbeat`, `health`, `matches`, and `user`), backed by shared bootstrap and configuration:
+`bbb-api` is composed of three self-contained feature slices (`heartbeat`, `health`, and `matches`), backed by shared bootstrap and configuration:
 - `feature.heartbeat`: Exposes public liveness heartbeat (`GET /api/heartbeat/alive`).
 - `feature.health`: Contains `DatabaseHealth` domain interface, `JooqDatabaseHealth` repository, and `HealthRoute` (`GET /health`).
 - `feature.matches`: Contains `MatchRepository` domain interface, `MatchService` use-case handler, `JooqMatchRepository` data adapter, and `MatchesRoute` (`GET /api/matches`).
-- `feature.user`: Exposes user-protected profile details (`GET /api/user/profile`).
 
 Blocking JOOQ/JDBC queries in repositories run on `Dispatchers.IO` rather than on Ktor request threads. The repositories select the JOOQ dialect from the configured JDBC URL, use the warehouse `dim_match` table and a Hikari connection pool, and keep queries focused and lightweight.
 

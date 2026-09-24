@@ -114,42 +114,6 @@
         </div>
     </section>
 
-    <!-- User Profile Section (when authenticated) -->
-    @if (authService.isAuthenticated()) {
-        <section class="max-w-4xl mx-auto p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3" data-purpose="user-profile-section">
-            <div class="flex items-center justify-between pb-2 border-b border-slate-100">
-                <div>
-                    <h2 class="text-base font-bold text-slate-900 tracking-tight">User Account & Profile</h2>
-                    <p class="text-xs text-slate-500">Authenticated via OIDC Identity Server session</p>
-                </div>
-                <button
-                    id="fetch-profile-button"
-                    (click)="loadUserProfile()"
-                    [disabled]="isProfileLoading()"
-                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#0e3b43] text-white hover:bg-[#09292e] shadow-sm transition-colors disabled:opacity-50">
-                    @if (isProfileLoading()) {
-                        Fetching profile...
-                    } @else {
-                        Fetch Protected Profile
-                    }
-                </button>
-            </div>
-            @if (profileError()) {
-                <div class="text-xs text-rose-800 p-2.5 rounded-lg bg-rose-50 border border-rose-200">
-                    {{ profileError() }}
-                </div>
-            }
-            @if (userProfile()) {
-                <div id="user-profile-card" class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-                    <div><span class="font-semibold text-slate-700">Subject:</span> <span class="text-slate-900 font-mono">{{ userProfile()?.subject }}</span></div>
-                    <div><span class="font-semibold text-slate-700">Name:</span> <span class="text-slate-900 font-medium">{{ userProfile()?.name || 'N/A' }}</span></div>
-                    <div><span class="font-semibold text-slate-700">Email:</span> <span class="text-slate-900 font-medium">{{ userProfile()?.email || 'N/A' }}</span></div>
-                    <div><span class="font-semibold text-slate-700">Roles:</span> <span class="text-emerald-800 font-semibold">{{ userProfile()?.roles?.join(', ') || 'None' }}</span></div>
-                </div>
-            }
-        </section>
-    }
-
     <!-- Two-Column Layout: Latest Results vs Latest News -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <!-- BEGIN: Column 1 - Latest Results -->

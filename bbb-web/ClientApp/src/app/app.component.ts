@@ -3,7 +3,7 @@ import {CommonModule} from '@angular/common';
 import {RouterLink} from '@angular/router';
 import {MatchService} from './services/match.service';
 import {MatchSummary} from './models/match.model';
-import {AuthenticationService, UserProfileResponse} from './services/authentication.service';
+import {AuthenticationService} from './services/authentication.service';
 import {ApplicationMetadataService} from './services/application-metadata.service';
 import {ApplicationMetadata} from './models/application-metadata.model';
 
@@ -24,9 +24,6 @@ export class AppComponent implements OnInit {
   readonly errorMessage = signal<string | null>(null);
   readonly hasLoaded = signal<boolean>(false);
 
-  readonly userProfile = signal<UserProfileResponse | null>(null);
-  readonly isProfileLoading = signal<boolean>(false);
-  readonly profileError = signal<string | null>(null);
   readonly applicationMetadata = signal<ApplicationMetadata | null>(null);
   readonly isUserMenuOpen = signal<boolean>(false);
 
@@ -79,23 +76,6 @@ export class AppComponent implements OnInit {
         const errorDetail = err?.error?.errorMessage || err?.error?.message || err?.message || 'The API is currently unavailable.';
         this.errorMessage.set(`Failed to load matches: ${errorDetail}`);
         this.isLoading.set(false);
-      }
-    });
-  }
-
-  loadUserProfile(): void {
-    this.isProfileLoading.set(true);
-    this.profileError.set(null);
-
-    this.authService.getUserProfile().subscribe({
-      next: (response) => {
-        this.userProfile.set(response.result);
-        this.isProfileLoading.set(false);
-      },
-      error: (err) => {
-        const errorDetail = err?.error?.errorMessage || err?.error?.message || err?.message || 'Unable to load profile.';
-        this.profileError.set(`Profile access rejected: ${errorDetail}`);
-        this.isProfileLoading.set(false);
       }
     });
   }

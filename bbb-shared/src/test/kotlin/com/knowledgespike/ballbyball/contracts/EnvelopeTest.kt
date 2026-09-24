@@ -47,24 +47,6 @@ class EnvelopeTest {
         expectThat(envelope.errorMessage).isEqualTo("Limit exceeded")
     }
 
-    @Test
-    fun `envelope serializes to and from json preserving instant and payload`() {
-        val payload = UserProfileResponse.of(
-            subject = "user-123",
-            name = "Kevin",
-            email = "kevin@test.com",
-            roles = listOf("BB.User")
-        )
-        val original = Envelope.success(payload)
-
-        val serialized = json.encodeToString(original)
-        expectThat(serialized).isNotEmpty()
-
-        val deserialized = json.decodeFromString<Envelope<UserProfileResponse>>(serialized)
-        expectThat(deserialized.result).isEqualTo(payload)
-        expectThat(deserialized.errorMessage).isEqualTo("")
-        expectThat(deserialized.timeGenerated).isEqualTo(original.timeGenerated)
-    }
 
     @Test
     fun `failure envelope serializes and deserializes as Envelope of String`() {
