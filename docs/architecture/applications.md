@@ -165,6 +165,9 @@ Boundary validation uses Arrow's `Raise` and `Either` DSL. All value classes dec
 connection, timeout, and malformed JSON failures to `MatchApiResult.Unavailable`.
 API responses are returned as typed JSON (`RecentMatchesResponse` or `ApiError`)
 with appropriate HTTP status codes (e.g. `502 Bad Gateway` on failure).
+The public `GET /api/metadata` route combines the API envelope timestamp with
+the build-generated `version.properties` resource, allowing the Angular footer
+to show the latest data-response time, application version, and build date.
 Static single page application assets and index fallbacks are handled via
 Ktor's `singlePageApplication` configurator.
 
@@ -178,7 +181,7 @@ All API responses are wrapped in a generic `Envelope<T>` contract, which provide
 - `timeGenerated: Instant`: The server timestamp when the response was constructed.
 
 The module uses `kotlinx.serialization` and currently defines `Envelope`, `ApiHealth`, `ApiError`,
-`MatchSummary`, `RecentMatchesResponse`, and `UserProfileResponse`. Desktop/mobile clients and the web
+`MatchSummary`, `RecentMatchesResponse`, `ApplicationMetadata`, and `UserProfileResponse`. Desktop/mobile clients and the web
 adapter consume these same classes; database rows and HTML remain application-specific representations.
 
 When a new endpoint is added, define its request and response/error contracts in

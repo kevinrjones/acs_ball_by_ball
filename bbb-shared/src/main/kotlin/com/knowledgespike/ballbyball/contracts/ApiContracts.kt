@@ -102,6 +102,12 @@ data class RecentMatchesResponse(
 )
 
 @Serializable
+data class ApplicationMetadata(
+    val dataLastUpdated: String,
+    val applicationVersion: String
+)
+
+@Serializable
 data class ApiError(
     val code: String,
     val message: String

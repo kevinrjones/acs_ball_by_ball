@@ -1,6 +1,7 @@
 ktor:
   deployment:
     port: "${API_PORT:8081}"
+    host: "${API_HOST:localhost}"
   application:
     modules:
       - com.knowledgespike.ballbyball.api.bootstrap.ApiModuleKt.module

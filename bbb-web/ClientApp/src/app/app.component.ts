@@ -4,9 +4,8 @@ import { RouterLink } from '@angular/router';
 import { MatchService } from './services/match.service';
 import { MatchSummary } from './models/match.model';
 import { AuthenticationService, UserProfileResponse } from './services/authentication.service';
-import { SAMPLE_MATCHES, SampleMatch } from './fixtures/sample-matches.fixture';
-
-export type { SampleMatch };
+import { ApplicationMetadataService } from './services/application-metadata.service';
+import { ApplicationMetadata } from './models/application-metadata.model';
 
 @Component({
   selector: 'app-root',
@@ -17,6 +16,7 @@ export type { SampleMatch };
 })
 export class AppComponent implements OnInit {
   private readonly matchService = inject(MatchService);
+  private readonly applicationMetadataService = inject(ApplicationMetadataService);
   public readonly authService = inject(AuthenticationService);
 
   readonly matches = signal<MatchSummary[]>([]);
@@ -27,11 +27,18 @@ export class AppComponent implements OnInit {
   readonly userProfile = signal<UserProfileResponse | null>(null);
   readonly isProfileLoading = signal<boolean>(false);
   readonly profileError = signal<string | null>(null);
-
-  readonly sampleMatches: SampleMatch[] = SAMPLE_MATCHES;
+  readonly applicationMetadata = signal<ApplicationMetadata | null>(null);
 
   ngOnInit(): void {
     this.loadRecentMatches();
+    this.loadApplicationMetadata();
+  }
+
+  loadApplicationMetadata(): void {
+    this.applicationMetadataService.getMetadata().subscribe({
+      next: (response) => this.applicationMetadata.set(response.result),
+      error: () => this.applicationMetadata.set(null)
+    });
   }
 
   getBadgeClass(format?: string): string {

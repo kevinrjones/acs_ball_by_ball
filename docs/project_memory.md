@@ -1,5 +1,72 @@
 # Project Memory
 
+## Task: Add dynamic application metadata to the bbb-web footer
+
+### Title
+
+Match the bbb-web footer to the dynamic stats-web metadata presentation
+
+### Date/time completed
+
+2026-09-24 10:32
+
+### What was shipped
+
+- Replaced the static Maiden Cricket footer with `Copyright © 2026 Kevin Jones` and dynamic data freshness, application version, and build-date text.
+- Added the shared `ApplicationMetadata` contract and the bbb-web `GET /api/metadata` endpoint.
+- Generated `version.properties` during Gradle resource processing from the configured release version and current build timestamp.
+- Added Angular metadata loading with an unavailable fallback and regression coverage for both the BFF endpoint and rendered footer.
+
+### Key decisions
+
+- Reused the existing API envelope timestamp as the dynamic data freshness value, avoiding a new warehouse metadata table.
+- Application versions can come from the `appVersion` Gradle property, `BBB_WEB_APP_VERSION`, or a `v*` GitHub tag, with `v0.1.0` as the local default.
+- Formatting is performed server-side in the Europe/London timezone so the browser receives the exact footer text without locale-dependent rendering.
+
+### Gotchas
+
+- The current warehouse exposes response-generation time rather than a separate ingestion timestamp, so `Data last updated` represents the latest successful data response timestamp.
+- When metadata cannot be loaded, the footer remains usable and displays `unavailable` values instead of hiding the copyright information.
+
+### Test coverage areas
+
+- Metadata endpoint response formatting and application-version propagation.
+- Angular footer rendering of dynamic metadata and removal of the old static “Built with Angular and Ktor” text.
+- `./gradlew clean check --no-daemon` across all modules, including `bbb-web:testClientApp`; all 21 Angular tests passed.
+
+## Task: Show loading and error states instead of stale home-page matches
+
+### Title
+
+Prevent bbb-web from displaying fixture matches when recent match data fails to load
+
+### Date/time completed
+
+2026-09-22 16:56
+
+### What was shipped
+
+- Removed the bbb-web home-page fallback that rendered static sample matches before the API response or after a failed request.
+- Added a full-page loading overlay with a blurred background and spinner while recent matches are loading.
+- Preserved successfully loaded real matches during refreshes, while displaying the existing error banner and retry action when a refresh fails.
+- Added regression coverage for pending requests and API failures, and removed the unused sample-match fixture.
+
+### Key decisions
+
+- `hasLoaded` remains false until the API returns successfully, so the initial failure state renders no match cards.
+- A later refresh does not clear previously loaded real matches; the overlay communicates that replacement data is being fetched without presenting stale fixtures as current data.
+
+### Gotchas
+
+- The reference `acs-web` application was outside the project-scoped file inspection boundary, so the equivalent overlay behavior was implemented directly in bbb-web using the requested spinner and blur treatment.
+
+### Test coverage areas
+
+- Pending recent-match requests show the loading overlay and no sample teams.
+- Recent-match API failures show the error banner, stop loading, and render no sample teams.
+- Successful match responses and empty responses retain their existing behavior.
+- `npm test -- --watch=false --browsers=ChromeHeadless`, `npm run build`, and `./gradlew clean check --no-daemon` all pass.
+
 ## Task: Fix Entrypoint Permissions and Container Image Packaging
 
 ### Title

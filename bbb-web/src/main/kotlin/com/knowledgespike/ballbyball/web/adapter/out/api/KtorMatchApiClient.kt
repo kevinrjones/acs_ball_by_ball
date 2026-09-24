@@ -32,7 +32,8 @@ class KtorMatchApiClient(
         if (!response.status.isSuccess()) {
             MatchApiResult.Unavailable(response.status)
         } else {
-            MatchApiResult.Success(response.body<Envelope<RecentMatchesResponse>>().result.matches)
+            val envelope = response.body<Envelope<RecentMatchesResponse>>()
+            MatchApiResult.Success(envelope.result.matches, envelope.timeGenerated)
         }
     } catch (cause: CancellationException) {
         throw cause

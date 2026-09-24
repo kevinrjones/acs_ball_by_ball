@@ -6,6 +6,7 @@ import com.knowledgespike.ballbyball.web.adapter.out.api.KtorMatchApiClient
 import com.knowledgespike.ballbyball.web.adapter.out.service.DefaultTokenService
 import com.knowledgespike.ballbyball.web.application.MatchApiClient
 import com.knowledgespike.ballbyball.web.config.KbffConfigFactory
+import com.knowledgespike.ballbyball.web.application.ApplicationMetadataService
 import com.knowledgespike.ballbyball.web.config.apiBaseUrl
 import com.knowledgespike.feature.kbff.data.repository.InMemoryKbffSessionStorage
 import com.knowledgespike.feature.kbff.domain.model.KbffConfiguration
@@ -56,7 +57,11 @@ fun Application.module() {
     )
 }
 
-fun Application.moduleWithApiClient(matchApiClient: MatchApiClient, client: HttpClient? = null) {
+fun Application.moduleWithApiClient(
+    matchApiClient: MatchApiClient,
+    client: HttpClient? = null,
+    applicationMetadataService: ApplicationMetadataService = ApplicationMetadataService(matchApiClient)
+) {
     val defaultConfig = KbffConfigFactory.defaultConfiguration(isDevelopment = true)
     val defaultClient = client ?: HttpClientFactory.fromConfig(environment.config)
     if (client == null) {
@@ -75,7 +80,8 @@ fun Application.moduleWithApiClient(matchApiClient: MatchApiClient, client: Http
         bffConfig = defaultConfig,
         oidcService = defaultOidc,
         sessionStorage = InMemoryKbffSessionStorage(),
-        httpClient = defaultClient
+        httpClient = defaultClient,
+        applicationMetadataService = applicationMetadataService
     )
 }
 
@@ -84,7 +90,8 @@ fun Application.moduleWithDependencies(
     bffConfig: KbffConfiguration,
     oidcService: OidcService,
     sessionStorage: KbffSessionStorage,
-    httpClient: HttpClient
+    httpClient: HttpClient,
+    applicationMetadataService: ApplicationMetadataService = ApplicationMetadataService(matchApiClient)
 ) {
     install(CallLogging)
     install(ContentNegotiation) {
@@ -119,6 +126,6 @@ fun Application.moduleWithDependencies(
     routing {
         kbffAuthRoutes(oidcService, bffConfig, "/bff/login", "/signin-oidc")
         kbffProxyRoutes(bffConfig, httpClient, oidcService)
-        registerWebRoutes(matchApiClient)
+        registerWebRoutes(matchApiClient, applicationMetadataService)
     }
 }

@@ -1,5 +1,6 @@
 import org.gradle.api.tasks.testing.Test
 import com.github.gradle.node.npm.task.NpmTask
+import java.time.OffsetDateTime
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
@@ -9,7 +10,13 @@ plugins {
 }
 
 group = "com.knowledgespike"
-version = "0.1.0"
+
+fun getAppVersion(): String = providers.gradleProperty("appVersion").orNull
+    ?: providers.environmentVariable("BBB_WEB_APP_VERSION").orNull
+    ?: providers.environmentVariable("GITHUB_REF_NAME").orNull?.takeIf { it.startsWith("v") }
+    ?: "v0.1.0"
+
+version = getAppVersion()
 
 dependencies {
     implementation(project(":bbb-shared"))
@@ -97,8 +104,18 @@ sourceSets {
 }
 
 tasks.named<ProcessResources>("processResources") {
+    val versionProperties = mapOf(
+        "version" to project.version,
+        "buildDate" to OffsetDateTime.now()
+    )
+    inputs.properties(versionProperties)
+    filesMatching("version.properties") {
+        expand(versionProperties)
+    }
+}
+
+tasks.named<ProcessResources>("processResources") {
     dependsOn(syncClientAppResources)
-    duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 
 tasks.named("check") {

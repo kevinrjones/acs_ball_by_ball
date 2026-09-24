@@ -5,18 +5,22 @@ import { NEVER, of, throwError } from 'rxjs';
 import { AppComponent } from './app.component';
 import { MatchService } from './services/match.service';
 import { AuthenticationService, Session, UserProfileResponse } from './services/authentication.service';
+import { ApplicationMetadataService } from './services/application-metadata.service';
 import { RecentMatchesResponse } from './models/match.model';
 import { Envelope } from './models/envelope.model';
 
 describe('AppComponent', () => {
   let matchServiceMock: jasmine.SpyObj<MatchService>;
   let authServiceMock: jasmine.SpyObj<AuthenticationService>;
+  let applicationMetadataServiceMock: jasmine.SpyObj<ApplicationMetadataService>;
   let sessionSignal: WritableSignal<Session>;
 
   beforeEach(async () => {
     matchServiceMock = jasmine.createSpyObj<MatchService>('MatchService', ['getRecentMatches']);
     matchServiceMock.getRecentMatches.and.returnValue(NEVER);
     authServiceMock = jasmine.createSpyObj<AuthenticationService>('AuthenticationService', ['getSession', 'getUserProfile']);
+    applicationMetadataServiceMock = jasmine.createSpyObj<ApplicationMetadataService>('ApplicationMetadataService', ['getMetadata']);
+    applicationMetadataServiceMock.getMetadata.and.returnValue(NEVER);
 
     sessionSignal = signal<Session>(null);
     Object.defineProperty(authServiceMock, 'session', { value: sessionSignal });
@@ -37,7 +41,8 @@ describe('AppComponent', () => {
       providers: [
         provideRouter([]),
         { provide: MatchService, useValue: matchServiceMock },
-        { provide: AuthenticationService, useValue: authServiceMock }
+        { provide: AuthenticationService, useValue: authServiceMock },
+        { provide: ApplicationMetadataService, useValue: applicationMetadataServiceMock }
       ]
     }).compileComponents();
   });
@@ -55,6 +60,33 @@ describe('AppComponent', () => {
     expect(compiled.querySelector('header')?.textContent).toContain('Maiden');
     expect(compiled.querySelector('header')?.textContent).toContain('Ball by Ball');
     expect(compiled.querySelector('h1')?.textContent).toContain('Ball by Ball');
+  });
+
+  it('should render dynamic footer metadata', () => {
+    applicationMetadataServiceMock.getMetadata.and.returnValue(of({
+      result: {
+        dataLastUpdated: '24 September 2026 at 07:29 BST',
+        applicationVersion: 'Application version: v0.1.117. Built on 23rd of September 2026 at 06:59 GMT+00:00'
+      },
+      errorMessage: '',
+      timeGenerated: '2026-09-24T06:29:00Z'
+    }));
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+
+    const footer = fixture.nativeElement.querySelector('footer') as HTMLElement;
+    expect(footer.textContent).toContain('Copyright © 2026 Kevin Jones');
+    expect(footer.textContent).toContain('Data last updated: 24 September 2026 at 07:29 BST');
+    expect(footer.textContent).toContain('Application version: v0.1.117');
+    const footerContent = footer.querySelector('div');
+    expect(footerContent?.querySelectorAll(':scope > p').length).toBe(0);
+    expect(footerContent?.querySelectorAll(':scope > span').length).toBe(2);
+    expect(footerContent?.classList.contains('flex')).toBeTrue();
+    expect(footerContent?.classList.contains('items-center')).toBeTrue();
+    expect(footerContent?.classList.contains('justify-between')).toBeTrue();
+    expect(footerContent?.classList.contains('gap-4')).toBeTrue();
+    expect(footer.querySelector('.app-footer__timestamp')?.textContent).toContain('·');
+    expect(footer.textContent).not.toContain('Built with Angular and Ktor');
   });
 
   it('should render Sign In link when user is unauthenticated', () => {
@@ -123,14 +155,15 @@ describe('AppComponent', () => {
     expect(compiled.querySelector('#user-profile-card')?.textContent).toContain('BB.Admin');
   });
 
-  it('should display initial sample matches prior to loading from API', () => {
+  it('should display a loading overlay without sample matches while API request is pending', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    const articles = compiled.querySelectorAll('#matches article');
-    expect(articles.length).toBe(fixture.componentInstance.sampleMatches.length);
-    expect(compiled.textContent).toContain('Bangladesh Women');
-    expect(compiled.textContent).toContain('India Women');
+    expect(fixture.componentInstance.isLoading()).toBeTrue();
+    expect(compiled.querySelector('.loading-container')).toBeTruthy();
+    expect(compiled.querySelectorAll('#matches article').length).toBe(0);
+    expect(compiled.textContent).not.toContain('Bangladesh Women');
+    expect(compiled.textContent).not.toContain('India Women');
   });
 
   it('should load matches from MatchService when loadRecentMatches is called', () => {
@@ -230,6 +263,11 @@ describe('AppComponent', () => {
     expect(fixture.componentInstance.errorMessage()).toContain('Network error');
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.textContent).toContain('Failed to load matches: Network error');
+    expect(fixture.componentInstance.isLoading()).toBeFalse();
+    expect(fixture.componentInstance.hasLoaded()).toBeFalse();
+    expect(compiled.querySelectorAll('#matches article').length).toBe(0);
+    expect(compiled.textContent).not.toContain('Bangladesh Women');
+    expect(compiled.textContent).not.toContain('India Women');
   });
 
   it('should show "No matches found" when API returns empty list', () => {

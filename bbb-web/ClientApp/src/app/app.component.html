@@ -1,3 +1,10 @@
+@if (isLoading()) {
+    <div class="loading-container" role="status" aria-live="polite" aria-label="Loading latest matches">
+        <div class="loading-spinner" aria-hidden="true"></div>
+        <span>Loading latest matches...</span>
+    </div>
+}
+
 <!-- BEGIN: MainHeader -->
 <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -125,10 +132,10 @@
                 <div class="flex items-center gap-2">
                     <h2 class="text-xl font-bold text-slate-900 tracking-tight">Latest Results</h2>
                     <span class="text-xs font-semibold bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full">
-                        @if (hasLoaded()) {
-                            {{ matches().length }} Matches
+                        @if (isLoading()) {
+                            Loading matches...
                         } @else {
-                            {{ sampleMatches.length }} Matches
+                            {{ matches().length }} Matches
                         }
                     </span>
                 </div>
@@ -160,15 +167,7 @@
 
             <div id="matches" class="space-y-3.5" aria-live="polite">
                 @if (hasLoaded()) {
-                    @if (isLoading()) {
-                        <div class="p-6 text-center bg-white rounded-xl border border-slate-200/90 shadow-sm text-slate-500 text-sm">
-                            <svg class="animate-spin h-5 w-5 mx-auto mb-2 text-emerald-600" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Fetching latest matches from API...
-                        </div>
-                    } @else if (matches().length === 0) {
+                    @if (matches().length === 0) {
                         <p class="text-sm text-slate-500 p-4 bg-white rounded-xl border border-slate-200/90 shadow-sm">No matches found.</p>
                     } @else {
                         @for (match of matches(); track match.matchKey) {
@@ -213,49 +212,6 @@
                             </article>
                         }
                     }
-                } @else {
-                    <!-- Initial Static Matches -->
-                    @for (match of sampleMatches; track match.competition) {
-                        <article class="bg-white rounded-xl p-4 border border-slate-200/90 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-                            <div class="flex items-center justify-between gap-3 text-xs mb-2">
-                                <span class="font-semibold px-2 py-0.5 rounded border" [ngClass]="match.badgeClass">{{ match.competition }}</span>
-                                <div class="flex items-center gap-1.5 text-slate-400 group-hover:text-emerald-700 transition-colors">
-                                    <span class="text-xs text-slate-400">{{ match.date }}</span>
-                                    @if (authService.isAuthenticated()) {
-                                        <a class="match-card__link cursor-pointer hover:text-slate-700 inline-flex items-center" [routerLink]="['/scorecard']" title="View scorecard">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
-                                            </svg>
-                                        </a>
-                                    }
-                                </div>
-                            </div>
-                            <div class="space-y-1.5 py-1">
-                                <div class="flex justify-between items-center text-sm">
-                                    <span [class.font-bold]="match.isTeam1Winner" [class.font-medium]="!match.isTeam1Winner" [class.text-slate-900]="match.isTeam1Winner" [class.text-slate-700]="!match.isTeam1Winner">{{ match.team1 }}</span>
-                                    <span class="tracking-tight" [class.font-bold]="match.isTeam1Winner" [class.font-semibold]="!match.isTeam1Winner" class="text-slate-900">
-                                        {{ match.score1 }}
-                                        @if (match.overs1) {
-                                            <span class="text-xs text-slate-500 font-normal ml-1">{{ match.overs1 }}</span>
-                                        }
-                                    </span>
-                                </div>
-                                <div class="flex justify-between items-center text-sm">
-                                    <span [class.font-bold]="match.isTeam2Winner" [class.font-medium]="!match.isTeam2Winner" [class.text-slate-900]="match.isTeam2Winner" [class.text-slate-700]="!match.isTeam2Winner">{{ match.team2 }}</span>
-                                    <span class="tracking-tight" [class.font-bold]="match.isTeam2Winner" [class.font-semibold]="!match.isTeam2Winner" class="text-slate-900">
-                                        {{ match.score2 }}
-                                        @if (match.overs2) {
-                                            <span class="text-xs text-slate-500 font-normal ml-1">{{ match.overs2 }}</span>
-                                        }
-                                    </span>
-                                </div>
-                            </div>
-                            <div class="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-                                <p class="font-semibold text-emerald-700">{{ match.result }}</p>
-                                <span class="text-slate-400 uppercase text-[10px] font-medium tracking-wider">{{ match.format }}</span>
-                            </div>
-                        </article>
-                    }
                 }
             </div>
         </section>
@@ -278,7 +234,7 @@
                         <span class="text-xs font-medium text-slate-400 whitespace-nowrap ml-2">19th September 2026</span>
                     </div>
                     <p class="text-xs text-slate-600 leading-relaxed">
-                        Started work on the Ball-by-Ball app[licationn
+                        Started work on the Ball-by-Ball application
                     </p>
                 </article>
             </div>
@@ -290,9 +246,12 @@
 
 <!-- BEGIN: Footer -->
 <footer class="bg-white border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-500">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-2">
-        <p>&copy; 2026 Maiden Cricket / Ball by Ball Data. All rights reserved.</p>
-        <p class="text-slate-400">Built with Angular and Ktor</p>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
+        <span>Copyright © 2026 Kevin Jones</span>
+        <span class="app-footer__timestamp">
+            Data last updated: {{ applicationMetadata()?.dataLastUpdated || 'unavailable' }} &nbsp;·&nbsp;
+            {{ applicationMetadata()?.applicationVersion || 'Application version: unavailable' }}
+        </span>
     </div>
 </footer>
 <!-- END: Footer -->

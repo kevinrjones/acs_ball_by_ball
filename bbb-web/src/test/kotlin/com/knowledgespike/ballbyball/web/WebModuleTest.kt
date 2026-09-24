@@ -8,6 +8,7 @@ import com.knowledgespike.ballbyball.web.adapter.out.api.KtorMatchApiClient
 import com.knowledgespike.ballbyball.web.adapter.out.service.DefaultTokenService
 import com.knowledgespike.ballbyball.web.application.MatchApiClient
 import com.knowledgespike.ballbyball.web.application.MatchApiResult
+import com.knowledgespike.ballbyball.web.application.ApplicationMetadataService
 import com.knowledgespike.ballbyball.web.bootstrap.moduleWithApiClient
 import com.knowledgespike.ballbyball.web.bootstrap.moduleWithDependencies
 import com.knowledgespike.ballbyball.web.config.KbffConfigFactory
@@ -37,8 +38,31 @@ import strikt.assertions.isA
 import strikt.assertions.isEqualTo
 import strikt.assertions.isNotNull
 import java.io.IOException
+import kotlin.time.Instant
 
 class WebModuleTest {
+    @Test
+    fun `metadata endpoint returns dynamic data timestamp and application version`() = testApplication {
+        val apiClient = FakeMatchApiClient(
+            MatchApiResult.Success(
+                emptyList(),
+                Instant.parse("2026-09-24T06:29:00Z")
+            )
+        )
+        val metadataService = ApplicationMetadataService(apiClient, "Application version: v0.1.117. Built on 23rd of September 2026 at 06:59 GMT+00:00")
+        application {
+            moduleWithApiClient(
+                matchApiClient = apiClient,
+                applicationMetadataService = metadataService
+            )
+        }
+
+        val response = client.get("/api/metadata")
+
+        expectThat(response.status).isEqualTo(HttpStatusCode.OK)
+        expectThat(response.bodyAsText()).contains("24 September 2026 at 07:29 BST")
+        expectThat(response.bodyAsText()).contains("Application version: v0.1.117")
+    }
     @Test
     fun `matches renders data returned by the API`() = testApplication {
         val apiClient = HttpClient(MockEngine) {
@@ -444,7 +468,9 @@ class WebModuleTest {
         client.close()
     }
 
-    private class FakeMatchApiClient : MatchApiClient {
-        override suspend fun recentMatches(): MatchApiResult = MatchApiResult.Success(emptyList())
+    private class FakeMatchApiClient(
+        private val result: MatchApiResult = MatchApiResult.Success(emptyList())
+    ) : MatchApiClient {
+        override suspend fun recentMatches(): MatchApiResult = result
     }
 }
