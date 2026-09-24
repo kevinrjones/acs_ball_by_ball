@@ -126,6 +126,6 @@ fun Application.moduleWithDependencies(
     routing {
         kbffAuthRoutes(oidcService, bffConfig, "/bff/login", "/signin-oidc")
         kbffProxyRoutes(bffConfig, httpClient, oidcService)
-        registerWebRoutes(matchApiClient, applicationMetadataService)
+        registerWebRoutes(matchApiClient, applicationMetadataService, bffConfig.oidc.authority)
     }
 }

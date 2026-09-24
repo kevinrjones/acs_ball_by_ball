@@ -1,17 +1,16 @@
 import {Component, HostListener, inject, OnInit, signal} from '@angular/core';
 import {CommonModule} from '@angular/common';
+import {RouterLink} from '@angular/router';
 import {MatchService} from './services/match.service';
 import {MatchSummary} from './models/match.model';
 import {AuthenticationService, UserProfileResponse} from './services/authentication.service';
 import {ApplicationMetadataService} from './services/application-metadata.service';
 import {ApplicationMetadata} from './models/application-metadata.model';
 
-const DEFAULT_REGISTRATION_URL = 'https://ids.local:8443/identity/account/register';
-
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })
@@ -30,7 +29,6 @@ export class AppComponent implements OnInit {
   readonly profileError = signal<string | null>(null);
   readonly applicationMetadata = signal<ApplicationMetadata | null>(null);
   readonly isUserMenuOpen = signal<boolean>(false);
-  readonly registrationUrl = DEFAULT_REGISTRATION_URL;
 
   ngOnInit(): void {
     this.loadRecentMatches();

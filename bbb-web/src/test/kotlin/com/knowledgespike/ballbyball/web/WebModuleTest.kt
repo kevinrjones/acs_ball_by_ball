@@ -367,6 +367,48 @@ class WebModuleTest {
     }
 
     @Test
+    fun `bff signup redirects to the configured oidc registration endpoint`() = testApplication {
+        val config = KbffConfiguration().apply {
+            environment(isProduction = false)
+            oidc {
+                authority = "https://identity.example.com"
+                clientId = "bbweb"
+                clientSecret = "secret"
+                scopes = listOf("openid", "profile", "bb.api")
+                redirectUri = "http://localhost:8080/signin-oidc"
+                postLogoutRedirectUri = "http://localhost:8080/"
+            }
+        }
+        val mockHttpClient = HttpClient(MockEngine) {
+            engine {
+                addHandler { respond("unused", HttpStatusCode.OK) }
+            }
+        }
+        val oidcService = OidcService(mockHttpClient, config)
+
+        application {
+            moduleWithDependencies(
+                matchApiClient = FakeMatchApiClient(),
+                bffConfig = config,
+                oidcService = oidcService,
+                sessionStorage = InMemoryKbffSessionStorage(),
+                httpClient = mockHttpClient
+            )
+        }
+
+        val testClient = createClient {
+            followRedirects = false
+        }
+        val response = testClient.get("/bff/signup")
+
+        expectThat(response.status).isEqualTo(HttpStatusCode.Found)
+        expectThat(response.headers[HttpHeaders.Location])
+            .isEqualTo("https://identity.example.com/identity/account/register")
+        mockHttpClient.close()
+        testClient.close()
+    }
+
+    @Test
     fun `security headers include content security policy allowing styles and fonts`() = testApplication {
         val apiClient = HttpClient(MockEngine) {
             engine {

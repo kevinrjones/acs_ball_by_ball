@@ -112,7 +112,7 @@ describe('AppComponent', () => {
     expect(loginBtn?.textContent).toContain('Login');
     expect(loginBtn?.getAttribute('href')).toBe('/bff/login');
     expect(signupBtn?.textContent).toContain('Signup');
-    expect(signupBtn?.getAttribute('href')).toBe('https://ids.local:8443/identity/account/register');
+    expect(signupBtn?.getAttribute('href')).toBe('/bff/signup');
   });
 
   it('should render the email user menu trigger and Logout action when authenticated', () => {
