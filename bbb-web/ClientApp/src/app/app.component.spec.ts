@@ -1,13 +1,12 @@
-import { TestBed } from '@angular/core/testing';
-import { computed, signal, WritableSignal } from '@angular/core';
-import { provideRouter } from '@angular/router';
-import { NEVER, of, throwError } from 'rxjs';
-import { AppComponent } from './app.component';
-import { MatchService } from './services/match.service';
-import { AuthenticationService, Session, UserProfileResponse } from './services/authentication.service';
-import { ApplicationMetadataService } from './services/application-metadata.service';
-import { RecentMatchesResponse } from './models/match.model';
-import { Envelope } from './models/envelope.model';
+import {TestBed} from '@angular/core/testing';
+import {computed, signal, WritableSignal} from '@angular/core';
+import {provideRouter} from '@angular/router';
+import {NEVER, of, throwError} from 'rxjs';
+import {AppComponent} from './app.component';
+import {MatchService} from './services/match.service';
+import {AuthenticationService, Session, UserProfileResponse} from './services/authentication.service';
+import {ApplicationMetadataService} from './services/application-metadata.service';
+import {RecentMatchesResponse} from './models/match.model';
 
 describe('AppComponent', () => {
   let matchServiceMock: jasmine.SpyObj<MatchService>;
@@ -89,20 +88,34 @@ describe('AppComponent', () => {
     expect(footer.textContent).not.toContain('Built with Angular and Ktor');
   });
 
-  it('should render Sign In link when user is unauthenticated', () => {
+  it('should render Login and Signup actions when user is unauthenticated', () => {
     sessionSignal.set(null);
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
-    const signInBtn = compiled.querySelector('#sign-in-button');
-    expect(signInBtn).toBeTruthy();
-    expect(signInBtn?.getAttribute('href')).toBe('/bff/login');
+    const userMenuTrigger = compiled.querySelector('.user-menu-trigger');
+    expect(userMenuTrigger?.tagName).toBe('BUTTON');
+    expect(userMenuTrigger?.textContent).toContain('Anonymous');
+    expect(userMenuTrigger?.querySelector('.user-icon')).toBeTruthy();
+    expect(userMenuTrigger?.querySelector('.user-menu-chevron')).toBeTruthy();
+    expect(compiled.querySelector('#login-button')).toBeNull();
+    expect(compiled.querySelector('#signup-button')).toBeNull();
     expect(compiled.querySelector('#sign-out-button')).toBeNull();
     expect(compiled.querySelector('[data-purpose="user-profile-section"]')).toBeNull();
+
+    (userMenuTrigger as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const loginBtn = compiled.querySelector('#login-button');
+    const signupBtn = compiled.querySelector('#signup-button');
+    expect(loginBtn?.textContent).toContain('Login');
+    expect(loginBtn?.getAttribute('href')).toBe('/bff/login');
+    expect(signupBtn?.textContent).toContain('Signup');
+    expect(signupBtn?.getAttribute('href')).toBe('https://ids.local:8443/identity/account/register');
   });
 
-  it('should render user name and Sign Out button when user is authenticated', () => {
+  it('should render the email user menu trigger and Logout action when authenticated', () => {
     sessionSignal.set({
       claims: [
         { type: 'sub', value: 'user-1' },
@@ -115,13 +128,43 @@ describe('AppComponent', () => {
     fixture.detectChanges();
 
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('#sign-in-button')).toBeNull();
+    expect(compiled.querySelector('#login-button')).toBeNull();
+
+    const userMenuTrigger = compiled.querySelector('.user-menu-trigger');
+    expect(userMenuTrigger?.textContent).toContain('kevin@knowledgespike.com');
+    expect(userMenuTrigger?.querySelector('.user-icon')).toBeTruthy();
+    expect(userMenuTrigger?.querySelector('.user-menu-chevron')).toBeTruthy();
+
+    (userMenuTrigger as HTMLButtonElement).click();
+    fixture.detectChanges();
 
     const signOutBtn = compiled.querySelector('#sign-out-button');
     expect(signOutBtn).toBeTruthy();
+    expect(signOutBtn?.textContent).toContain('Logout');
     expect(signOutBtn?.getAttribute('href')).toBe('/bff/logout?id=123');
-    expect(compiled.textContent).toContain('Kevin Jones');
     expect(compiled.querySelector('[data-purpose="user-profile-section"]')).toBeTruthy();
+  });
+
+  it('should close the user menu when clicking outside or pressing Escape', () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+
+    const compiled = fixture.nativeElement as HTMLElement;
+    const userMenuTrigger = compiled.querySelector('.user-menu-trigger') as HTMLButtonElement;
+
+    userMenuTrigger.click();
+    fixture.detectChanges();
+    expect(compiled.querySelector('.user-menu-panel')).toBeTruthy();
+
+    document.dispatchEvent(new MouseEvent('click'));
+    fixture.detectChanges();
+    expect(compiled.querySelector('.user-menu-panel')).toBeNull();
+
+    userMenuTrigger.click();
+    fixture.detectChanges();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    fixture.detectChanges();
+    expect(compiled.querySelector('.user-menu-panel')).toBeNull();
   });
 
   it('should load user profile when loadUserProfile is invoked', () => {

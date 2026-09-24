@@ -33,33 +33,59 @@
                 </nav>
             </div>
             <!-- User Authentication / Controls -->
-            <div class="flex items-center gap-3">
-                @if (authService.isAuthenticated()) {
-                    <div class="flex items-center gap-2">
-                        <div class="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-sm font-medium text-slate-700 shadow-sm">
-                            <div class="w-6 h-6 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs font-semibold">
-                                <svg class="w-3.5 h-3.5 text-slate-200" fill="currentColor" viewBox="0 0 20 20">
-                                    <path clip-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" fill-rule="evenodd"></path>
-                                </svg>
-                            </div>
-                            <span class="truncate max-w-[180px] sm:max-w-none text-slate-900 font-medium">
-                                {{ authService.userName() || authService.email() || 'Authenticated User' }}
-                            </span>
-                        </div>
-                        <a
-                            id="sign-out-button"
-                            [href]="authService.logoutUrl() || '/bff/logout'"
-                            class="px-3 py-1.5 text-xs font-semibold text-rose-700 hover:text-rose-900 hover:bg-rose-50 rounded-lg transition-colors border border-rose-200">
-                            Sign Out
-                        </a>
+            <div class="user-menu">
+                <button
+                    id="user-menu-trigger"
+                    type="button"
+                    class="user-menu-trigger"
+                    aria-haspopup="menu"
+                    [attr.aria-expanded]="isUserMenuOpen()"
+                    aria-label="User menu"
+                    (click)="toggleUserMenu($event)">
+                    <span class="user-icon" aria-hidden="true">
+                        <svg fill="currentColor" viewBox="0 0 20 20">
+                            <path clip-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" fill-rule="evenodd"></path>
+                        </svg>
+                    </span>
+                    @if (authService.isAuthenticated()) {
+                        <span class="user-menu-email">
+                            {{ authService.email() || authService.userName() || 'Authenticated User' }}
+                        </span>
+                    } @else {
+                        <span>Anonymous</span>
+                    }
+                    <svg class="user-menu-chevron" aria-hidden="true" fill="none" viewBox="0 0 24 24">
+                        <path d="m6 9 6 6 6-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
+                    </svg>
+                </button>
+
+                @if (isUserMenuOpen()) {
+                    <div class="user-menu-panel" role="menu">
+                        @if (authService.isAuthenticated()) {
+                            <a
+                                id="sign-out-button"
+                                role="menuitem"
+                                [href]="authService.logoutUrl() || '/bff/logout'"
+                                (click)="closeUserMenu()">
+                                Logout
+                            </a>
+                        } @else {
+                            <a
+                                id="login-button"
+                                role="menuitem"
+                                href="/bff/login"
+                                (click)="closeUserMenu()">
+                                Login
+                            </a>
+                            <a
+                                id="signup-button"
+                                role="menuitem"
+                                [href]="registrationUrl"
+                                (click)="closeUserMenu()">
+                                Signup
+                            </a>
+                        }
                     </div>
-                } @else {
-                    <a
-                        id="sign-in-button"
-                        href="/bff/login"
-                        class="inline-flex items-center gap-2 px-4 py-1.5 text-sm font-semibold text-white bg-[#0e3b43] hover:bg-[#09292e] rounded-lg shadow-sm transition-colors">
-                        Sign In
-                    </a>
                 }
             </div>
         </div>
@@ -188,7 +214,7 @@
                                 <div class="space-y-1.5 py-1">
                                     <div class="flex justify-between items-center text-sm">
                                         <span [class.font-bold]="match.isTeam1Winner" [class.font-medium]="!match.isTeam1Winner" [class.text-slate-900]="match.isTeam1Winner" [class.text-slate-700]="!match.isTeam1Winner">{{ match.team1 || 'MISSING' }}</span>
-                                        <span class="tracking-tight" [class.font-bold]="match.isTeam1Winner" [class.font-semibold]="!match.isTeam1Winner" class="text-slate-900">
+                                        <span class="text-slate-900 tracking-tight" [class.font-bold]="match.isTeam1Winner" [class.font-semibold]="!match.isTeam1Winner">
                                             {{ match.score1 || 'MISSING' }}
                                             @if (match.overs1) {
                                                 <span class="text-xs text-slate-500 font-normal ml-1">{{ match.overs1 }}</span>
@@ -197,7 +223,7 @@
                                     </div>
                                     <div class="flex justify-between items-center text-sm">
                                         <span [class.font-bold]="match.isTeam2Winner" [class.font-medium]="!match.isTeam2Winner" [class.text-slate-900]="match.isTeam2Winner" [class.text-slate-700]="!match.isTeam2Winner">{{ match.team2 || 'MISSING' }}</span>
-                                        <span class="tracking-tight" [class.font-bold]="match.isTeam2Winner" [class.font-semibold]="!match.isTeam2Winner" class="text-slate-900">
+                                        <span class="text-slate-900 tracking-tight" [class.font-bold]="match.isTeam2Winner" [class.font-semibold]="!match.isTeam2Winner">
                                             {{ match.score2 || 'MISSING' }}
                                             @if (match.overs2) {
                                                 <span class="text-xs text-slate-500 font-normal ml-1">{{ match.overs2 }}</span>
