@@ -64,6 +64,7 @@ val buildClientApp by tasks.registering(NpmTask::class) {
     dependsOn(npmInstallClientApp)
     npmCommand.set(listOf("run", "build"))
     inputs.dir(file("${project.projectDir}/ClientApp/src"))
+    inputs.dir(file("${project.projectDir}/ClientApp/public"))
     inputs.files(
         file("${project.projectDir}/ClientApp/package.json"),
         file("${project.projectDir}/ClientApp/package-lock.json"),
