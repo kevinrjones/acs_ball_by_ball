@@ -1,4 +1,5 @@
 ktor:
+  development: "${KTOR_DEVELOPMENT:false}"
   deployment:
     port: "${API_PORT:8081}"
     host: "${API_HOST:localhost}"

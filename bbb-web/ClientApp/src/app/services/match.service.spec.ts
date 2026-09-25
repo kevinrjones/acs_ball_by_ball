@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { MatchService } from './match.service';
-import { RecentMatchesResponse } from '../models/match.model';
+import { MatchSearchResponse, RecentMatchesResponse } from '../models/match.model';
 import { Envelope } from '../models/envelope.model';
 
 describe('MatchService', () => {
@@ -65,6 +65,56 @@ describe('MatchService', () => {
     });
 
     const req = httpTesting.expectOne('/api/matches?limit=8');
+    expect(req.request.method).toBe('GET');
+    req.flush(mockResponse);
+  });
+
+  it('should call the search endpoint with the card filters and bounded paging', () => {
+    const mockResponse: Envelope<MatchSearchResponse> = {
+      result: {
+        matches: [],
+        pagination: {
+          page: 1,
+          pageSize: 20,
+          totalResults: 0,
+          hasNext: false,
+          nextPage: null
+        }
+      },
+      errorMessage: '',
+      timeGenerated: new Date().toISOString()
+    };
+
+    service.searchMatches({
+      team: 'South Africa',
+      teamExactMatch: true,
+      opponents: 'India',
+      opponentsExactMatch: false,
+      venue: 0,
+      startDate: '2024-01-01',
+      endDate: '2024-12-31',
+      matchType: 't',
+      matchResult: 0,
+      page: 1,
+      pageSize: 20
+    }).subscribe((response) => {
+      expect(response.result.matches).toEqual([]);
+    });
+
+    const req = httpTesting.expectOne((request) =>
+      request.url === '/api/matches/search' &&
+      request.params.get('team') === 'South Africa' &&
+      request.params.get('teamExactMatch') === 'true' &&
+      request.params.get('opponents') === 'India' &&
+      request.params.get('opponentsExactMatch') === 'false' &&
+      request.params.get('venue') === '0' &&
+      request.params.get('startDate') === '2024-01-01' &&
+      request.params.get('endDate') === '2024-12-31' &&
+      request.params.get('matchType') === 't' &&
+      request.params.get('matchResult') === '0' &&
+      request.params.get('page') === '1' &&
+      request.params.get('pageSize') === '20'
+    );
     expect(req.request.method).toBe('GET');
     req.flush(mockResponse);
   });

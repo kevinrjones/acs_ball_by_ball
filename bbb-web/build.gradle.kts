@@ -21,6 +21,7 @@ version = getAppVersion()
 dependencies {
     implementation(project(":bbb-shared"))
 
+    implementation(libs.arrow.core)
     implementation(libs.ktor.client.cio)
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.server.call.logging)

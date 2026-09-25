@@ -17,7 +17,9 @@ This document outlines the coding standards, architecture, and deployment proced
     - Constants: UPPER_SNAKE_CASE (e.g., `OVERALL_ROUTE`)
 - **Immutability**: Prefer `val` over `var` and `List` over `MutableList`.
 - Prefer immutable data classes, for example prefer
-- **Static analysis** Make use of static analysis tools like Detekt and Ktlint to enforce coding standards and catch potential issues early. Run these tools as part of your CI/CD pipeline and integrate them into your development workflow.
+- **Static analysis** Make use of static analysis tools like Detekt and Ktlint to enforce coding standards and catch
+  potential issues early. Run these tools as part of your CI/CD pipeline and integrate them into your development
+  workflow.
 
 ```kotlin
 data class OidcConfiguration(
@@ -40,7 +42,8 @@ data class OidcConfiguration(
 ``` 
 
 - When building DSLs prefer the use of context receivers to make the DSLs easier to construct and read
-- When creating errors prefer a sealed class hierarchy (e.g. `sealed class Error(val message: String)`) matching the pattern in `acs-api`, providing a common `message` property across all domain and validation errors
+- When creating errors prefer a sealed class hierarchy (e.g. `sealed class Error(val message: String)`) matching the
+  pattern in `acs-api`, providing a common `message` property across all domain and validation errors
 - Prefer to use the type system where possible, for example use **Tiny Types** in thd code where you can rather than
   scattering say 'Int' or 'String' types throughout the code
 - Use these tiny types as a validation mechanism
@@ -77,7 +80,8 @@ to this
 
 ## Architecture Guidelines
 
-- Read `docs/ARCHITECTURE.md` before making large structural changes or when you need a module-by-module overview of the application.
+- Read `docs/ARCHITECTURE.md` before making large structural changes or when you need a module-by-module overview of the
+  application.
 - Update `docs/ARCHITECTURE.md` at the end of any sprint that changes or extends the architecture.
 - **SOLID** prefer to follow the SOLID principals
 - **Patterns** prefer using GoF or other established patterns in the code
@@ -97,50 +101,71 @@ to this
 
 ## Feature Slices Architecture
 
-The application is structured using **Feature Slices**. Instead of organizing code strictly by horizontal technical layers (e.g. monolithic global `controllers`, `services`, and `repositories` across disparate domains), each feature has its own package/directory, and everything related to that feature that is not shared lives in that directory.
+The application is structured using **Feature Slices**. Instead of organizing code strictly by horizontal technical
+layers (e.g. monolithic global `controllers`, `services`, and `repositories` across disparate domains), each feature has
+its own package/directory, and everything related to that feature that is not shared lives in that directory.
 
-Features reside under `feature.<feature_name>` (e.g., `feature.heartbeat`, `feature.health`, `feature.matches`, `feature.user`).
+Features reside under `feature.<feature_name>` (e.g., `feature.heartbeat`, `feature.health`, `feature.matches`,
+`feature.user`).
 
 Each feature slice is structured into:
+
 - `presentation`: Ktor routes, HTTP request/response handling, parameter parsing and validation for the feature.
 - `domain`: Use cases, services, domain models, and repository interfaces specific to the feature.
 - `data`: Repository implementations (e.g. jOOQ-based data access), database queries, and data mappers for the feature.
 
 ### Rules for Feature Slices
-1. **Feature Colocation**: Code that changes together stays together. All routes, services, and queries for a given feature are located inside its feature folder.
-2. **Shared Infrastructure & Core**: Cross-cutting concerns that are shared across features (such as server bootstrap, database connection pooling/configuration, security/JWT verification plugins, common HTTP helpers, and shared serialization models like `Envelope`) live in top-level shared packages (e.g. `bootstrap`, `config`, or `bbb-shared`).
-3. **Encapsulated Dependencies**: Features define their dependencies (such as repository interfaces) in their `domain` layer and implement them in their `data` layer.
-4. **Independent Evolution**: Adding, modifying, or removing a feature touches only that feature's directory, avoiding cascading modifications across unrelated domains.
+
+1. **Feature Colocation**: Code that changes together stays together. All routes, services, and queries for a given
+   feature are located inside its feature folder.
+2. **Shared Infrastructure & Core**: Cross-cutting concerns that are shared across features (such as server bootstrap,
+   database connection pooling/configuration, security/JWT verification plugins, common HTTP helpers, and shared
+   serialization models like `Envelope`) live in top-level shared packages (e.g. `bootstrap`, `config`, or
+   `bbb-shared`).
+3. **Encapsulated Dependencies**: Features define their dependencies (such as repository interfaces) in their `domain`
+   layer and implement them in their `data` layer.
+4. **Independent Evolution**: Adding, modifying, or removing a feature touches only that feature's directory, avoiding
+   cascading modifications across unrelated domains.
 
 ## Tiny Types (Value Classes) and Boundary Validation
 
-The codebase enforces **Tiny Types** using Kotlin inline value classes (`@JvmInline value class`) combined with functional boundary validation via **Arrow** (`Either`, `Raise`, and `zipOrAccumulate`).
+The codebase enforces **Tiny Types** using Kotlin inline value classes (`@JvmInline value class`) combined with
+functional boundary validation via **Arrow** (`Either`, `Raise`, and `zipOrAccumulate`).
 
 ### Core Principles
-1. **Zero-Allocation Strong Typing**: Domain concepts that wrap primitives (such as IDs, limits, codes, seasons, and user identifiers) must be defined as `@JvmInline value class` (e.g. `Limit`, `MatchKey`, `SourceMatchId`, `MatchType`, `Season`, `UserId`). On the JVM they compile to raw primitives, incurring zero runtime object allocation overhead.
-2. **Serialization Transparency**: Value classes annotated with `@Serializable` serialize directly as their underlying primitive values in `kotlinx.serialization`. JSON contracts on the wire remain standard primitives (numbers, strings) for seamless client compatibility.
+
+1. **Zero-Allocation Strong Typing**: Domain concepts that wrap primitives (such as IDs, limits, codes, seasons, and
+   user identifiers) must be defined as `@JvmInline value class` (e.g. `Limit`, `MatchKey`, `SourceMatchId`,
+   `MatchType`, `Season`, `UserId`). On the JVM they compile to raw primitives, incurring zero runtime object allocation
+   overhead.
+2. **Serialization Transparency**: Value classes annotated with `@Serializable` serialize directly as their underlying
+   primitive values in `kotlinx.serialization`. JSON contracts on the wire remain standard primitives (numbers, strings)
+   for seamless client compatibility.
 3. **Encapsulated Construction & Invariants**:
-   - Constructors should be `private` to prevent unvalidated instantiation.
-   - Companion `invoke` operators with Arrow `Raise`:
-     ```kotlin
-     context(raise: Raise<LimitError>)
-     operator fun invoke(value: String?): Limit
-     ```
-   - Factory methods returning Arrow `Either`:
-     ```kotlin
-     fun of(value: Int): Either<LimitError, Limit> = either { invoke(value) }
-     fun fromRaw(value: String?): Either<LimitError, Limit> = either { invoke(value) }
-     ```
-   - Validated internal factory methods (`from`) for trusted internal mappings (such as jOOQ SQL record mapping):
-     ```kotlin
-     fun from(value: Int): Limit {
-         require(value in MIN_LIMIT..MAX_LIMIT) { "limit must be between $MIN_LIMIT and $MAX_LIMIT" }
-         return Limit(value)
-     }
-     ```
+    - Constructors should be `private` to prevent unvalidated instantiation.
+    - Companion `invoke` operators with Arrow `Raise`:
+      ```kotlin
+      context(raise: Raise<LimitError>)
+      operator fun invoke(value: String?): Limit
+      ```
+    - Factory methods returning Arrow `Either`:
+      ```kotlin
+      fun of(value: Int): Either<LimitError, Limit> = either { invoke(value) }
+      fun fromRaw(value: String?): Either<LimitError, Limit> = either { invoke(value) }
+      ```
+    - Validated internal factory methods (`from`) for trusted internal mappings (such as jOOQ SQL record mapping):
+      ```kotlin
+      fun from(value: Int): Limit {
+          require(value in MIN_LIMIT..MAX_LIMIT) { "limit must be between $MIN_LIMIT and $MAX_LIMIT" }
+          return Limit(value)
+      }
+      ```
 
 ### Boundary Validation at Presentation Layer
-1. **Validate at the Edge**: Untrusted HTTP request parameters (query parameters, path segments, request headers) must be parsed and validated at the **presentation boundary** (Ktor route handlers) before invoking domain services or repositories.
+
+1. **Validate at the Edge**: Untrusted HTTP request parameters (query parameters, path segments, request headers) must
+   be parsed and validated at the **presentation boundary** (Ktor route handlers) before invoking domain services or
+   repositories.
 2. **Arrow Raise DSL & `fold`**: Use Arrow's `fold` or `either` blocks at the route entry point:
    ```kotlin
    get("/matches") {
@@ -154,7 +179,9 @@ The codebase enforces **Tiny Types** using Kotlin inline value classes (`@JvmInl
        )
    }
    ```
-3. **Multi-Parameter Accumulation (`zipOrAccumulate`)**: When an endpoint requires validating multiple parameters, use `zipOrAccumulate` to aggregate all errors into a `NonEmptyList<Error>` so clients receive complete feedback on all invalid fields in a single response:
+3. **Multi-Parameter Accumulation (`zipOrAccumulate`)**: When an endpoint requires validating multiple parameters, use
+   `zipOrAccumulate` to aggregate all errors into a `NonEmptyList<Error>` so clients receive complete feedback on all
+   invalid fields in a single response:
    ```kotlin
    fold(
        block = {
@@ -176,8 +203,10 @@ The codebase enforces **Tiny Types** using Kotlin inline value classes (`@JvmInl
    class MatchTypeError(message: String, val matchType: String? = null) : Error(message)
    class DatabaseError(val stackTrace: String, message: String) : Error(message)
    ```
-   All domain, validation, and persistence errors inherit from `Error(message)` so they share a common `message` property and can be formatted and logged uniformly.
-5. **Pure Domain Services**: Domain use cases, services, and repositories accept only validated tiny types (`Limit`, `MatchKey`), ensuring illegal states are completely unrepresentable inside the core business logic.
+   All domain, validation, and persistence errors inherit from `Error(message)` so they share a common `message`
+   property and can be formatted and logged uniformly.
+5. **Pure Domain Services**: Domain use cases, services, and repositories accept only validated tiny types (`Limit`,
+   `MatchKey`), ensuring illegal states are completely unrepresentable inside the core business logic.
 
 ## Testing Strategies
 
@@ -187,7 +216,6 @@ The codebase enforces **Tiny Types** using Kotlin inline value classes (`@JvmInl
 * **coverage**  Use kover for test Coverage
 *               Attempt to get 100% test coverage before completing the task, if you cannon get that coverage report the reasons to the user
 * **Mutation Testing**  Use Pitest for mutation testing
-
 
 ### Git Workflow
 
@@ -270,7 +298,7 @@ Avoid
 
 ### Task List Structure
 
-- By default task lists are maintained in the docs/tasks/TASKS-SPRINT-[SPRINTNUMBER]-[SPRINTNAME].md file unless 
+- By default task lists are maintained in the docs/tasks/TASKS-SPRINT-[SPRINTNUMBER]-[SPRINTNAME].md file unless
   otherwise specified. Where [SPRINTNUMBER] and [SPRINTNAME] are placeholders for the sprint number and name.
 - Tasks are organised hierarchically with main tasks and subtasks
 - Each task has a unique identifier (e;g; 1, 1.1, 1.2 etc.)
@@ -283,13 +311,15 @@ Avoid
     - `[x]` indicates a task that has been completed
 - A parent task should only be marked as completed when all its subtasks are completed
 - The tasks file should be updated as you progress through the tasks
+- The last task in a sprint should be a "Human in the Loop" task, this should tell the Human exactly how to test the set of tasks that have just been completed with check boxes for the human to confirm that the tasks have been completed
 
 ### Structure
 
 ### Notes
 
 - ALWAYS IGNORE node_modules folders when evaluating code
-- Use `docs/ARCHITECTURE.md` as the primary architecture map for module boundaries, runtime flows, and contributor entry points.
+- Use `docs/ARCHITECTURE.md` as the primary architecture map for module boundaries, runtime flows, and contributor entry
+  points.
 - Use the **UBIQUITOUS_LANGUAGE.md*, if it exists, to understand the domain language of the project
 - Use the **docs/RECAP.md* to understand what has happened in project
 - Use the **docs/project_memory.md* to understand what has happened in project
@@ -306,8 +336,7 @@ Overall (this will be expanded after each sprint/task completion)
 **What was shipped**
 **Key decisions**
 **Gotchas**
-For each sprint/task
-**Title**
+For each sprint/task **Title**
 **Date/time completed**
 **What was shipped**
 **Key decisions**
@@ -320,10 +349,21 @@ Read `docs/architecture/applications.md` before changing `bbb-api`, `bbb-web`,
 or their `bbb-shared` JSON contracts. It is the architecture map for the
 feature slices, runtime flows, validation/error handling, and test seams.
 
-- Organize features into vertical slices (`feature.<feature_name>`) containing their presentation (routes), domain (use cases/repositories), and data (jOOQ persistence) layers.
-- Shared infrastructure (database connection pools, JWT security configuration, application bootstrap) belongs in shared packages (`config`, `bootstrap`) or `bbb-shared`.
+- Organize features into vertical slices (`feature.<feature_name>`) containing their presentation (routes), domain (use
+  cases/repositories), and data (jOOQ persistence) layers.
+- Shared infrastructure (database connection pools, JWT security configuration, application bootstrap) belongs in shared
+  packages (`config`, `bootstrap`) or `bbb-shared`.
 - Define JSON request/response/error types in `bbb-shared` with
   `kotlinx.serialization`.
 - Run `./gradlew clean check --no-daemon` after application changes.
+
+## Angular component templates
+
+- Keep Angular component HTML in a separate sibling `.component.html` file rather than embedding markup in the
+  TypeScript decorator.
+- Reference the external template with `templateUrl: './component-name.component.html'` and keep the file name aligned
+  with the component TypeScript file.
+- Apply this convention to every Angular component, including standalone components; do not use the inline `template`
+  property for new or migrated components.
 
 The broader project standards remain in `.junie/AGENTS.md`.

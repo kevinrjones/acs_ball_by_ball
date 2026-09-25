@@ -1,0 +1,79 @@
+<section class="mx-auto max-w-6xl space-y-6" aria-labelledby="match-results-heading">
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div class="space-y-2">
+      <a class="text-sm font-semibold text-emerald-800 hover:text-emerald-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 rounded" [routerLink]="['/matches/search']" [queryParams]="queryParams()">← Change search</a>
+      <h1 id="match-results-heading" class="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">Match Card Search Results</h1>
+      @if (searchDescription()) {
+        <p class="text-slate-600">Results for <span class="font-semibold text-slate-900">{{ searchDescription() }}</span></p>
+      }
+    </div>
+    @if (state() === 'results' || state() === 'no-results') {
+      <span class="text-sm font-medium text-slate-500">Found {{ totalResults() }} matches</span>
+    }
+  </div>
+
+  <div aria-live="polite" aria-atomic="true">
+    @switch (state()) {
+      @case ('idle') {
+        <div class="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center shadow-sm">
+          <h2 class="text-lg font-bold text-slate-900">Start a match card search</h2>
+          <p class="mt-2 text-sm text-slate-600">Choose a team and opponent, then refine the date, venue, type, or result.</p>
+          <a class="mt-5 inline-flex min-h-10 items-center rounded-lg bg-[#0e3b43] px-4 py-2 text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-teal-700 focus:ring-offset-1" routerLink="/matches/search">Search match cards</a>
+        </div>
+      }
+      @case ('loading') {
+        <div class="flex items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white p-8 text-sm text-slate-600" role="status">
+          <span class="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-emerald-700" aria-hidden="true"></span>
+          Searching match cards...
+        </div>
+      }
+      @case ('error') {
+        <div class="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-rose-800" role="alert">
+          <p class="font-semibold">We could not load match cards.</p>
+          <p class="mt-1 text-sm">{{ errorMessage() }}</p>
+          <button type="button" class="mt-4 text-sm font-semibold underline focus:outline-none focus:ring-2 focus:ring-rose-700" (click)="retrySearch()">Retry search</button>
+        </div>
+      }
+      @case ('no-results') {
+        <div class="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+          <h2 class="text-lg font-bold text-slate-900">No matching match cards found</h2>
+          <p class="mt-2 text-sm text-slate-600">Try broadening the team names, date range, or result filters.</p>
+          <a class="mt-5 inline-flex min-h-10 items-center rounded-lg border border-emerald-700 px-4 py-2 text-sm font-semibold text-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-500" [routerLink]="['/matches/search']" [queryParams]="queryParams()">Broaden search</a>
+        </div>
+      }
+      @case ('results') {
+        <div class="space-y-4" role="list" aria-label="Historical match cards">
+          @for (match of matches(); track match.matchKey) {
+            <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:border-slate-300 hover:shadow-md sm:p-6" role="listitem">
+              <div class="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
+                <div class="min-w-0 space-y-3">
+                  <div class="flex flex-wrap items-center gap-2 text-sm">
+                    <span class="rounded border border-emerald-100 bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-800">{{ match.date || 'MISSING' }}</span>
+                    <span class="text-slate-500">{{ match.competition || 'MISSING' }}</span>
+                  </div>
+                  <h2 class="text-xl font-bold text-slate-900">{{ match.team1 || 'MISSING' }} <span class="font-normal text-slate-400">v</span> {{ match.team2 || 'MISSING' }}</h2>
+                  <dl class="grid gap-x-6 gap-y-2 text-sm text-slate-600 sm:grid-cols-2 lg:grid-cols-4">
+                    <div><dt class="text-xs uppercase tracking-wide text-slate-400">Ground</dt><dd>{{ match.ground || 'MISSING' }}</dd></div>
+                    <div><dt class="text-xs uppercase tracking-wide text-slate-400">Season</dt><dd>{{ match.season || 'MISSING' }}</dd></div>
+                    <div><dt class="text-xs uppercase tracking-wide text-slate-400">Type</dt><dd>{{ match.matchType || 'MISSING' }}</dd></div>
+                    <div><dt class="text-xs uppercase tracking-wide text-slate-400">Result</dt><dd>{{ match.result || 'MISSING' }}</dd></div>
+                  </dl>
+                </div>
+                <a data-result-action class="inline-flex min-h-10 shrink-0 items-center rounded-lg border border-emerald-700 px-4 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1" [routerLink]="['/matches', match.matchKey]" [queryParams]="queryParams()" [attr.aria-label]="'View match card ' + match.matchKey">
+                  View match card
+                </a>
+              </div>
+            </article>
+          }
+        </div>
+        <div class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <span class="text-slate-600">Page {{ currentPage() }} · Showing {{ matches().length }} of {{ totalResults() }}</span>
+          <div class="flex gap-2">
+            <button type="button" [disabled]="currentPage() === 1" (click)="goToPage(currentPage() - 1)" class="min-h-10 rounded-lg border border-slate-300 px-3 font-semibold text-slate-700 enabled:hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-emerald-500">Previous</button>
+            <button type="button" [disabled]="!hasNext()" (click)="goToPage(currentPage() + 1)" class="min-h-10 rounded-lg border border-slate-300 px-3 font-semibold text-slate-700 enabled:hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-emerald-500">Next</button>
+          </div>
+        </div>
+      }
+    }
+  </div>
+</section>

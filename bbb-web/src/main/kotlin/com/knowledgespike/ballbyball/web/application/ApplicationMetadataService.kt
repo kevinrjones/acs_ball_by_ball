@@ -16,8 +16,8 @@ class ApplicationMetadataService(
 
     suspend fun metadata(): ApplicationMetadata {
         val dataLastUpdated = when (val result = matchApiClient.recentMatches()) {
-            is MatchApiResult.Success -> result.timeGenerated?.let(::formatDataTimestamp) ?: UNAVAILABLE
-            is MatchApiResult.Unavailable -> {
+            is RecentMatchesResult.Success -> result.timeGenerated?.let(::formatDataTimestamp) ?: UNAVAILABLE
+            is RecentMatchesResult.Unavailable -> {
                 logger.warn("Unable to load the data timestamp for application metadata")
                 UNAVAILABLE
             }

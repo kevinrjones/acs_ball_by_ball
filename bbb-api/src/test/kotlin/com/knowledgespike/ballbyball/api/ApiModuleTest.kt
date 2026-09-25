@@ -5,9 +5,25 @@ import com.auth0.jwt.algorithms.Algorithm
 import com.auth0.jwt.interfaces.JWTVerifier
 import com.knowledgespike.ballbyball.api.bootstrap.moduleWithDependencies
 import com.knowledgespike.ballbyball.api.feature.health.domain.DatabaseHealth
+import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchSearchCriteria
+import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchSearchMatch
+import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchSearchPage
 import com.knowledgespike.ballbyball.api.feature.matches.domain.repository.MatchRepository
+import com.knowledgespike.ballbyball.contracts.MatchSearchRequest
+import com.knowledgespike.ballbyball.contracts.MatchSearchResult
 import com.knowledgespike.ballbyball.contracts.MatchSummary
+import com.knowledgespike.ballbyball.types.values.ExactMatch
 import com.knowledgespike.ballbyball.types.values.Limit
+import com.knowledgespike.ballbyball.types.values.MatchResultFilter
+import com.knowledgespike.ballbyball.types.values.MatchTypeFilter
+import com.knowledgespike.ballbyball.types.values.PageNumber
+import com.knowledgespike.ballbyball.types.values.PageSize
+import com.knowledgespike.ballbyball.types.values.MatchKey
+import com.knowledgespike.ballbyball.types.values.SearchTeam
+import com.knowledgespike.ballbyball.types.values.SourceMatchId
+import com.knowledgespike.ballbyball.types.values.MatchType
+import com.knowledgespike.ballbyball.types.values.Season
+import com.knowledgespike.ballbyball.types.values.VenueFilter
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.statement.bodyAsText
@@ -102,6 +118,65 @@ class ApiModuleTest {
     }
 
     @Test
+    fun `historical search requires authentication and validates all boundaries`() = testApplication {
+        application { moduleWithDependencies(FakeMatchRepository(), FakeDatabaseHealth(healthy = true), jwtVerifier = testVerifier) }
+
+        val anonymous = client.get("/api/matches/search?team=Test&opponents=India")
+        val invalid = client.get("/api/matches/search?team=&opponents=&page=0&pageSize=51") {
+            header(HttpHeaders.Authorization, "Bearer ${createMachineToken()}")
+        }
+        val invalidPaging = client.get("/api/matches/search?team=India&opponents=Pakistan&page=0&pageSize=51") {
+            header(HttpHeaders.Authorization, "Bearer ${createMachineToken()}")
+        }
+
+        expectThat(anonymous.status).isEqualTo(HttpStatusCode.Unauthorized)
+        expectThat(invalid.status).isEqualTo(HttpStatusCode.BadRequest)
+        expectThat(invalid.bodyAsText()).contains("team name must be between 3 and 100 characters")
+        expectThat(invalidPaging.status).isEqualTo(HttpStatusCode.BadRequest)
+        expectThat(invalidPaging.bodyAsText()).contains("page must be between 1 and 10000")
+        expectThat(invalidPaging.bodyAsText()).contains("pageSize must be between 1 and 50")
+    }
+
+    @Test
+    fun `historical search returns bounded page envelope`() = testApplication {
+        val page = MatchSearchPage(
+            page = PageNumber.from(1),
+            pageSize = PageSize.from(20),
+            totalResults = 1,
+            hasNext = false,
+            nextPage = null,
+            matches = listOf(
+                MatchSearchMatch(
+                    matchKey = MatchKey.from(123),
+                    sourceMatchId = SourceMatchId.from(456),
+                    fileName = "historic-match.json",
+                    matchType = MatchType.from("TEST"),
+                    season = Season.from("2024"),
+                    team1 = "South Africa",
+                    team2 = "India",
+                    ground = "Newlands"
+                )
+            )
+        )
+        application {
+            moduleWithDependencies(
+                FakeMatchRepository(searchPage = page),
+                FakeDatabaseHealth(healthy = true),
+                jwtVerifier = testVerifier
+            )
+        }
+
+        val response = client.get("/api/matches/search?team=South&page=1&pageSize=20&opponents=India") {
+            header(HttpHeaders.Authorization, "Bearer ${createMachineToken()}")
+        }
+
+        expectThat(response.status).isEqualTo(HttpStatusCode.OK)
+        expectThat(response.bodyAsText()).contains("historic-match.json")
+        expectThat(response.bodyAsText()).contains("\"pagination\": {")
+        expectThat(response.bodyAsText()).contains("\"totalResults\": 1")
+    }
+
+    @Test
     fun `matches serializes repository results with machine token`() = testApplication {
         application {
             moduleWithDependencies(
@@ -188,9 +263,19 @@ class ApiModuleTest {
 
 
     private data class FakeMatchRepository(
-        val matches: List<MatchSummary> = emptyList()
+        val matches: List<MatchSummary> = emptyList(),
+        val searchPage: MatchSearchPage = MatchSearchPage(
+            page = PageNumber.from(1),
+            pageSize = PageSize.from(20),
+            totalResults = 0,
+            hasNext = false,
+            nextPage = null,
+            matches = emptyList()
+        )
     ) : MatchRepository {
         override suspend fun recentMatches(limit: Limit): List<MatchSummary> = matches.take(limit.value)
+
+        override suspend fun searchMatches(criteria: MatchSearchCriteria): MatchSearchPage = searchPage
     }
 
     private data class FakeDatabaseHealth(val healthy: Boolean) : DatabaseHealth {

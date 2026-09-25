@@ -1,0 +1,38 @@
+<section class="mx-auto max-w-3xl space-y-6" aria-labelledby="selected-match-heading">
+  <a
+    class="text-sm font-semibold text-emerald-800 hover:text-emerald-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 rounded"
+    routerLink="/matches/results"
+    [queryParams]="returnQueryParams()">
+    ← Back to match results
+  </a>
+  <h1 id="selected-match-heading" class="text-3xl font-extrabold tracking-tight text-slate-900">Selected historical match</h1>
+  @if (isValidMatchKey()) {
+    <p class="rounded-2xl border border-slate-200 bg-white p-6 text-slate-700" role="status">
+      Match {{ matchKey() }} is selected. Scoresheet details will appear here when the detail slice is available.
+    </p>
+    <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white" role="region" aria-label="Selected match delivery table">
+      <table class="min-w-full text-left text-sm text-slate-700">
+        <caption class="sr-only">Delivery-by-delivery scoresheet for match {{ matchKey() }}</caption>
+        <thead class="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <tr>
+            <th class="px-4 py-3" scope="col">Innings</th>
+            <th class="px-4 py-3" scope="col">Over</th>
+            <th class="px-4 py-3" scope="col">Ball</th>
+            <th class="px-4 py-3" scope="col">Batter</th>
+            <th class="px-4 py-3" scope="col">Bowler</th>
+            <th class="px-4 py-3" scope="col">Runs</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="px-4 py-6 text-center text-slate-500" colspan="6">No delivery data is loaded yet.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  } @else {
+    <p class="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-rose-800" role="alert">
+      The selected match key is invalid. Return to search and choose a match result.
+    </p>
+  }
+</section>

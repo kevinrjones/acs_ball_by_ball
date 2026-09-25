@@ -1,10 +1,14 @@
 package com.knowledgespike.ballbyball.api.feature.matches.data.repository
 
 import com.knowledgespike.ballbyball.api.feature.matches.domain.repository.MatchRepository
+import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchSearchCriteria
+import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchSearchMatch
+import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchSearchPage
 import com.knowledgespike.ballbyball.contracts.MatchSummary
 import com.knowledgespike.ballbyball.types.values.Limit
 import com.knowledgespike.ballbyball.types.values.MatchKey
 import com.knowledgespike.ballbyball.types.values.MatchType
+import com.knowledgespike.ballbyball.types.values.PageNumber
 import com.knowledgespike.ballbyball.types.values.Season
 import com.knowledgespike.ballbyball.types.values.SourceMatchId
 import kotlinx.coroutines.CancellationException
@@ -14,6 +18,7 @@ import kotlinx.coroutines.withContext
 import org.jooq.SQLDialect
 import org.jooq.impl.DSL
 import org.jooq.impl.DSL.case_
+import org.jooq.impl.DSL.count
 import org.jooq.impl.DSL.field
 import org.jooq.impl.DSL.name
 import org.jooq.impl.DSL.sum
@@ -36,6 +41,7 @@ class JooqMatchRepository(
     private val dimDate = table(name("dim_date"))
     private val dimTeam1 = table(name("dim_team")).`as`("t1")
     private val dimTeam2 = table(name("dim_team")).`as`("t2")
+    private val dimGround = table(name("dim_ground"))
     private val dimTeamWinner = table(name("dim_team")).`as`("tw")
     private val factMatch = table(name("fact_match"))
     private val dimInnings = table(name("dim_innings"))
@@ -51,6 +57,7 @@ class JooqMatchRepository(
     private val mBallsPerOver = field(name("dim_match", "balls_per_over"), Int::class.javaObjectType)
     private val mTeam1Key = field(name("dim_match", "team1_key"), Long::class.javaObjectType)
     private val mTeam2Key = field(name("dim_match", "team2_key"), Long::class.javaObjectType)
+    private val mGroundKey = field(name("dim_match", "ground_key"), Long::class.javaObjectType)
     private val mWinnerTeamKey = field(name("dim_match", "winner_team_key"), Long::class.javaObjectType)
     private val mVictoryType = field(name("dim_match", "victory_type"), String::class.java)
     private val mMatchStartDateKey = field(name("dim_match", "match_start_date_key"), Int::class.javaObjectType)
@@ -63,6 +70,9 @@ class JooqMatchRepository(
 
     private val t2TeamKey = field(name("t2", "team_key"), Long::class.javaObjectType)
     private val t2TeamName = field(name("t2", "team_name"), String::class.java)
+
+    private val gGroundKey = field(name("dim_ground", "ground_key"), Long::class.javaObjectType)
+    private val gGroundName = field(name("dim_ground", "ground_name"), String::class.java)
 
     private val twTeamKey = field(name("tw", "team_key"), Long::class.javaObjectType)
     private val twTeamName = field(name("tw", "team_name"), String::class.java)
@@ -80,6 +90,19 @@ class JooqMatchRepository(
     private val fdWicketCount = field(name("fact_delivery", "wicket_count"), Int::class.javaObjectType)
     private val fdWides = field(name("fact_delivery", "wides"), Int::class.javaObjectType)
     private val fdNoBalls = field(name("fact_delivery", "no_balls"), Int::class.javaObjectType)
+
+    private val searchConditionBuilder = MatchSearchConditionBuilder(
+        MatchSearchFields(
+            matchType = mMatchType,
+            winnerTeamKey = mWinnerTeamKey,
+            team1Key = mTeam1Key,
+            team2Key = mTeam2Key,
+            team1Name = t1TeamName,
+            team2Name = t2TeamName,
+            calendarDate = dCalendarDate,
+            victoryType = mVictoryType
+        )
+    )
 
     override suspend fun recentMatches(limit: Limit): List<MatchSummary> = withContext(ioDispatcher) {
         try {
@@ -200,6 +223,94 @@ class JooqMatchRepository(
             throw cause
         }
     }
+
+    override suspend fun searchMatches(
+        criteria: MatchSearchCriteria
+    ): MatchSearchPage = withContext(ioDispatcher) {
+        try {
+            val searchCondition = searchConditionBuilder.build(criteria)
+            val totalResults = dsl.selectCount()
+                .from(dimMatch)
+                .leftJoin(dimDate).on(mMatchStartDateKey.eq(dDateKey))
+                .leftJoin(dimTeam1).on(mTeam1Key.eq(t1TeamKey))
+                .leftJoin(dimTeam2).on(mTeam2Key.eq(t2TeamKey))
+                .leftJoin(dimGround).on(mGroundKey.eq(gGroundKey))
+                .where(searchCondition)
+                .fetchOne(count()) ?: 0
+
+            val rows = dsl.select(
+                mMatchKey,
+                mSourceMatchId,
+                mFileName,
+                mMatchType,
+                mSeason,
+                mEventName,
+                mMatchDateText,
+                dCalendarDate,
+                mTeam1Key,
+                mTeam2Key,
+                mWinnerTeamKey,
+                mVictoryType,
+                t1TeamName,
+                t2TeamName,
+                gGroundName,
+                mGroundKey,
+                fmMargin
+            )
+                .from(dimMatch)
+                .leftJoin(dimDate).on(mMatchStartDateKey.eq(dDateKey))
+                .leftJoin(dimTeam1).on(mTeam1Key.eq(t1TeamKey))
+                .leftJoin(dimTeam2).on(mTeam2Key.eq(t2TeamKey))
+                .leftJoin(dimGround).on(mGroundKey.eq(gGroundKey))
+                .leftJoin(factMatch).on(fmMatchKey.eq(mMatchKey))
+                .where(searchCondition)
+                .orderBy(dCalendarDate.desc().nullsLast(), mMatchKey.desc())
+                .limit(criteria.pageSize.value)
+                .offset((criteria.page.value - 1) * criteria.pageSize.value)
+                .fetch()
+
+            val hasNext = criteria.page.value < PageNumber.MAX_VALUE &&
+                criteria.page.value.toLong() * criteria.pageSize.value < totalResults
+            MatchSearchPage(
+                page = criteria.page,
+                pageSize = criteria.pageSize,
+                totalResults = totalResults,
+                hasNext = hasNext,
+                nextPage = if (hasNext) PageNumber.from(criteria.page.value + 1) else null,
+                matches = rows.map { record ->
+                    val team1Key = record.get(mTeam1Key)
+                    val team2Key = record.get(mTeam2Key)
+                    val winnerKey = record.get(mWinnerTeamKey)
+                    val winnerName = when (winnerKey) {
+                        team1Key -> record.get(t1TeamName)
+                        team2Key -> record.get(t2TeamName)
+                        else -> null
+                    }
+                    MatchSearchMatch(
+                        matchKey = MatchKey.from(requireNotNull(record.get(mMatchKey))),
+                        sourceMatchId = SourceMatchId.from(requireNotNull(record.get(mSourceMatchId))),
+                        fileName = requireNotNull(record.get(mFileName)),
+                        matchType = record.get(mMatchType)?.takeIf { it.isNotBlank() }?.let(MatchType::from),
+                        season = record.get(mSeason)?.takeIf { it.isNotBlank() }?.let(Season::from),
+                        competition = record.get(mEventName)?.takeIf { it.isNotBlank() },
+                        date = formatDateText(record.get(mMatchDateText), record.get(dCalendarDate))
+                            .takeUnless { it == "MISSING" },
+                        team1 = record.get(t1TeamName)?.takeIf { it.isNotBlank() },
+                        team2 = record.get(t2TeamName)?.takeIf { it.isNotBlank() },
+                        ground = record.get(gGroundName)?.takeIf { it.isNotBlank() },
+                        result = formatResult(winnerName, record.get(mVictoryType), record.get(fmMargin))
+                            .takeUnless { it == "MISSING" }
+                    )
+                }
+            )
+        } catch (cause: CancellationException) {
+            throw cause
+        } catch (cause: Exception) {
+            log.error("Historical match search failed", cause)
+            throw cause
+        }
+    }
+
 
     companion object {
         private val MATCH_DATE_FORMATTER: DateTimeFormatter =

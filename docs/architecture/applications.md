@@ -37,6 +37,7 @@ flowchart TD
         ClaimsCheck{Claim Inspector}
         AliveRoute[GET /api/heartbeat/alive: Public]
         MatchesRoute[GET /api/matches: Machine/User]
+        MatchSearchRoute[GET /api/matches/search: Logged-in User via BFF]
     end
 
     subgraph Identity["Identity Server (:8443)"]
@@ -60,6 +61,7 @@ flowchart TD
     JWTVerifier --> ClaimsCheck
     ClaimsCheck -->|No Auth Required| AliveRoute
     ClaimsCheck -->|Valid Token| MatchesRoute
+    ClaimsCheck -->|Valid Token| MatchSearchRoute
 ```
 
 ### Three-Tier API Access Model
@@ -68,6 +70,7 @@ flowchart TD
    - `/api/heartbeat/alive`: Unauthenticated heartbeat returning `{ "message": "Heartbeat: Alive" }`.
 2. **Tier 2 (Machine / BFF Authenticated)**:
    - `/api/matches`: Protected with `auth-jwt`. Accessible with a valid client-credentials machine token (used by `bbb-web` via `DefaultTokenService` when an anonymous visitor browses recent matches) or a logged-in user token.
+   - `/api/matches/search`: Protected with `auth-jwt` and additionally exposed by the BFF only inside the logged-in OIDC session boundary. The Angular search/results/selected-match routes use the same authenticated-session guard; the anonymous initial recent-match list remains the only browser-visible feature.
 
 ### Backend-For-Frontend (BFF) Pattern with `kbff`
 `bbb-web` implements the Backend-For-Frontend security pattern using `com.knowledgespike:kbff`:
@@ -107,7 +110,7 @@ Each feature slice contains:
 |---|---|---|---|---|
 | **Heartbeat** | `feature.heartbeat` | `HeartbeatRoute.kt` (`GET /api/heartbeat/alive`) | — | — |
 | **Health** | `feature.health` | `HealthRoute.kt` (`GET /health`) | `DatabaseHealth.kt` | `JooqDatabaseHealth.kt` |
-| **Matches** | `feature.matches` | `MatchesRoute.kt` (`GET /api/matches`) | `MatchRepository.kt`, `MatchService.kt` | `JooqMatchRepository.kt` |
+| **Matches** | `feature.matches` | `MatchesRoute.kt` (`GET /api/matches`, `GET /api/matches/search`) | `MatchRepository.kt`, `MatchService.kt` | `JooqMatchRepository.kt` |
 
 Shared infrastructure and cross-cutting concerns (bootstrap, database connection pool, JWT authentication and verifiers) reside in top-level packages:
 - `bootstrap`: `ApiModule.kt` (Ktor application configuration, route registration), `Security.kt` (JWT authentication and scope validation).
@@ -159,8 +162,9 @@ Boundary validation uses Arrow's `Raise` and `Either` DSL. All value classes dec
 
 `web.adapter.in.http.WebRoutes` depends on `MatchApiClient`, not on Ktor's
 `HttpClient`. `KtorMatchApiClient` is the production adapter and maps non-2xx,
-connection, timeout, and malformed JSON failures to `MatchApiResult.Unavailable`.
-API responses are returned as typed JSON (`RecentMatchesResponse` or `ApiError`)
+connection, timeout, and malformed JSON failures to endpoint-specific unavailable
+results. API responses are returned as typed JSON (`RecentMatchesResponse`,
+`MatchSearchResponse`, or `ApiError`)
 with appropriate HTTP status codes (e.g. `502 Bad Gateway` on failure).
 The public `GET /api/metadata` route combines the API envelope timestamp with
 the build-generated `version.properties` resource, allowing the Angular footer
@@ -182,7 +186,7 @@ All API responses are wrapped in a generic `Envelope<T>` contract, which provide
 - `timeGenerated: Instant`: The server timestamp when the response was constructed.
 
 The module uses `kotlinx.serialization` and currently defines `Envelope`, `ApiHealth`, `ApiError`,
-`MatchSummary`, `RecentMatchesResponse`, and `ApplicationMetadata`. Desktop/mobile clients and the web
+`MatchSummary`, `RecentMatchesResponse`, `MatchSearchRequest`, `MatchSearchResponse`, and `ApplicationMetadata`. Desktop/mobile clients and the web
 adapter consume these same classes; database rows and HTML remain application-specific representations.
 
 When a new endpoint is added, define its request and response/error contracts in
@@ -207,6 +211,12 @@ Endpoints:
 - `GET /api/matches?limit=25` returns recent matches ordered by match start date (with the warehouse key as a
   deterministic tie-breaker). The limit must be
   numeric and between `1` and `100`.
+- `GET /api/matches/search?team=South%20Africa&teamExactMatch=false&opponents=India&opponentsExactMatch=false&venue=0&matchType=all&matchResult=0&page=1&pageSize=20`
+  returns a bounded `MatchSearchResponse` ordered by calendar date and
+  `match_key`. The shared parser validates the structured filters once for both
+  API and BFF routes; page sizes are limited to `1..50`, neutral venue is
+  rejected because it is not proven by the warehouse, and invalid requests
+  return one stable 400 envelope containing all validation messages.
 
 Database configuration is supplied through environment variables. The defaults
 target the local MariaDB database used by the setup guide:

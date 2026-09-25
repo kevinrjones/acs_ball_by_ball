@@ -1,0 +1,132 @@
+<section class="mx-auto max-w-6xl space-y-8" aria-labelledby="match-search-heading">
+  <div class="space-y-3">
+    <a class="text-sm font-semibold text-emerald-800 hover:text-emerald-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 rounded" routerLink="/">
+      ← Back to latest matches
+    </a>
+    <h1 id="match-search-heading" class="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">Match Card Search</h1>
+    <p class="max-w-2xl text-slate-600">Filter and locate historical match cards, head-to-head fixtures, and scorecard records.</p>
+  </div>
+
+  <div class="grid gap-6 lg:grid-cols-12 lg:items-start">
+    <form class="space-y-7 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7 lg:col-span-8" (submit)="submitSearch($event)" novalidate>
+      <fieldset class="space-y-4">
+        <legend class="text-lg font-bold text-slate-900">Teams</legend>
+        <div class="grid gap-5 md:grid-cols-2">
+          <div class="space-y-2">
+            <label class="text-sm font-semibold text-slate-800" for="match-search-team">Team name</label>
+            <input
+              id="match-search-team"
+              name="team"
+              type="text"
+              autocomplete="off"
+              [value]="filters().team"
+              (input)="onTeamInput($event)"
+              minlength="3"
+              maxlength="100"
+              placeholder="e.g. Australia, Surrey, Mumbai Indians"
+              aria-describedby="match-search-team-help match-search-error"
+              class="min-h-11 w-full rounded-lg border border-slate-300 px-3.5 text-slate-900 shadow-sm outline-none transition focus:border-emerald-700 focus:ring-2 focus:ring-emerald-200"
+            />
+            <label class="flex items-center gap-2 text-sm text-slate-600" for="team-exact-match">
+              <input id="team-exact-match" name="teamExactMatch" type="checkbox" [checked]="filters().teamExactMatch" (change)="onTeamExactMatchChange($event)" class="h-4 w-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-500" />
+              Exact match
+            </label>
+            <p id="match-search-team-help" class="text-xs text-slate-500">Minimum 3 characters.</p>
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-semibold text-slate-800" for="match-search-opponents">Opponents</label>
+            <input
+              id="match-search-opponents"
+              name="opponents"
+              type="text"
+              autocomplete="off"
+              [value]="filters().opponents"
+              (input)="onOpponentsInput($event)"
+              minlength="3"
+              maxlength="100"
+              placeholder="e.g. England, Yorkshire, Chennai Super Kings"
+              aria-describedby="match-search-opponents-help match-search-error"
+              class="min-h-11 w-full rounded-lg border border-slate-300 px-3.5 text-slate-900 shadow-sm outline-none transition focus:border-emerald-700 focus:ring-2 focus:ring-emerald-200"
+            />
+            <label class="flex items-center gap-2 text-sm text-slate-600" for="opponents-exact-match">
+              <input id="opponents-exact-match" name="opponentsExactMatch" type="checkbox" [checked]="filters().opponentsExactMatch" (change)="onOpponentsExactMatchChange($event)" class="h-4 w-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-500" />
+              Exact match
+            </label>
+            <p id="match-search-opponents-help" class="text-xs text-slate-500">Minimum 3 characters.</p>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="space-y-3">
+        <legend class="text-lg font-bold text-slate-900">Venue</legend>
+        <div class="flex flex-wrap gap-x-5 gap-y-3" role="radiogroup" aria-label="Venue filter">
+          @for (option of venueOptions; track option.value) {
+            <label class="flex items-center gap-2 text-sm text-slate-700">
+              <input type="radio" name="venue" [value]="option.value" [checked]="filters().venue === option.value" (change)="onVenueChange($event)" class="h-4 w-4 border-slate-300 text-emerald-700 focus:ring-emerald-500" />
+              {{ option.label }}
+            </label>
+          }
+        </div>
+        <p class="text-xs text-slate-500">Home and away use the verified warehouse team order. Neutral venue is not offered because the warehouse has no neutral-location field.</p>
+      </fieldset>
+
+      <fieldset class="space-y-4">
+        <legend class="text-lg font-bold text-slate-900">Match details</legend>
+        <div class="grid gap-5 sm:grid-cols-2">
+          <div class="space-y-2">
+            <label class="text-sm font-semibold text-slate-800" for="match-search-start-date">Start date</label>
+            <input id="match-search-start-date" name="startDate" type="date" [value]="filters().startDate" (input)="onStartDateInput($event)" class="min-h-11 w-full rounded-lg border border-slate-300 px-3.5 text-slate-900 shadow-sm outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-200" />
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-semibold text-slate-800" for="match-search-end-date">End date</label>
+            <input id="match-search-end-date" name="endDate" type="date" [value]="filters().endDate" (input)="onEndDateInput($event)" class="min-h-11 w-full rounded-lg border border-slate-300 px-3.5 text-slate-900 shadow-sm outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-200" />
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-semibold text-slate-800" for="match-search-type">Match type</label>
+            <select id="match-search-type" name="matchType" [value]="filters().matchType" (change)="onMatchTypeChange($event)" class="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3.5 text-slate-900 shadow-sm outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-200">
+              @for (option of matchTypeOptions; track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </select>
+          </div>
+          <div class="space-y-2">
+            <label class="text-sm font-semibold text-slate-800" for="match-search-result">Match result</label>
+            <select id="match-search-result" name="matchResult" [value]="filters().matchResult" (change)="onMatchResultChange($event)" class="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3.5 text-slate-900 shadow-sm outline-none focus:border-emerald-700 focus:ring-2 focus:ring-emerald-200">
+              @for (option of resultOptions; track option.value) {
+                <option [value]="option.value">{{ option.label }}</option>
+              }
+            </select>
+          </div>
+        </div>
+      </fieldset>
+
+      @if (errorMessage()) {
+        <p id="match-search-error" class="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm font-medium text-rose-800" role="alert">{{ errorMessage() }}</p>
+      }
+      <div class="flex flex-col-reverse gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
+        <button type="button" (click)="resetSearch()" class="min-h-11 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-1">Reset</button>
+        <button type="submit" class="min-h-11 rounded-lg bg-[#0e3b43] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#09292e] focus:outline-none focus:ring-2 focus:ring-teal-700 focus:ring-offset-1">Search match cards</button>
+      </div>
+    </form>
+
+    <aside class="space-y-5 lg:col-span-4" aria-label="Search help">
+      <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 class="text-lg font-bold text-slate-900">Try a preset</h2>
+        <p class="mt-2 text-sm text-slate-600">Load a known fixture, then adjust any filter before searching.</p>
+        <div class="mt-4 grid gap-2">
+          @for (preset of presets; track preset.id) {
+            <button type="button" (click)="applyPreset(preset)" class="min-h-10 rounded-lg border border-slate-300 px-3 py-2 text-left text-sm font-semibold text-slate-700 hover:border-emerald-600 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500">{{ preset.label }}</button>
+          }
+        </div>
+      </div>
+      <div class="rounded-2xl border border-emerald-100 bg-emerald-50 p-5">
+        <h2 class="text-lg font-bold text-emerald-950">Search tips</h2>
+        <ul class="mt-3 list-disc space-y-2 pl-5 text-sm text-emerald-900">
+          <li>Use exact matching for a single named team.</li>
+          <li>Leave dates and result filters broad to find more cards.</li>
+          <li>Results are bounded and ordered newest first.</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+</section>

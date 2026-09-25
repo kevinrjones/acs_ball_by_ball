@@ -1,14 +1,18 @@
 package com.knowledgespike.ballbyball.web.adapter.out.api
 
 import com.knowledgespike.ballbyball.contracts.Envelope
+import com.knowledgespike.ballbyball.contracts.MatchSearchRequest
+import com.knowledgespike.ballbyball.contracts.MatchSearchResponse
 import com.knowledgespike.ballbyball.contracts.RecentMatchesResponse
 import com.knowledgespike.ballbyball.web.application.MatchApiClient
-import com.knowledgespike.ballbyball.web.application.MatchApiResult
+import com.knowledgespike.ballbyball.web.application.RecentMatchesResult
+import com.knowledgespike.ballbyball.web.application.SearchMatchesResult
 import com.knowledgespike.ballbyball.web.domain.service.TokenService
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.parameter
 import io.ktor.http.HttpHeaders
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
@@ -22,7 +26,7 @@ class KtorMatchApiClient(
     private val baseUrl = apiBaseUrl.trimEnd('/')
     private val log = LoggerFactory.getLogger(KtorMatchApiClient::class.java)
 
-    override suspend fun recentMatches(): MatchApiResult = try {
+    override suspend fun recentMatches(): RecentMatchesResult = try {
         val token = tokenService?.getAccessToken()
         val response = httpClient.get("$baseUrl/api/matches") {
             if (!token.isNullOrBlank()) {
@@ -30,15 +34,46 @@ class KtorMatchApiClient(
             }
         }
         if (!response.status.isSuccess()) {
-            MatchApiResult.Unavailable(response.status)
+            RecentMatchesResult.Unavailable(response.status)
         } else {
             val envelope = response.body<Envelope<RecentMatchesResponse>>()
-            MatchApiResult.Success(envelope.result.matches, envelope.timeGenerated)
+            RecentMatchesResult.Success(envelope.result.matches, envelope.timeGenerated)
         }
     } catch (cause: CancellationException) {
         throw cause
     } catch (cause: Exception) {
         log.warn("API request failed", cause)
-        MatchApiResult.Unavailable()
+        RecentMatchesResult.Unavailable()
+    }
+
+    override suspend fun searchMatches(request: MatchSearchRequest): SearchMatchesResult = try {
+        val token = tokenService?.getAccessToken()
+        val response = httpClient.get("$baseUrl/api/matches/search") {
+            parameter("team", request.team.value)
+            parameter("teamExactMatch", request.teamExactMatch.value)
+            parameter("opponents", request.opponents.value)
+            parameter("opponentsExactMatch", request.opponentsExactMatch.value)
+            parameter("venue", request.venue.value)
+            request.startDate?.let { parameter("startDate", it.value) }
+            request.endDate?.let { parameter("endDate", it.value) }
+            parameter("matchType", request.matchType.value)
+            parameter("matchResult", request.matchResult.value)
+            parameter("page", request.page.value)
+            parameter("pageSize", request.pageSize.value)
+            if (!token.isNullOrBlank()) {
+                header(HttpHeaders.Authorization, "Bearer $token")
+            }
+        }
+        if (!response.status.isSuccess()) {
+            SearchMatchesResult.Unavailable(response.status)
+        } else {
+            val envelope = response.body<Envelope<MatchSearchResponse>>()
+            SearchMatchesResult.Success(envelope.result, envelope.timeGenerated)
+        }
+    } catch (cause: CancellationException) {
+        throw cause
+    } catch (cause: Exception) {
+        log.warn("Historical match search request failed", cause)
+        SearchMatchesResult.Unavailable()
     }
 }

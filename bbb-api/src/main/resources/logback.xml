@@ -41,5 +41,5 @@
     <logger name="com.zaxxer.hikari.HikariDataSource" level="info"/>
     <logger name="org.mariadb" level="info"/>
     <logger name="org.jooq.impl" level="info"/>
-    <logger name="org.jooq.tools.LoggerListener" level="debug"/>
+    <logger name="org.jooq.tools.LoggerListener" level="info"/>
 </configuration>

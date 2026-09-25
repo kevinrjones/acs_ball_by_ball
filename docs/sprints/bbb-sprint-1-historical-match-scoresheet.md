@@ -23,8 +23,8 @@ The implementation sprint starts from these verified seams:
 
 ## 3. User journey and UX states
 
-1. A visitor opens the historical-match search page and sees an idle search form with clear labels and bounded input guidance.
-2. The visitor submits a valid search. The page shows a loading state and prevents ambiguous duplicate submissions.
+1. An authenticated visitor opens the historical-match search page and sees an idle ACS-aligned card search form with clear labels and bounded input guidance.
+2. The authenticated visitor submits a valid search. The page shows a loading state and prevents ambiguous duplicate submissions.
 3. The page shows a deterministic, bounded result list when matches are found. Each result exposes enough verified identity context to distinguish matches.
 4. The page shows a no-results state with an actionable way to revise the search.
 5. The page shows an error state for unavailable or malformed upstream data without exposing internal details; retry and search revision remain available.
@@ -63,7 +63,7 @@ The UI must use semantic headings, form labels, status announcements for loading
 ### 5.1 Search
 
 - The API must validate all query parameters at the presentation boundary using existing Arrow validation conventions and tiny types.
-- The proposed default is bounded free-text search over verified match identity fields. Team, opponent, date, type, season, or result filters require warehouse/query discovery and HITL approval before implementation.
+- The accepted search is the ACS-aligned card filter set: required team and opponent names with optional exact-match flags, venue orientation, date range, match type, and result category. Every filter is bounded by a shared tiny type.
 - Blank, malformed, over-limit, and otherwise invalid values must produce a stable 400 envelope without invoking the repository.
 - Search results must have explicit page-size and cursor/offset semantics, a stable deterministic order, and no unbounded response.
 - Zero, one, many, and duplicate-looking results must render distinctly enough for exactly-one selection.
@@ -87,7 +87,7 @@ The UI must use semantic headings, form labels, status announcements for loading
 
 Use separate protected endpoints and preserve the recent-match route:
 
-- `GET /api/matches/search?...` returns an `Envelope` containing bounded `MatchSummary` results and pagination metadata. The exact filter set, limit, and cursor semantics are HITL gates.
+- `GET /api/matches/search?team=...&opponents=...&teamExactMatch=...&opponentsExactMatch=...&venue=...&startDate=...&endDate=...&matchType=...&matchResult=...` returns an `Envelope` containing bounded match-card results and pagination metadata.
 - `GET /api/matches/{matchKey}/scoresheet?...` returns an `Envelope` containing selected-match context, innings summaries, ordered delivery rows, completeness indicators, and optional supported wicket/fielder details.
 - `GET /api/matches?limit=...` remains backward-compatible and is not overloaded with delivery data.
 - The corresponding BFF paths under `/api` call typed `MatchApiClient` operations. `KtorMatchApiClient` uses `TokenService`, forwards only the intended server-side authorization, and maps non-2xx, network, timeout, and malformed responses to the existing unavailable result model.
@@ -121,7 +121,7 @@ The mapper must preserve source values and nullable data. It must not infer lega
 
 ## 8. BFF, security, and operational behavior
 
-- API and BFF routes remain protected by the existing authentication boundary.
+- Search API, BFF, Angular search/results, and selected-match routes remain protected by the existing authentication boundary. The initial recent-match list remains available anonymously through the BFF machine-token path.
 - The BFF forwards machine or user tokens through the existing `TokenService` path only to the configured trusted API; no target URL or credential is user-controlled.
 - The browser never stores or receives upstream machine credentials.
 - Search and match-key inputs are bounded before expensive work. Pagination limits, request timeouts, and response sizes must prevent resource exhaustion.
@@ -165,7 +165,7 @@ The mapper must preserve source values and nullable data. It must not infer lega
 
 The following decisions must be confirmed before the dependent implementation task is marked complete:
 
-1. **Search filters:** proposed default is bounded free-text over verified identity fields. Optional structured team/opponent/date/type/result semantics, informed by ACS, remain a review choice after query discovery.
+1. **Search filters:** accepted ACS-aligned structured card search: required team/opponent names, exact-match flags, venue, date range, match type, and match result. Free-text-only search is not the card-search contract.
 2. **Historical eligibility:** proposed default is an API-defined historical record with `dim_match` metadata and available innings/delivery data. Tie, draw, and no-result `victory_type` values are not live status and require product confirmation.
 3. **Score detail:** proposed default is context, innings, raw delivery rows, and available wicket/fielder associations. Aggregates, dismissal identities, fall-of-wickets, partnerships, projections, and “verified” labels are deferred unless proven and approved.
 4. **Pagination:** proposed default is deterministic bounded search pagination plus innings/delivery pagination or chunking. Exact cursor and limit semantics require approval before implementation.
@@ -180,7 +180,7 @@ The following decisions must be confirmed before the dependent implementation ta
 - A selected match renders context, every available innings, and delivery rows in the tested deterministic order, including repeated labels, extras, multiple wickets, and delivery-key ties.
 - Missing or incomplete data produces visible, accessible completeness messaging and no fabricated statistics.
 - Search criteria/results are restored on back-to-results when available, and direct navigation has a safe fallback when no prior search state exists.
-- API and BFF routes reject unauthenticated access, forward only approved server-side tokens, and map upstream failures without leaking internals.
+- Search API, BFF, and Angular feature routes reject unauthenticated access, while the initial recent-match list remains available through the server-side machine-token flow; tokens are never exposed to the browser.
 - The responsive scoresheet remains usable at a narrow viewport, and keyboard-only users can complete search, selection, scoresheet navigation, and return navigation.
 - Relevant automated tests and required Gradle/frontend/coverage/complexity checks are run with failures recorded and fixed or explicitly documented.
 

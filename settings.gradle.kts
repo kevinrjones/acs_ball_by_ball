@@ -1,3 +1,5 @@
+@file:Suppress("UnstableApiUsage")
+
 import org.gradle.api.initialization.resolve.RepositoriesMode
 
 pluginManagement {
@@ -11,10 +13,15 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
+
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-    repositories {
-        mavenCentral()
+    repositories {mavenCentral() }
+    versionCatalogs {
+        create("ktorlibs") {
+            from("io.ktor:ktor-version-catalog:3.5.0")
+        }
     }
 }
 

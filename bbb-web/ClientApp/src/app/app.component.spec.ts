@@ -1,22 +1,17 @@
 import {TestBed} from '@angular/core/testing';
 import {computed, signal, WritableSignal} from '@angular/core';
 import {provideRouter} from '@angular/router';
-import {NEVER, of, throwError} from 'rxjs';
+import {NEVER, of} from 'rxjs';
 import {AppComponent} from './app.component';
-import {MatchService} from './services/match.service';
 import {AuthenticationService, Session} from './services/authentication.service';
 import {ApplicationMetadataService} from './services/application-metadata.service';
-import {RecentMatchesResponse} from './models/match.model';
 
 describe('AppComponent', () => {
-  let matchServiceMock: jasmine.SpyObj<MatchService>;
   let authServiceMock: jasmine.SpyObj<AuthenticationService>;
   let applicationMetadataServiceMock: jasmine.SpyObj<ApplicationMetadataService>;
   let sessionSignal: WritableSignal<Session>;
 
   beforeEach(async () => {
-    matchServiceMock = jasmine.createSpyObj<MatchService>('MatchService', ['getRecentMatches']);
-    matchServiceMock.getRecentMatches.and.returnValue(NEVER);
     authServiceMock = jasmine.createSpyObj<AuthenticationService>('AuthenticationService', ['getSession']);
     applicationMetadataServiceMock = jasmine.createSpyObj<ApplicationMetadataService>('ApplicationMetadataService', ['getMetadata']);
     applicationMetadataServiceMock.getMetadata.and.returnValue(NEVER);
@@ -39,7 +34,6 @@ describe('AppComponent', () => {
       imports: [AppComponent],
       providers: [
         provideRouter([]),
-        { provide: MatchService, useValue: matchServiceMock },
         { provide: AuthenticationService, useValue: authServiceMock },
         { provide: ApplicationMetadataService, useValue: applicationMetadataServiceMock }
       ]
@@ -52,13 +46,14 @@ describe('AppComponent', () => {
     expect(app).toBeTruthy();
   });
 
-  it('should render the brand header and search controls', () => {
+  it('should render the stable brand shell and unconditional router outlet', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('header')?.textContent).toContain('Maiden');
     expect(compiled.querySelector('header')?.textContent).toContain('Ball by Ball');
-    expect(compiled.querySelector('h1')?.textContent).toContain('Ball by Ball');
+    expect(compiled.querySelector('router-outlet')).toBeTruthy();
+    expect(compiled.querySelector('[data-purpose="latest-results-section"]')).toBeNull();
   });
 
   it('should render dynamic footer metadata', () => {
@@ -165,214 +160,4 @@ describe('AppComponent', () => {
     expect(compiled.querySelector('.user-menu-panel')).toBeNull();
   });
 
-
-  it('should display a loading overlay without sample matches while API request is pending', () => {
-    const fixture = TestBed.createComponent(AppComponent);
-    fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-    expect(fixture.componentInstance.isLoading()).toBeTrue();
-    expect(compiled.querySelector('.loading-container')).toBeTruthy();
-    expect(compiled.querySelectorAll('#matches article').length).toBe(0);
-    expect(compiled.textContent).not.toContain('Bangladesh Women');
-    expect(compiled.textContent).not.toContain('India Women');
-  });
-
-  it('should load matches from MatchService when loadRecentMatches is called', () => {
-    const fixture = TestBed.createComponent(AppComponent);
-    const mockResponse: RecentMatchesResponse = {
-      matches: [
-        {
-          matchKey: 101,
-          sourceMatchId: 1001,
-          matchType: 'T20',
-          season: '2026',
-          fileName: 't20-match-1.json',
-          competition: 'Asia Cup 2026',
-          date: '10 Sept 2026',
-          team1: 'India',
-          score1: '150-5',
-          overs1: '(20ov)',
-          isTeam1Winner: true,
-          team2: 'Pakistan',
-          score2: '140-8',
-          overs2: '(20ov)',
-          isTeam2Winner: false,
-          result: 'India won by 10 runs',
-          format: 't20'
-        }
-      ]
-    };
-    matchServiceMock.getRecentMatches.and.returnValue(
-      of({
-        result: mockResponse,
-        errorMessage: '',
-        timeGenerated: new Date().toISOString()
-      })
-    );
-
-    fixture.componentInstance.loadRecentMatches();
-    fixture.detectChanges();
-
-    expect(matchServiceMock.getRecentMatches).toHaveBeenCalledWith(10);
-    expect(fixture.componentInstance.matches().length).toBe(1);
-    expect(fixture.componentInstance.hasLoaded()).toBeTrue();
-
-    const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.textContent).toContain('Asia Cup 2026');
-    expect(compiled.textContent).toContain('India');
-    expect(compiled.textContent).toContain('150-5');
-    expect(compiled.textContent).toContain('Pakistan');
-    expect(compiled.textContent).toContain('140-8');
-    expect(compiled.textContent).toContain('India won by 10 runs');
-  });
-
-  it('should display MISSING when match fields are missing', () => {
-    const fixture = TestBed.createComponent(AppComponent);
-    const mockResponse: RecentMatchesResponse = {
-      matches: [
-        {
-          matchKey: 102,
-          sourceMatchId: 1002,
-          matchType: 'T20',
-          season: '2026',
-          fileName: 't20-match-2.json',
-          competition: '',
-          date: '',
-          team1: '',
-          score1: '',
-          team2: '',
-          score2: '',
-          result: '',
-          format: ''
-        }
-      ]
-    };
-    matchServiceMock.getRecentMatches.and.returnValue(
-      of({
-        result: mockResponse,
-        errorMessage: '',
-        timeGenerated: new Date().toISOString()
-      })
-    );
-
-    fixture.componentInstance.loadRecentMatches();
-    fixture.detectChanges();
-
-    const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.textContent).toContain('MISSING');
-  });
-
-  it('should show error banner when MatchService fails', () => {
-    const fixture = TestBed.createComponent(AppComponent);
-    matchServiceMock.getRecentMatches.and.returnValue(
-      throwError(() => ({ error: { errorMessage: 'Network error' } }))
-    );
-
-    fixture.componentInstance.loadRecentMatches();
-    fixture.detectChanges();
-
-    expect(fixture.componentInstance.errorMessage()).toContain('Network error');
-    const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.textContent).toContain('Failed to load matches: Network error');
-    expect(fixture.componentInstance.isLoading()).toBeFalse();
-    expect(fixture.componentInstance.hasLoaded()).toBeFalse();
-    expect(compiled.querySelectorAll('#matches article').length).toBe(0);
-    expect(compiled.textContent).not.toContain('Bangladesh Women');
-    expect(compiled.textContent).not.toContain('India Women');
-  });
-
-  it('should show "No matches found" when API returns empty list', () => {
-    const fixture = TestBed.createComponent(AppComponent);
-    matchServiceMock.getRecentMatches.and.returnValue(
-      of({
-        result: { matches: [] },
-        errorMessage: '',
-        timeGenerated: new Date().toISOString()
-      })
-    );
-
-    fixture.componentInstance.loadRecentMatches();
-    fixture.detectChanges();
-
-    const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.textContent).toContain('No matches found.');
-  });
-
-  it('should NOT render scorecard link when user is unauthenticated', () => {
-    sessionSignal.set(null);
-    const fixture = TestBed.createComponent(AppComponent);
-    const mockResponse: RecentMatchesResponse = {
-      matches: [
-        {
-          matchKey: 101,
-          sourceMatchId: 1001,
-          matchType: 'T20',
-          season: '2026',
-          fileName: 't20-match-1.json',
-          competition: 'Asia Cup 2026',
-          date: '10 Sept 2026',
-          team1: 'India',
-          score1: '150-5',
-          result: 'India won by 10 runs',
-          format: 't20'
-        }
-      ]
-    };
-    matchServiceMock.getRecentMatches.and.returnValue(
-      of({
-        result: mockResponse,
-        errorMessage: '',
-        timeGenerated: new Date().toISOString()
-      })
-    );
-
-    fixture.componentInstance.loadRecentMatches();
-    fixture.detectChanges();
-
-    const compiled = fixture.nativeElement as HTMLElement;
-    const scorecardLink = compiled.querySelector('.match-card__link');
-    expect(scorecardLink).toBeNull();
-  });
-
-  it('should render scorecard link when user is authenticated', () => {
-    sessionSignal.set({
-      claims: [
-        { type: 'sub', value: 'user-1' },
-        { type: 'name', value: 'Kevin Jones' }
-      ]
-    });
-    const fixture = TestBed.createComponent(AppComponent);
-    const mockResponse: RecentMatchesResponse = {
-      matches: [
-        {
-          matchKey: 101,
-          sourceMatchId: 1001,
-          matchType: 'T20',
-          season: '2026',
-          fileName: 't20-match-1.json',
-          competition: 'Asia Cup 2026',
-          date: '10 Sept 2026',
-          team1: 'India',
-          score1: '150-5',
-          result: 'India won by 10 runs',
-          format: 't20'
-        }
-      ]
-    };
-    matchServiceMock.getRecentMatches.and.returnValue(
-      of({
-        result: mockResponse,
-        errorMessage: '',
-        timeGenerated: new Date().toISOString()
-      })
-    );
-
-    fixture.componentInstance.loadRecentMatches();
-    fixture.detectChanges();
-
-    const compiled = fixture.nativeElement as HTMLElement;
-    const scorecardLink = compiled.querySelector('.match-card__link') as HTMLAnchorElement;
-    expect(scorecardLink).toBeTruthy();
-    expect(scorecardLink.getAttribute('href')).toContain('/scorecard/cardbyid/101');
-  });
 });

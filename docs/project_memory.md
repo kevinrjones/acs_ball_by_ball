@@ -1,5 +1,69 @@
 # Project Memory
 
+## Task: Replicate ACS match card search
+
+### Title
+
+Align historical match search with the ACS card-search workflow
+
+### Date/time completed
+
+2026-09-24 21:02
+
+### What was shipped
+
+- Refined the ACS-aligned team/opponent, exact-match, venue, date, match-type, and result search into a shared typed query codec and parser used by both HTTP adapters.
+- Removed duplicated response rows, isolated repository filter policy, capped maximum-page continuation, and made unsupported neutral venue fail explicitly.
+- Made Angular routing a stable shell with a routed recent-match home, canonical selected-match links, and complete structured search restoration through detail navigation.
+
+### Key decisions
+
+- Kept the ACS parameter names and result categories, but reject neutral venue because the warehouse has no proven neutral-location field.
+- Kept one match collection plus metadata-only pagination and separate recent/search BFF result types.
+- Required both team and opponent fields at the presentation boundary and preserved server-side token handling.
+
+### Gotchas
+
+- The live ACS page redirects anonymous visitors to login, so source inspection was used for the card-search behavior; the current BBB warehouse has no explicit neutral-venue flag.
+- Search API tests accumulate invalid values in the shared parser; malformed finite options, unsupported neutral venue, date ranges, and paging boundaries are rejected consistently in both adapters.
+
+### Test coverage areas
+
+- Shared value-class and contract serialization tests.
+- API authentication, validation, paging, BFF token/query forwarding, anonymous redirect, Angular route guards, card form, results states, presets, and query restoration.
+- `./gradlew clean check --no-daemon`, focused API/BFF/shared tests, and 35 Angular browser tests.
+
+## Task: Extract Angular component templates
+
+### Title
+
+Move Angular component HTML into external template files
+
+### Date/time completed
+
+2026-09-24 16:50
+
+### What was shipped
+
+- Extracted the inline templates from the three matches feature components into sibling `.component.html` files.
+- Verified every Angular component under `bbb-web/ClientApp/src/app` uses an external `templateUrl`.
+- Documented the external-template convention in `.junie/AGENTS.md`.
+
+### Key decisions
+
+- Kept each HTML file next to its component TypeScript file and matched the existing `AppComponent` naming convention.
+- Preserved the existing markup and component behavior while changing only template location.
+
+### Gotchas
+
+- The repository contains an unrelated pre-existing trailing-whitespace issue in `docs/tasks/bbb-tasks-sprint-1-historical-match-scoresheet.md`.
+
+### Test coverage areas
+
+- Angular production build.
+- All 30 Angular Karma tests.
+- Repository-wide `./gradlew clean check --no-daemon`.
+
 ## Task: Remove protected profile test flow
 
 ### Title
@@ -1508,3 +1572,47 @@ Add GitHub Actions workflows, Dockerfiles, and Docker Compose development enviro
 
 - `./gradlew clean check --no-daemon` validated across all modules.
 - Docker Compose configuration and service dependency graph verified.
+
+## Task: Implement BBB Sprint 1 historical match search slice
+
+### Title
+
+Add bounded historical match search contracts, API, BFF, and Angular results
+
+### Date/time completed
+
+2026-09-24 16:19
+
+### What was shipped
+
+- Added validated `SearchQuery`, `PageNumber`, and `PageSize` tiny types plus
+  nullable-safe shared search result and pagination contracts.
+- Added protected API search with Arrow boundary validation, deterministic
+  warehouse-backed joins, bounded pagination, and safe failure logging.
+- Added typed BFF search forwarding with server-side token handling and
+  controlled upstream/malformed-response mapping.
+- Added Angular search/results routes and states, query preservation, keyboard-
+  accessible result actions, and a non-fabricating selected-match route shell.
+
+### Key decisions
+
+- Search uses free text across verified match identity fields and keeps the
+  existing recent-match response unchanged.
+- Search returns `{ matches, pagination }`, orders by date then `match_key`,
+  and does not infer scores or results from unavailable facts.
+
+### Gotchas
+
+- The warehouse date relationship is nullable, so search date values remain
+  nullable and null dates sort last.
+- Scoresheet delivery, wicket, and fielder presentation remains outside this
+  completed slice and is intentionally not represented by placeholder data.
+
+### Test coverage areas
+
+- Shared value-class validation and primitive JSON serialization.
+- API authorization, accumulated invalid search parameters, and bounded result
+  envelope behavior.
+- BFF query encoding, bearer forwarding, search decoding, recent-match
+  compatibility, upstream failures, and malformed JSON.
+- Angular search/result route, service, state, accessibility, and build checks.

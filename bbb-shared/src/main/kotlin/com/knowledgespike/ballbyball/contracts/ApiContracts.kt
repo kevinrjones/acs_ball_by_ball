@@ -1,9 +1,17 @@
 package com.knowledgespike.ballbyball.contracts
 
+import com.knowledgespike.ballbyball.types.values.ExactMatch
 import com.knowledgespike.ballbyball.types.values.MatchKey
+import com.knowledgespike.ballbyball.types.values.MatchResultFilter
+import com.knowledgespike.ballbyball.types.values.MatchTypeFilter
 import com.knowledgespike.ballbyball.types.values.MatchType
+import com.knowledgespike.ballbyball.types.values.PageNumber
+import com.knowledgespike.ballbyball.types.values.PageSize
+import com.knowledgespike.ballbyball.types.values.SearchDate
+import com.knowledgespike.ballbyball.types.values.SearchTeam
 import com.knowledgespike.ballbyball.types.values.Season
 import com.knowledgespike.ballbyball.types.values.SourceMatchId
+import com.knowledgespike.ballbyball.types.values.VenueFilter
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -81,6 +89,51 @@ data class MatchSummary(
 @Serializable
 data class RecentMatchesResponse(
     val matches: List<MatchSummary>
+)
+
+@Serializable
+data class MatchSearchRequest(
+    val team: SearchTeam,
+    val teamExactMatch: ExactMatch,
+    val opponents: SearchTeam,
+    val opponentsExactMatch: ExactMatch,
+    val venue: VenueFilter,
+    val startDate: SearchDate?,
+    val endDate: SearchDate?,
+    val matchType: MatchTypeFilter,
+    val matchResult: MatchResultFilter,
+    val page: PageNumber = PageNumber.from(PageNumber.DEFAULT_VALUE),
+    val pageSize: PageSize = PageSize.from(PageSize.DEFAULT_VALUE)
+)
+
+@Serializable
+data class MatchSearchResult(
+    val matchKey: MatchKey,
+    val sourceMatchId: SourceMatchId,
+    val fileName: String,
+    val matchType: MatchType?,
+    val season: Season?,
+    val competition: String? = null,
+    val date: String? = null,
+    val team1: String? = null,
+    val team2: String? = null,
+    val ground: String? = null,
+    val result: String? = null
+)
+
+@Serializable
+data class MatchSearchResponse(
+    val matches: List<MatchSearchResult>,
+    val pagination: MatchSearchPagination
+)
+
+@Serializable
+data class MatchSearchPagination(
+    val page: PageNumber,
+    val pageSize: PageSize,
+    val totalResults: Int,
+    val hasNext: Boolean,
+    val nextPage: PageNumber?
 )
 
 @Serializable

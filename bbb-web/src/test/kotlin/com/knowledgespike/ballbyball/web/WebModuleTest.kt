@@ -2,18 +2,32 @@ package com.knowledgespike.ballbyball.web
 
 import com.knowledgespike.ballbyball.contracts.Envelope
 import com.knowledgespike.ballbyball.contracts.MatchSummary
+import com.knowledgespike.ballbyball.contracts.MatchSearchRequest
+import com.knowledgespike.ballbyball.contracts.MatchSearchPagination
+import com.knowledgespike.ballbyball.contracts.MatchSearchResult
+import com.knowledgespike.ballbyball.contracts.MatchSearchResponse
 import com.knowledgespike.ballbyball.contracts.RecentMatchesResponse
 import com.knowledgespike.ballbyball.web.adapter.out.api.HttpClientFactory
 import com.knowledgespike.ballbyball.web.adapter.out.api.KtorMatchApiClient
 import com.knowledgespike.ballbyball.web.adapter.out.service.DefaultTokenService
 import com.knowledgespike.ballbyball.web.application.MatchApiClient
-import com.knowledgespike.ballbyball.web.application.MatchApiResult
 import com.knowledgespike.ballbyball.web.application.ApplicationMetadataService
+import com.knowledgespike.ballbyball.web.application.RecentMatchesResult
+import com.knowledgespike.ballbyball.web.application.SearchMatchesResult
 import com.knowledgespike.ballbyball.web.bootstrap.moduleWithApiClient
 import com.knowledgespike.ballbyball.web.bootstrap.moduleWithDependencies
 import com.knowledgespike.ballbyball.web.config.KbffConfigFactory
 import com.knowledgespike.ballbyball.web.config.resolveRegistrationUrl
 import com.knowledgespike.ballbyball.web.domain.service.TokenService
+import com.knowledgespike.ballbyball.types.values.ExactMatch
+import com.knowledgespike.ballbyball.types.values.MatchKey
+import com.knowledgespike.ballbyball.types.values.MatchResultFilter
+import com.knowledgespike.ballbyball.types.values.MatchTypeFilter
+import com.knowledgespike.ballbyball.types.values.PageNumber
+import com.knowledgespike.ballbyball.types.values.PageSize
+import com.knowledgespike.ballbyball.types.values.SearchTeam
+import com.knowledgespike.ballbyball.types.values.SourceMatchId
+import com.knowledgespike.ballbyball.types.values.VenueFilter
 import com.knowledgespike.feature.kbff.data.repository.InMemoryKbffSessionStorage
 import com.knowledgespike.feature.kbff.domain.model.KbffClaim
 import com.knowledgespike.feature.kbff.domain.model.KbffConfiguration
@@ -45,7 +59,7 @@ class WebModuleTest {
     @Test
     fun `metadata endpoint returns dynamic data timestamp and application version`() = testApplication {
         val apiClient = FakeMatchApiClient(
-            MatchApiResult.Success(
+            RecentMatchesResult.Success(
                 emptyList(),
                 Instant.parse("2026-09-24T06:29:00Z")
             )
@@ -225,8 +239,78 @@ class WebModuleTest {
         val client = KtorMatchApiClient("http://api", mockHttpClient, fakeTokenService)
         val result = client.recentMatches()
 
-        expectThat(result).isA<MatchApiResult.Success>()
+        expectThat(result).isA<RecentMatchesResult.Success>()
         expectThat(authHeaderValue).isEqualTo("Bearer test-token-456")
+        mockHttpClient.close()
+    }
+
+    @Test
+    fun `ktor match api client forwards typed search request and decodes search response`() = runBlocking {
+        var requestedPath: String? = null
+        var authHeaderValue: String? = null
+        val searchResponse = MatchSearchResponse(
+            matches = listOf(
+                MatchSearchResult(
+                    matchKey = MatchKey.from(100),
+                    sourceMatchId = SourceMatchId.from(200),
+                    fileName = "historic.json",
+                    matchType = null,
+                    season = null
+                )
+            ),
+            pagination = MatchSearchPagination(
+                page = PageNumber.from(2),
+                pageSize = PageSize.from(10),
+                totalResults = 1,
+                hasNext = false,
+                nextPage = null
+            )
+        )
+        val mockHttpClient = HttpClient(MockEngine) {
+            engine {
+                addHandler { request ->
+                    requestedPath = request.url.encodedPath + "?" + request.url.encodedQuery
+                    authHeaderValue = request.headers[HttpHeaders.Authorization]
+                    respond(
+                        content = Json.encodeToString(
+                            Envelope.success(
+                                searchResponse
+                            )
+                        ),
+                        status = HttpStatusCode.OK,
+                        headers = headersOf("Content-Type", ContentType.Application.Json.toString())
+                    )
+                }
+            }
+            install(ContentNegotiation) { json() }
+        }
+        val tokenService = object : TokenService {
+            override suspend fun getAccessToken(): String = "search-token"
+        }
+        val client = KtorMatchApiClient("http://api", mockHttpClient, tokenService)
+
+        val result = client.searchMatches(
+            MatchSearchRequest(
+                team = SearchTeam.from("South Africa"),
+                teamExactMatch = ExactMatch.from(true),
+                opponents = SearchTeam.from("India"),
+                opponentsExactMatch = ExactMatch.from(false),
+                venue = VenueFilter.from(VenueFilter.ALL),
+                startDate = null,
+                endDate = null,
+                matchType = MatchTypeFilter.from(MatchTypeFilter.ALL),
+                matchResult = MatchResultFilter.from(MatchResultFilter.ALL),
+                page = PageNumber.from(2),
+                pageSize = PageSize.from(10)
+            )
+        )
+
+        expectThat(result).isA<SearchMatchesResult.Success>()
+        expectThat((result as SearchMatchesResult.Success).response.pagination.totalResults).isEqualTo(1)
+        expectThat(requestedPath).isEqualTo(
+            "/api/matches/search?team=South+Africa&teamExactMatch=true&opponents=India&opponentsExactMatch=false&venue=0&matchType=all&matchResult=0&page=2&pageSize=10"
+        )
+        expectThat(authHeaderValue).isEqualTo("Bearer search-token")
         mockHttpClient.close()
     }
 
@@ -237,6 +321,83 @@ class WebModuleTest {
         val response = client.get("/bff/user")
 
         expectThat(response.status).isEqualTo(HttpStatusCode.Unauthorized)
+    }
+
+    @Test
+    fun `bff card search redirects anonymous users to login`() = testApplication {
+        application { moduleWithApiClient(FakeMatchApiClient()) }
+
+        val testClient = createClient { followRedirects = false }
+        val response = testClient.get("/api/matches/search?team=India&opponents=Pakistan")
+
+        expectThat(response.status).isEqualTo(HttpStatusCode.Found)
+        testClient.close()
+    }
+
+    @Test
+    fun `authenticated bff card search invokes the match api client`() = testApplication {
+        var searchInvoked = false
+        val searchResponse = MatchSearchResponse(
+            matches = emptyList(),
+            pagination = MatchSearchPagination(
+                page = PageNumber.from(1),
+                pageSize = PageSize.from(20),
+                totalResults = 0,
+                hasNext = false,
+                nextPage = null
+            )
+        )
+        val apiClient = FakeMatchApiClient(
+            searchResult = SearchMatchesResult.Success(searchResponse),
+            onSearch = { searchInvoked = true }
+        )
+        val config = KbffConfiguration().apply {
+            environment(isProduction = false)
+            oidc {
+                authority = "https://ids.local:8443"
+                clientId = "bbweb"
+                clientSecret = "secret"
+                scopes = listOf("openid", "profile", "bb.api")
+                redirectUri = "http://localhost:8080/signin-oidc"
+                postLogoutRedirectUri = "http://localhost:8080/"
+            }
+            proxy { endpoint("/api", "http://api/api") }
+            security { csrfHeaderName = "X-CSRF" }
+        }
+        val sessionStorage = InMemoryKbffSessionStorage()
+        val serializer = defaultSessionSerializer<KbffSession>()
+        sessionStorage.write(
+            "session-1",
+            serializer.serialize(
+                KbffSession(
+                    sessionId = "session-1",
+                    accessToken = "user-access-token",
+                    csrfToken = "csrf-abc",
+                    claims = listOf(KbffClaim("name", "Kevin Jones"))
+                )
+            )
+        )
+        val mockHttpClient = HttpClient(MockEngine) {
+            engine { addHandler { respond("proxy route was selected", HttpStatusCode.BadGateway) } }
+        }
+
+        application {
+            moduleWithDependencies(
+                matchApiClient = apiClient,
+                bffConfig = config,
+                oidcService = OidcService(mockHttpClient, config),
+                sessionStorage = sessionStorage,
+                httpClient = mockHttpClient
+            )
+        }
+
+        val response = client.get("/api/matches/search?team=India&opponents=Pakistan") {
+            header(HttpHeaders.Cookie, "bb_session=session-1")
+        }
+
+        expectThat(response.status).isEqualTo(HttpStatusCode.OK)
+        expectThat(searchInvoked).isEqualTo(true)
+        mockHttpClient.close()
     }
 
     @Test
@@ -523,8 +684,15 @@ class WebModuleTest {
     }
 
     private class FakeMatchApiClient(
-        private val result: MatchApiResult = MatchApiResult.Success(emptyList())
+        private val result: RecentMatchesResult = RecentMatchesResult.Success(emptyList()),
+        private val searchResult: SearchMatchesResult = SearchMatchesResult.Unavailable(),
+        private val onSearch: () -> Unit = {}
     ) : MatchApiClient {
-        override suspend fun recentMatches(): MatchApiResult = result
+        override suspend fun recentMatches(): RecentMatchesResult = result
+
+        override suspend fun searchMatches(request: MatchSearchRequest): SearchMatchesResult {
+            onSearch()
+            return searchResult
+        }
     }
 }

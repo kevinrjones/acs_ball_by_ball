@@ -1,6 +1,8 @@
 package com.knowledgespike.ballbyball.api
 
 import io.github.cdimascio.dotenv.dotenv
+import io.ktor.server.config.MapApplicationConfig
+import org.slf4j.LoggerFactory
 import java.io.File
 
 /**
@@ -24,6 +26,7 @@ import java.io.File
  *      already exists for that key.
  *    - `ignoreIfMissing = true` ensures that missing `.env` files in production/CI do not cause failures.
  */
+
 fun main(args: Array<String>) {
     loadEnvironmentVariables()
     io.ktor.server.netty.EngineMain.main(args)
