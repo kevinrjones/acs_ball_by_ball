@@ -69,6 +69,7 @@ fun Application.moduleWithServices(
     jwtVerifier: JWTVerifier? = null
 ) {
     val applicationLog = LoggerFactory.getLogger("com.knowledgespike.ballbyball.api")
+    // todo: Configure this in nginx?
     install(CallId) {
         generate(10, "abcdefghijklmnopqrstuvwxyz0123456789")
         header(HttpHeaders.XRequestId)

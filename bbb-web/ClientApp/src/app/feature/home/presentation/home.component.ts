@@ -3,6 +3,7 @@ import {Component, inject, OnInit, signal} from '@angular/core';
 import {RouterLink} from '@angular/router';
 import {MatchSummary} from '../../../models/match.model';
 import {AuthenticationService} from '../../../services/authentication.service';
+import {ApplicationMetadataService} from '../../../services/application-metadata.service';
 import {MatchService} from '../../../services/match.service';
 
 @Component({
@@ -14,6 +15,7 @@ import {MatchService} from '../../../services/match.service';
 })
 export class HomeComponent implements OnInit {
   private readonly matchService = inject(MatchService);
+  private readonly applicationMetadataService = inject(ApplicationMetadataService);
   readonly authService = inject(AuthenticationService);
 
   readonly matches = signal<MatchSummary[]>([]);
@@ -22,6 +24,7 @@ export class HomeComponent implements OnInit {
   readonly hasLoaded = signal(false);
 
   ngOnInit(): void {
+    this.applicationMetadataService.loadMetadata();
     this.loadRecentMatches();
   }
 

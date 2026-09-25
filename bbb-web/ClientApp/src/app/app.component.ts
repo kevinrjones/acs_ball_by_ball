@@ -1,9 +1,8 @@
-import {Component, HostListener, inject, OnInit, signal} from '@angular/core';
+import {Component, HostListener, inject, signal} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {RouterLink, RouterOutlet} from '@angular/router';
 import {AuthenticationService} from './services/authentication.service';
 import {ApplicationMetadataService} from './services/application-metadata.service';
-import {ApplicationMetadata} from './models/application-metadata.model';
 
 @Component({
   selector: 'app-root',
@@ -12,24 +11,12 @@ import {ApplicationMetadata} from './models/application-metadata.model';
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })
-export class AppComponent implements OnInit {
+export class AppComponent {
   private readonly applicationMetadataService = inject(ApplicationMetadataService);
   public readonly authService = inject(AuthenticationService);
 
-  readonly applicationMetadata = signal<ApplicationMetadata | null>(null);
+  readonly applicationMetadata = this.applicationMetadataService.metadata;
   readonly isUserMenuOpen = signal<boolean>(false);
-
-  ngOnInit(): void {
-    this.loadApplicationMetadata();
-  }
-
-  loadApplicationMetadata(): void {
-    this.applicationMetadataService.getMetadata().subscribe({
-      next: (response) => this.applicationMetadata.set(response.result),
-      error: () => this.applicationMetadata.set(null)
-    });
-  }
-
 
   toggleUserMenu(event: MouseEvent): void {
     event.stopPropagation();

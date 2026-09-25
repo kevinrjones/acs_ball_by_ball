@@ -1,6 +1,6 @@
 import {CommonModule} from '@angular/common';
 import {Component, inject, OnInit, signal} from '@angular/core';
-import {ActivatedRoute, Router, RouterLink} from '@angular/router';
+import {ActivatedRoute, Router} from '@angular/router';
 import {MatchSearchFilters, MatchSearchQuery} from '../../../models/match.model';
 import {
   EMPTY_MATCH_SEARCH_FILTERS,
@@ -23,12 +23,14 @@ interface SearchPreset {
 @Component({
   selector: 'app-match-search',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule],
   templateUrl: './match-search.component.html'
 })
 export class MatchSearchComponent implements OnInit {
   readonly filters = signal<MatchSearchFilters>({...EMPTY_MATCH_SEARCH_FILTERS});
   readonly errorMessage = signal<string | null>(null);
+  readonly teamTouched = signal(false);
+  readonly opponentsTouched = signal(false);
 
   readonly venueOptions = VENUE_OPTIONS;
   readonly matchTypeOptions = MATCH_TYPE_OPTIONS;
@@ -59,11 +61,21 @@ export class MatchSearchComponent implements OnInit {
   }
 
   onTeamInput(event: Event): void {
+    this.teamTouched.set(true);
     this.updateFilters({team: this.inputValue(event)});
   }
 
   onOpponentsInput(event: Event): void {
+    this.opponentsTouched.set(true);
     this.updateFilters({opponents: this.inputValue(event)});
+  }
+
+  onTeamBlur(): void {
+    this.teamTouched.set(true);
+  }
+
+  onOpponentsBlur(): void {
+    this.opponentsTouched.set(true);
   }
 
   onTeamExactMatchChange(event: Event): void {
@@ -97,15 +109,21 @@ export class MatchSearchComponent implements OnInit {
   applyPreset(preset: SearchPreset): void {
     this.filters.set({...preset.filters});
     this.errorMessage.set(null);
+    this.teamTouched.set(false);
+    this.opponentsTouched.set(false);
   }
 
   resetSearch(): void {
     this.filters.set({...EMPTY_MATCH_SEARCH_FILTERS});
     this.errorMessage.set(null);
+    this.teamTouched.set(false);
+    this.opponentsTouched.set(false);
   }
 
   submitSearch(event?: Event): void {
     event?.preventDefault();
+    this.teamTouched.set(true);
+    this.opponentsTouched.set(true);
     const filters: MatchSearchFilters = {
       ...this.filters(),
       team: this.filters().team.trim(),
@@ -123,7 +141,22 @@ export class MatchSearchComponent implements OnInit {
     void this.router.navigate(['/matches/results'], {queryParams: serializeMatchSearchQuery(query)});
   }
 
+  isSearchReady(): boolean {
+    const {team, opponents} = this.filters();
+    return team.trim().length >= 3 && opponents.trim().length >= 3;
+  }
+
+  teamErrorMessage(): string | null {
+    return this.nameErrorMessage(this.filters().team, this.teamTouched());
+  }
+
+  opponentsErrorMessage(): string | null {
+    return this.nameErrorMessage(this.filters().opponents, this.opponentsTouched());
+  }
+
   private restoreFilters(result: MatchSearchQueryParseResult): void {
+    this.teamTouched.set(false);
+    this.opponentsTouched.set(false);
     if (result.error) {
       this.filters.set({...EMPTY_MATCH_SEARCH_FILTERS});
       this.errorMessage.set(result.error);
@@ -149,6 +182,17 @@ export class MatchSearchComponent implements OnInit {
 
   private checkedValue(event: Event): boolean {
     return (event.target as HTMLInputElement).checked;
+  }
+
+  private nameErrorMessage(value: string, touched: boolean): string | null {
+    if (!touched) {
+      return null;
+    }
+    const trimmedValue = value.trim();
+    if (!trimmedValue) {
+      return 'Please enter a name';
+    }
+    return trimmedValue.length < 3 ? 'The name must be at least 3 characters' : null;
   }
 
 }

@@ -71,6 +71,62 @@ describe('MatchSearchComponent', () => {
     expect(router.navigate).not.toHaveBeenCalled();
   });
 
+  it('should disable search until both team names have at least three characters', () => {
+    const fixture = TestBed.createComponent(MatchSearchComponent);
+    fixture.detectChanges();
+
+    const button = fixture.nativeElement.querySelector('button[type="submit"]') as HTMLButtonElement;
+    expect(button.disabled).toBeFalse();
+
+    fixture.componentInstance.resetSearch();
+    fixture.detectChanges();
+    expect(button.disabled).toBeTrue();
+
+    fixture.componentInstance.filters.update((filters) => ({...filters, team: 'India'}));
+    fixture.detectChanges();
+    expect(button.disabled).toBeTrue();
+
+    fixture.componentInstance.filters.update((filters) => ({...filters, opponents: 'Pakistan'}));
+    fixture.detectChanges();
+    expect(button.disabled).toBeFalse();
+  });
+
+  it('should show an error for each name that has fewer than three characters', () => {
+    const fixture = TestBed.createComponent(MatchSearchComponent);
+    fixture.detectChanges();
+
+    const teamInput = fixture.nativeElement.querySelector('input[name="team"]') as HTMLInputElement;
+    const opponentsInput = fixture.nativeElement.querySelector('input[name="opponents"]') as HTMLInputElement;
+    teamInput.value = 'ab';
+    teamInput.dispatchEvent(new Event('input', {bubbles: true}));
+    opponentsInput.value = 'x';
+    opponentsInput.dispatchEvent(new Event('input', {bubbles: true}));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('#match-search-team-error')?.textContent).toContain(
+      'The name must be at least 3 characters'
+    );
+    expect(fixture.nativeElement.querySelector('#match-search-opponents-error')?.textContent).toContain(
+      'The name must be at least 3 characters'
+    );
+    expect((fixture.nativeElement.querySelector('button[type="submit"]') as HTMLButtonElement).disabled).toBeTrue();
+  });
+
+  it('should disable the submit button after typing an invalid team name', () => {
+    const fixture = TestBed.createComponent(MatchSearchComponent);
+    fixture.detectChanges();
+
+    const teamInput = fixture.nativeElement.querySelector('input[name="team"]') as HTMLInputElement;
+    const button = fixture.nativeElement.querySelector('button[type="submit"]') as HTMLButtonElement;
+    teamInput.value = 'ab';
+    teamInput.dispatchEvent(new Event('input', {bubbles: true}));
+    fixture.detectChanges();
+
+    expect(button.disabled).toBeTrue();
+    button.click();
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
   it('should apply a preset to the visible card filters', () => {
     const fixture = TestBed.createComponent(MatchSearchComponent);
     fixture.detectChanges();

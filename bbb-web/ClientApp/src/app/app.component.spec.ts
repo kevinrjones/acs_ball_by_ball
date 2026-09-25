@@ -1,7 +1,7 @@
 import {TestBed} from '@angular/core/testing';
 import {computed, signal, WritableSignal} from '@angular/core';
 import {provideRouter} from '@angular/router';
-import {NEVER, of} from 'rxjs';
+import {NEVER} from 'rxjs';
 import {AppComponent} from './app.component';
 import {AuthenticationService, Session} from './services/authentication.service';
 import {ApplicationMetadataService} from './services/application-metadata.service';
@@ -9,12 +9,15 @@ import {ApplicationMetadataService} from './services/application-metadata.servic
 describe('AppComponent', () => {
   let authServiceMock: jasmine.SpyObj<AuthenticationService>;
   let applicationMetadataServiceMock: jasmine.SpyObj<ApplicationMetadataService>;
+  let metadataSignal: WritableSignal<{ dataLastUpdated: string; applicationVersion: string } | null>;
   let sessionSignal: WritableSignal<Session>;
 
   beforeEach(async () => {
     authServiceMock = jasmine.createSpyObj<AuthenticationService>('AuthenticationService', ['getSession']);
-    applicationMetadataServiceMock = jasmine.createSpyObj<ApplicationMetadataService>('ApplicationMetadataService', ['getMetadata']);
+    applicationMetadataServiceMock = jasmine.createSpyObj<ApplicationMetadataService>('ApplicationMetadataService', ['getMetadata', 'loadMetadata']);
     applicationMetadataServiceMock.getMetadata.and.returnValue(NEVER);
+    metadataSignal = signal(null);
+    Object.defineProperty(applicationMetadataServiceMock, 'metadata', {value: metadataSignal});
 
     sessionSignal = signal<Session>(null);
     Object.defineProperty(authServiceMock, 'session', { value: sessionSignal });
@@ -56,15 +59,19 @@ describe('AppComponent', () => {
     expect(compiled.querySelector('[data-purpose="latest-results-section"]')).toBeNull();
   });
 
-  it('should render dynamic footer metadata', () => {
-    applicationMetadataServiceMock.getMetadata.and.returnValue(of({
-      result: {
-        dataLastUpdated: '24 September 2026 at 07:29 BST',
-        applicationVersion: 'Application version: v0.1.117. Built on 23rd of September 2026 at 06:59 GMT+00:00'
-      },
-      errorMessage: '',
-      timeGenerated: '2026-09-24T06:29:00Z'
-    }));
+  it('should not load metadata outside the routed home feature', () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+
+    expect(applicationMetadataServiceMock.loadMetadata).not.toHaveBeenCalled();
+    expect(applicationMetadataServiceMock.getMetadata).not.toHaveBeenCalled();
+  });
+
+  it('should render metadata exposed by the routed home feature', () => {
+    metadataSignal.set({
+      dataLastUpdated: '24 September 2026 at 07:29 BST',
+      applicationVersion: 'Application version: v0.1.117. Built on 23rd of September 2026 at 06:59 GMT+00:00'
+    });
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
 

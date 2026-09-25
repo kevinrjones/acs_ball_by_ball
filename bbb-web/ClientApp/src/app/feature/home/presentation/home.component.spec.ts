@@ -5,16 +5,20 @@ import {NEVER, of, throwError} from 'rxjs';
 import {HomeComponent} from './home.component';
 import {AuthenticationService, Session} from '../../../services/authentication.service';
 import {MatchService} from '../../../services/match.service';
+import {ApplicationMetadataService} from '../../../services/application-metadata.service';
 import {RecentMatchesResponse} from '../../../models/match.model';
 
 describe('HomeComponent', () => {
   let matchService: jasmine.SpyObj<MatchService>;
+  let applicationMetadataService: jasmine.SpyObj<ApplicationMetadataService>;
   let authService: jasmine.SpyObj<AuthenticationService>;
   let session: WritableSignal<Session>;
 
   beforeEach(async () => {
     matchService = jasmine.createSpyObj<MatchService>('MatchService', ['getRecentMatches']);
     matchService.getRecentMatches.and.returnValue(NEVER);
+    applicationMetadataService = jasmine.createSpyObj<ApplicationMetadataService>('ApplicationMetadataService', ['getMetadata', 'loadMetadata']);
+    Object.defineProperty(applicationMetadataService, 'metadata', {value: signal(null)});
     authService = jasmine.createSpyObj<AuthenticationService>('AuthenticationService', ['getSession']);
     session = signal<Session>({claims: [{type: 'name', value: 'Kevin Jones'}]});
     Object.defineProperty(authService, 'session', {value: session});
@@ -27,7 +31,8 @@ describe('HomeComponent', () => {
       providers: [
         provideRouter([]),
         {provide: MatchService, useValue: matchService},
-        {provide: AuthenticationService, useValue: authService}
+        {provide: AuthenticationService, useValue: authService},
+        {provide: ApplicationMetadataService, useValue: applicationMetadataService}
       ]
     }).compileComponents();
   });
@@ -42,6 +47,7 @@ describe('HomeComponent', () => {
     const fixture = TestBed.createComponent(HomeComponent);
     fixture.detectChanges();
 
+    expect(applicationMetadataService.loadMetadata).toHaveBeenCalled();
     expect(matchService.getRecentMatches).toHaveBeenCalledWith(10);
     expect(fixture.componentInstance.hasLoaded()).toBeTrue();
     expect(fixture.nativeElement.textContent).toContain('Asia Cup 2026');

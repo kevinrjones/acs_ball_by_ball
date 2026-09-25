@@ -48,7 +48,9 @@ dependencies {
 }
 
 node {
-    download.set(false)
+    download.set(true)
+    version.set("22.14.0")
+    distBaseUrl.set(null)
     nodeProjectDir.set(file("${project.projectDir}/ClientApp"))
 }
 

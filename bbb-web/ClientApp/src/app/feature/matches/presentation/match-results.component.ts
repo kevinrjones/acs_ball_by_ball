@@ -3,7 +3,13 @@ import {Component, inject, OnDestroy, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {Subscription} from 'rxjs';
 import {MatchSearchQuery, MatchSearchResult} from '../../../models/match.model';
-import {parseMatchSearchQuery, serializeMatchSearchQuery} from '../../../models/match-search-query.codec';
+import {
+  MATCH_RESULT_OPTIONS,
+  MATCH_TYPE_OPTIONS,
+  parseMatchSearchQuery,
+  serializeMatchSearchQuery,
+  VENUE_OPTIONS
+} from '../../../models/match-search-query.codec';
 import {MatchService} from '../../../services/match.service';
 
 export type MatchSearchState = 'idle' | 'loading' | 'results' | 'no-results' | 'error';
@@ -23,6 +29,7 @@ export class MatchResultsComponent implements OnInit, OnDestroy {
   readonly pageSize = signal(20);
   readonly hasNext = signal(false);
   readonly errorMessage = signal<string | null>(null);
+  readonly query = signal<MatchSearchQuery | null>(null);
 
   private readonly activatedRoute = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -36,6 +43,7 @@ export class MatchResultsComponent implements OnInit, OnDestroy {
       const parsedQuery = parseMatchSearchQuery(params);
       if (parsedQuery.error) {
         this.currentQuery = null;
+        this.query.set(null);
         this.searchDescription.set(null);
         this.matches.set([]);
         this.errorMessage.set(parsedQuery.error);
@@ -45,6 +53,7 @@ export class MatchResultsComponent implements OnInit, OnDestroy {
       const searchQuery = parsedQuery.query;
       if (!searchQuery) {
         this.currentQuery = null;
+        this.query.set(null);
         this.searchDescription.set(null);
         this.matches.set([]);
         this.totalResults.set(0);
@@ -54,6 +63,7 @@ export class MatchResultsComponent implements OnInit, OnDestroy {
         return;
       }
       this.currentQuery = searchQuery;
+      this.query.set(searchQuery);
       this.searchDescription.set(`${searchQuery.team} v ${searchQuery.opponents}`);
       this.currentPage.set(searchQuery.page);
       this.pageSize.set(searchQuery.pageSize);
@@ -82,6 +92,45 @@ export class MatchResultsComponent implements OnInit, OnDestroy {
         queryParams: serializeMatchSearchQuery({...this.currentQuery, page})
       });
     }
+  }
+
+  queryTeam(): string {
+    return this.query()?.team || 'any team';
+  }
+
+  queryOpponents(): string {
+    return this.query()?.opponents || 'any opposition';
+  }
+
+  queryTeamExact(): string {
+    return this.query()?.teamExactMatch ? 'an exact match' : 'a wildcard match';
+  }
+
+  queryOpponentsExact(): string {
+    return this.query()?.opponentsExactMatch ? 'an exact match' : 'a wildcard match';
+  }
+
+  queryStartDate(): string {
+    return this.query()?.startDate || 'any start date';
+  }
+
+  queryEndDate(): string {
+    return this.query()?.endDate || 'any end date';
+  }
+
+  queryVenue(): string {
+    const venue = VENUE_OPTIONS.find((option) => option.value === this.query()?.venue);
+    return venue?.label.toLowerCase() || 'any venue';
+  }
+
+  queryMatchType(): string {
+    const matchType = MATCH_TYPE_OPTIONS.find((option) => option.value === this.query()?.matchType);
+    return matchType?.label.toLowerCase() || 'all matches';
+  }
+
+  queryResult(): string {
+    const result = MATCH_RESULT_OPTIONS.find((option) => option.value === this.query()?.matchResult);
+    return result?.label.toLowerCase() || 'all results';
   }
 
   private loadMatches(searchQuery: MatchSearchQuery): void {
