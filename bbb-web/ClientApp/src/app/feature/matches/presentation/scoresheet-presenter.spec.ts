@@ -20,6 +20,28 @@ describe('presentScoresheet', () => {
     });
   });
 
+  it('should place multiple wicket notes on separate lines', () => {
+    const firstWicket = delivery({
+      deliveryKey: 1,
+      wicketCount: 1,
+      wickets: [{wicketKey: 1, kind: 'bowled', fielders: []}]
+    });
+    const secondWicket = delivery({
+      deliveryKey: 2,
+      inningsOrder: 2,
+      ballInOver: 2,
+      batter: 'Batter Two',
+      wicketCount: 1,
+      wickets: [{wicketKey: 2, kind: 'caught', fielders: ['Fielder']}]
+    });
+
+    const notes = presentScoresheet(scoresheet(firstWicket, secondWicket)).innings[0].rows[0].notes;
+
+    expect(notes).toBe(
+      'WICKET 1: Batter One — Bowled\nWICKET 2: Batter Two — Caught (Fielder)'
+    );
+  });
+
   it('should prepare striker notation, non-striker placeholders, and dismissal figures once', () => {
     const response = scoresheet(
       delivery({deliveryKey: 1, inningsOrder: 1, overNumber: 1, batter: 'Batter One', nonStriker: 'Batter Two', batterRuns: 4, totalRuns: 4}),

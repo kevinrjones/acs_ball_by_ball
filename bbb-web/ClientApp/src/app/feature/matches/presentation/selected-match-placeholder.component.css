@@ -125,6 +125,7 @@
 .linear-matrix__notes {
   color: #475569;
   min-width: 13rem;
+  white-space: pre-line;
 }
 
 .linear-matrix__batter-cell {

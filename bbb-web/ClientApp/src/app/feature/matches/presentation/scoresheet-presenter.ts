@@ -362,7 +362,7 @@ function overNotes(
   if (boundaryCount > 0) {
     notes.push(`${boundaryCount} boundary${boundaryCount === 1 ? '' : 'ies'}`);
   }
-  return notes.join(' · ') || 'No wicket or extra events recorded';
+  return notes.join('\n') || 'No wicket or extra events recorded';
 }
 
 function wicketDescription(delivery: ScoresheetDelivery): string {

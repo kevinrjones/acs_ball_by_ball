@@ -52,8 +52,8 @@ describe('HomeComponent', () => {
     expect(fixture.componentInstance.hasLoaded()).toBeTrue();
     expect(fixture.nativeElement.textContent).toContain('Asia Cup 2026');
     const link = fixture.nativeElement.querySelector('.match-card__link') as HTMLAnchorElement;
-    expect(link.getAttribute('href')).toContain('/matches/101');
-    expect(link.getAttribute('href')).not.toContain('/scorecard/cardbyid');
+    expect(link.getAttribute('href')).toContain('/matches/101/scoresheet');
+    expect(link.getAttribute('aria-label')).toBe('View match scorecard');
   });
 
   it('should show the loading state without sample matches while the API is pending', () => {

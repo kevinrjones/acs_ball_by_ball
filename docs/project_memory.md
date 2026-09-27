@@ -1,5 +1,61 @@
 # Project Memory
 
+## Task: Separate wicket notes by line
+
+### Title
+
+Render multiple wicket notes on separate lines within an over
+
+### Date/time completed
+
+2026-09-27 16:32
+
+### What was shipped
+
+- Changed scoresheet over-event formatting so each wicket, extra, or boundary note is separated by a newline.
+- Preserved those line breaks in the notes column with feature-scoped preformatted whitespace styling.
+
+### Key decisions
+
+- Kept the existing prepared `row.notes` string contract and changed only its presentation formatting.
+
+### Gotchas
+
+- The notes column now uses `white-space: pre-line` so newline separators are visible without changing the table structure.
+
+### Test coverage areas
+
+- Presenter regression coverage verifies two wicket notes in one over are returned on separate lines.
+- Focused Angular tests passed: 14/14.
+
+## Task: Link home matches to scorecards
+
+### Title
+
+Open the selected match scorecard from the authenticated home page
+
+### Date/time completed
+
+2026-09-27 16:24
+
+### What was shipped
+
+- Updated the authenticated recent-match link in the home page to navigate to the selected-match scoresheet route.
+- Added an accessible scorecard label to the icon-only link.
+
+### Key decisions
+
+- Reused the existing `/matches/:matchKey/scoresheet` route and scoresheet loading flow rather than adding a duplicate route.
+
+### Gotchas
+
+- The scorecard link remains hidden for unauthenticated visitors, matching the existing protected-route policy.
+
+### Test coverage areas
+
+- Home-component regression coverage verifies the match key, scoresheet route segment, and accessible link label.
+- Focused Angular tests passed: 4/4.
+
 ## Task: Apply scoresheet quality review fixes
 
 ### Title
