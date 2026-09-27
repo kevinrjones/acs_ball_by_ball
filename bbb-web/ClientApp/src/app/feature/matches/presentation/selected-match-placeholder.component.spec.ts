@@ -46,6 +46,7 @@ describe('SelectedMatchPlaceholderComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.linear-matrix')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Source ball');
     expect(fixture.nativeElement.textContent).toContain('Batters linear notation');
     expect(fixture.nativeElement.textContent).toContain('Batter One');
     expect(fixture.nativeElement.textContent).toContain('4');
@@ -68,8 +69,8 @@ describe('SelectedMatchPlaceholderComponent', () => {
     fixture.detectChanges();
 
     const cells = fixture.nativeElement.querySelectorAll('.linear-matrix tbody tr td');
-    const strikerCell = cells[4] as HTMLElement;
-    const nonStrikerCell = cells[5] as HTMLElement;
+    const strikerCell = cells[3] as HTMLElement;
+    const nonStrikerCell = cells[4] as HTMLElement;
 
     expect(strikerCell.classList).toContain('linear-matrix__batter-cell');
     expect(nonStrikerCell.classList).toContain('linear-matrix__batter-cell');
@@ -160,9 +161,33 @@ describe('SelectedMatchPlaceholderComponent', () => {
     const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
     fixture.detectChanges();
 
-    const rows = fixture.nativeElement.querySelectorAll('.linear-matrix tbody tr');
+    const rows = fixture.nativeElement.querySelectorAll('.linear-matrix tbody tr') as NodeListOf<HTMLTableRowElement>;
     expect((rows[0].querySelector('.linear-matrix__wickets') as HTMLElement).textContent?.trim()).toBe('1');
     expect((rows[1].querySelector('.linear-matrix__wickets') as HTMLElement).textContent?.trim()).toBe('2');
+  });
+
+  it('should display cumulative extras by type in the end-of-over ledger', async () => {
+    const firstOver = delivery({
+      deliveryKey: 1, sourceBallId: 101, overNumber: 1, ballInOver: 1,
+      byes: 3, wides: 1, totalRuns: 4
+    });
+    const secondOver = delivery({
+      deliveryKey: 2, sourceBallId: 102, overNumber: 2, ballInOver: 1,
+      legByes: 2, totalRuns: 2
+    });
+    const thirdOver = delivery({
+      deliveryKey: 3, sourceBallId: 103, overNumber: 3, ballInOver: 1
+    });
+    await configure({}, '101', scoresheet(firstOver, secondOver, thirdOver));
+    const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
+    fixture.detectChanges();
+
+    const rows = fixture.nativeElement.querySelectorAll('.linear-matrix tbody tr') as NodeListOf<HTMLTableRowElement>;
+    const extras = Array.from(rows).map((row) =>
+      (row.querySelector('.linear-matrix__extras') as HTMLElement).textContent?.trim()
+    );
+
+    expect(extras).toEqual(['B:3 W:1 (4)', 'B:3 LB:2 W:1 (6)', 'B:3 LB:2 W:1 (6)']);
   });
 
   it('should keep batting lanes stable when the strike changes and a batter is replaced', async () => {

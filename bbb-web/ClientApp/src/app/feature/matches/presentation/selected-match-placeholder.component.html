@@ -36,7 +36,6 @@
         <div class="scoresheet-hero__meta">
           <span class="scoresheet-meta-label">SCOREBOOK</span>
           <strong>{{ totalDeliveries(sheet) | number }} deliveries</strong>
-          <span>Complete delivery ledger · one request</span>
         </div>
       </header>
 
@@ -51,7 +50,7 @@
           <section class="scoresheet-innings" [attr.aria-labelledby]="'innings-' + innings.inningsNumber">
             <header class="innings-header">
               <div>
-                <div class="innings-header__kicker">Sheet {{ innings.inningsNumber }} · Innings matrix</div>
+                <div class="innings-header__kicker">Innings {{ innings.inningsNumber }}</div>
                 <h2 [id]="'innings-' + innings.inningsNumber">Innings {{ innings.inningsNumber }} · {{ innings.battingTeam || 'Unknown batting team' }}</h2>
                 <p>Bowling: {{ innings.bowlingTeam || 'Unknown bowling team' }}</p>
               </div>
@@ -68,7 +67,7 @@
                 <caption class="visually-hidden">Linear over-by-over scoresheet matrix for innings {{ innings.inningsNumber }}</caption>
                 <thead>
                   <tr class="linear-matrix__group-row">
-                    <th rowspan="2" scope="col">Source ball</th><th rowspan="2" scope="col">Over</th>
+                    <th rowspan="2" scope="col">Over</th>
                     <th colspan="2" scope="colgroup">Bowler allocation &amp; figures</th>
                     <th colspan="2" scope="colgroup">Batters linear notation</th>
                     <th rowspan="2" scope="col">Over runs</th><th rowspan="2" class="linear-matrix__notes-heading" scope="col">Notes / dismissals / events</th>
@@ -76,13 +75,12 @@
                   </tr>
                   <tr class="linear-matrix__sub-row">
                     <th scope="col">Bowler(s)</th><th scope="col">Over spell</th><th scope="col">Batter 1</th><th scope="col">Batter 2</th>
-                    <th scope="col">Running total</th><th scope="col">W</th><th scope="col">Extras</th>
+                    <th scope="col">Running total</th><th scope="col">W</th><th scope="col">Extras (B, LB, W, NB)</th>
                   </tr>
                 </thead>
                 <tbody>
                   @for (row of overRows(innings); track row.overNumber) {
                     <tr [class.linear-matrix__wicket-row]="row.wicketCount > 0">
-                      <td class="linear-matrix__source">{{ sourceBallRange(row) }}</td>
                       <td class="linear-matrix__over">{{ row.overNumber }}</td>
                       <td>
                         @for (summary of bowlerSummaries(row); track summary) { <div class="matrix-stack-line">{{ summary.split(' · ')[0] }}</div> }
@@ -107,10 +105,10 @@
                       }
                       <td class="linear-matrix__runs">{{ row.totalRuns }}</td><td class="linear-matrix__notes">{{ overNotes(row) }}</td>
                       <td class="linear-matrix__ledger">{{ runningLedger(innings, row.overNumber).runs }}/{{ runningLedger(innings, row.overNumber).wickets }}</td>
-                      <td class="linear-matrix__wickets">{{ runningLedger(innings, row.overNumber).wickets }}</td><td class="linear-matrix__extras">{{ row.extras }}</td>
+                      <td class="linear-matrix__wickets">{{ runningLedger(innings, row.overNumber).wickets }}</td><td class="linear-matrix__extras">{{ formatExtras(runningLedger(innings, row.overNumber).extras) }}</td>
                     </tr>
                   } @empty {
-                    <tr><td class="linear-matrix__empty" colspan="11">No deliveries are available in this innings.</td></tr>
+                    <tr><td class="linear-matrix__empty" colspan="10">No deliveries are available in this innings.</td></tr>
                   }
                 </tbody>
               </table>

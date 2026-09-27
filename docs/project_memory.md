@@ -1,5 +1,63 @@
 # Project Memory
 
+## Task: Remove source ball column from scoresheet
+
+### Title
+
+Keep source-ball identifiers out of the visible scorebook matrix
+
+### Date/time completed
+
+2026-09-27 15:39
+
+### What was shipped
+
+- Removed the `Source ball` header and source-ball values from the selected-match scoresheet matrix.
+- Preserved the underlying `sourceBallId` data in the scoresheet contract for delivery identity and ordering.
+- Updated table structure, empty-state span, styling, and Angular regression coverage.
+
+### Key decisions
+
+- This is a presentation-only change; no API, BFF, warehouse, or shared-contract fields were removed.
+
+### Gotchas
+
+- Batter-cell test positions shift left by one column after removing the source-ball column.
+
+### Test coverage areas
+
+- Angular regression coverage verifies the source-ball label is absent and both batter lanes remain side-by-side.
+
+## Task: Show cumulative extras in the scoresheet ledger
+
+### Title
+
+Match the running extras presentation to the reference scorecard
+
+### Date/time completed
+
+2026-09-27 15:30
+
+### What was shipped
+
+- Changed the scoresheet Extras column from per-over values to cumulative innings totals.
+- Displayed non-zero byes, leg-byes, wides, and no-balls in the reference order, followed by the cumulative total in parentheses.
+- Added regression coverage across multiple overs, including an over with no new extras.
+
+### Key decisions
+
+- Extra totals are accumulated in the existing end-of-over ledger from the delivery-level extra fields.
+- The existing `—` display is retained until the innings has recorded an extra.
+
+### Gotchas
+
+- Per-over extra summaries remain available for the notes column; only the dedicated Extras ledger column is cumulative.
+
+### Test coverage areas
+
+- Angular regression coverage verifies category accumulation, display ordering, total calculation, and persistence across an empty over.
+- Angular browser tests: 48/48 passed.
+
 ## Task: Add boundary counts to dismissed batter figures
 
 ### Title

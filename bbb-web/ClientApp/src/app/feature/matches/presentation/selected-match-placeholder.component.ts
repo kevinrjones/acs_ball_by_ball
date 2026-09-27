@@ -35,6 +35,14 @@ export interface ScoresheetPlayerNotation {
 export interface ScoresheetLedger {
   readonly runs: number;
   readonly wickets: number;
+  readonly extras: ScoresheetExtraTotals;
+}
+
+interface ScoresheetExtraTotals {
+  readonly byes: number;
+  readonly legByes: number;
+  readonly wides: number;
+  readonly noBalls: number;
 }
 
 interface BattingLaneAssignment {
@@ -259,17 +267,30 @@ export class SelectedMatchPlaceholderComponent implements OnInit {
   runningLedger(innings: ScoresheetInnings, overNumber: number): ScoresheetLedger {
     return this.overRows(innings)
       .filter((row) => row.overNumber <= overNumber)
-      .reduce((ledger, row) => ({
-        runs: ledger.runs + row.totalRuns,
-        wickets: ledger.wickets + row.wicketCount
-      }), {runs: 0, wickets: 0});
+      .reduce((ledger, row) => {
+        const extras = this.extraTotals(row.deliveries);
+        return {
+          runs: ledger.runs + row.totalRuns,
+          wickets: ledger.wickets + row.wicketCount,
+          extras: {
+            byes: ledger.extras.byes + extras.byes,
+            legByes: ledger.extras.legByes + extras.legByes,
+            wides: ledger.extras.wides + extras.wides,
+            noBalls: ledger.extras.noBalls + extras.noBalls
+          }
+        };
+      }, {runs: 0, wickets: 0, extras: this.emptyExtraTotals()});
   }
 
-  sourceBallRange(row: ScoresheetOverRow): string {
-    const sourceBallIds = row.deliveries.map((delivery) => delivery.sourceBallId);
-    const first = sourceBallIds[0];
-    const last = sourceBallIds[sourceBallIds.length - 1];
-    return first === last ? `#${first}` : `#${first}–#${last}`;
+  formatExtras(extras: ScoresheetExtraTotals): string {
+    const parts = [
+      extras.byes > 0 ? `B:${extras.byes}` : '',
+      extras.legByes > 0 ? `LB:${extras.legByes}` : '',
+      extras.wides > 0 ? `W:${extras.wides}` : '',
+      extras.noBalls > 0 ? `NB:${extras.noBalls}` : ''
+    ].filter(Boolean);
+    const total = extras.byes + extras.legByes + extras.wides + extras.noBalls;
+    return parts.length > 0 ? `${parts.join(' ')} (${total})` : '—';
   }
 
   deliverySymbol(delivery: ScoresheetDelivery): string {
@@ -330,17 +351,20 @@ export class SelectedMatchPlaceholderComponent implements OnInit {
   }
 
   private overExtras(deliveries: readonly ScoresheetDelivery[]): string {
-    const byes = deliveries.reduce((total, delivery) => total + delivery.byes, 0);
-    const legByes = deliveries.reduce((total, delivery) => total + delivery.legByes, 0);
-    const wides = deliveries.reduce((total, delivery) => total + delivery.wides, 0);
-    const noBalls = deliveries.reduce((total, delivery) => total + delivery.noBalls, 0);
-    const parts = [
-      byes > 0 ? `B:${byes}` : '',
-      legByes > 0 ? `LB:${legByes}` : '',
-      wides > 0 ? `W:${wides}` : '',
-      noBalls > 0 ? `NB:${noBalls}` : ''
-    ].filter(Boolean);
-    return parts.length > 0 ? parts.join(' ') : '—';
+    return this.formatExtras(this.extraTotals(deliveries));
+  }
+
+  private extraTotals(deliveries: readonly ScoresheetDelivery[]): ScoresheetExtraTotals {
+    return deliveries.reduce((totals, delivery) => ({
+      byes: totals.byes + delivery.byes,
+      legByes: totals.legByes + delivery.legByes,
+      wides: totals.wides + delivery.wides,
+      noBalls: totals.noBalls + delivery.noBalls
+    }), this.emptyExtraTotals());
+  }
+
+  private emptyExtraTotals(): ScoresheetExtraTotals {
+    return {byes: 0, legByes: 0, wides: 0, noBalls: 0};
   }
 
   private loadScoresheet(matchKey: number): void {

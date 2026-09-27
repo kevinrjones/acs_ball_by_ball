@@ -1520,7 +1520,6 @@ a.search-tab {
   background: #fff1f2 !important;
 }
 
-.linear-matrix__source,
 .linear-matrix__over,
 .linear-matrix__runs,
 .linear-matrix__ledger,
@@ -1530,7 +1529,6 @@ a.search-tab {
   white-space: nowrap;
 }
 
-.linear-matrix__source,
 .linear-matrix__muted {
   color: #94a3b8;
 }
