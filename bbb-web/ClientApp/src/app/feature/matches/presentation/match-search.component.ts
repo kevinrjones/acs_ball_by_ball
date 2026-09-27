@@ -138,7 +138,7 @@ export class MatchSearchComponent implements OnInit {
 
     this.filters.set(filters);
     this.errorMessage.set(null);
-    void this.router.navigate(['/matches/results'], {queryParams: serializeMatchSearchQuery(query)});
+    void this.navigateToResults(query);
   }
 
   isSearchReady(): boolean {
@@ -174,6 +174,16 @@ export class MatchSearchComponent implements OnInit {
   private updateFilters(changes: Partial<MatchSearchFilters>): void {
     this.filters.update((filters) => ({...filters, ...changes}));
     this.errorMessage.set(null);
+  }
+
+  private async navigateToResults(query: MatchSearchQuery): Promise<void> {
+    const queryParams = serializeMatchSearchQuery(query);
+    await this.router.navigate([], {
+      relativeTo: this.activatedRoute,
+      queryParams,
+      replaceUrl: true
+    });
+    await this.router.navigate(['/matches/results'], {queryParams});
   }
 
   private inputValue(event: Event): string {

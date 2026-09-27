@@ -51,13 +51,7 @@
           </div>
           <div class="search-matchup-grid">
             <div class="search-field-group">
-              <div class="search-field-heading"><label class="search-field-label" for="match-search-team">Team
-                Name</label><label class="search-checkbox-label" for="team-exact-match"><input id="team-exact-match"
-                                                                                               name="teamExactMatch"
-                                                                                               type="checkbox"
-                                                                                               [checked]="filters().teamExactMatch"
-                                                                                               (change)="onTeamExactMatchChange($event)"/><span>Exact match</span></label>
-              </div>
+              <label class="search-field-label" for="match-search-team">Team Name</label>
               <div class="search-input-wrapper" [class.search-input-wrapper--error]="teamErrorMessage()">
                 <svg class="search-input-icon" aria-hidden="true" fill="none" viewBox="0 0 24 24">
                   <path d="M5 21V5a2 2 0 0 1 2-2h6l1 2h5l-2 5 2 5h-7l-1-2H7a2 2 0 0 0-2 2v6" stroke="currentColor"
@@ -69,22 +63,19 @@
                        [attr.aria-invalid]="teamErrorMessage() ? 'true' : null" minlength="3" maxlength="100"
                        placeholder="e.g. Australia, Surrey, Mumbai Indians"
                        aria-describedby="match-search-team-help match-search-team-error"/></div>
+              <label class="search-checkbox-label" for="team-exact-match"><input id="team-exact-match"
+                                                                                     name="teamExactMatch"
+                                                                                     type="checkbox"
+                                                                                     [checked]="filters().teamExactMatch"
+                                                                                     (change)="onTeamExactMatchChange($event)"/><span>Exact match</span></label>
               <p id="match-search-team-help" class="search-field-help">Minimum 3 characters.</p>
               @if (teamErrorMessage()) {
                 <p id="match-search-team-error" class="search-field-error" role="alert">{{ teamErrorMessage() }}</p>
               }
 
-
             </div>
             <div class="search-field-group">
-              <div class="search-field-heading"><label class="search-field-label"
-                                                       for="match-search-opponents">Opponents</label><label
-                class="search-checkbox-label" for="opponents-exact-match"><input id="opponents-exact-match"
-                                                                                 name="opponentsExactMatch"
-                                                                                 type="checkbox"
-                                                                                 [checked]="filters().opponentsExactMatch"
-                                                                                 (change)="onOpponentsExactMatchChange($event)"/><span>Exact match</span></label>
-              </div>
+              <label class="search-field-label" for="match-search-opponents">Opponents</label>
               <div class="search-input-wrapper" [class.search-input-wrapper--error]="opponentsErrorMessage()">
                 <svg class="search-input-icon" aria-hidden="true" fill="none" viewBox="0 0 24 24">
                   <circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.8"/>
@@ -98,6 +89,11 @@
                        [attr.aria-invalid]="opponentsErrorMessage() ? 'true' : null" minlength="3" maxlength="100"
                        placeholder="e.g. England, Yorkshire, Chennai Super Kings"
                        aria-describedby="match-search-opponents-help match-search-opponents-error"/></div>
+              <label class="search-checkbox-label" for="opponents-exact-match"><input id="opponents-exact-match"
+                                                                                          name="opponentsExactMatch"
+                                                                                          type="checkbox"
+                                                                                          [checked]="filters().opponentsExactMatch"
+                                                                                          (change)="onOpponentsExactMatchChange($event)"/><span>Exact match</span></label>
               <p id="match-search-opponents-help" class="search-field-help">Minimum 3 characters.</p>
               @if (opponentsErrorMessage()) {
                 <p id="match-search-opponents-error" class="search-field-error"
@@ -146,14 +142,14 @@
             <div class="search-field-group"><label class="search-field-label" for="match-search-type">Match Type</label><select
               class="search-input search-control" id="match-search-type" name="matchType" [value]="filters().matchType"
               (change)="onMatchTypeChange($event)">@for (option of matchTypeOptions; track option.value) {
-              <option [value]="option.value">{{ option.label }}</option>
+              <option [value]="option.value" [selected]="filters().matchType === option.value">{{ option.label }}</option>
             }</select></div>
             <div class="search-field-group"><label class="search-field-label"
                                                    for="match-search-result">Result</label><select
               class="search-input search-control" id="match-search-result" name="matchResult"
               [value]="filters().matchResult"
               (change)="onMatchResultChange($event)">@for (option of resultOptions; track option.value) {
-              <option [value]="option.value">{{ option.label }}</option>
+              <option [value]="option.value" [selected]="filters().matchResult === option.value">{{ option.label }}</option>
             }</select></div>
           </div>
         </fieldset>

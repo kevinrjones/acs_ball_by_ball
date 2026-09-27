@@ -1,5 +1,89 @@
 # Project Memory
 
+## Task: Restore match type and result controls
+
+### Title
+
+Preserve Match Type and Match Result values on the search page
+
+### Date/time completed
+
+2026-09-27 17:26
+
+### What was shipped
+
+- Ensured the Match Type and Match Result selects visibly restore their values from the search query.
+- Preserved the existing URL-based search history and navigation behavior for all other filters.
+
+### Key decisions
+
+- Bound each option's selected state to the restored filter signal so the rendered controls cannot fall back to their first option.
+
+### Gotchas
+
+- The serialized query already contained both filters; the defect was limited to the select controls' rendered selection.
+
+### Test coverage areas
+
+- Match-search regression coverage verifies restored Match Type and Match Result DOM values.
+- Focused Angular tests passed: 7/7.
+
+## Task: Preserve match search filters when returning
+
+### Title
+
+Restore all match card search values after navigating back from results
+
+### Date/time completed
+
+2026-09-27 17:18
+
+### What was shipped
+
+- Replaced the current search history entry with the complete validated query before navigating to match results.
+- Browser Back and the results-page refine links now restore team names, exact-match flags, venue, dates, match type, and result filters.
+
+### Key decisions
+
+- Reused the existing URL query codec and route-driven restoration instead of introducing a separate client-side state store.
+
+### Gotchas
+
+- Submission performs a replace navigation for the search entry followed by the normal results navigation, so browser Back returns to the populated search route.
+
+### Test coverage areas
+
+- Match-search regression coverage verifies every serialized filter and the replace-before-results navigation sequence.
+- Focused Angular tests passed: 7/7.
+
+## Task: Correct match search tab order
+
+### Title
+
+Place each Exact Match checkbox after its associated team field in keyboard navigation
+
+### Date/time completed
+
+2026-09-27 17:12
+
+### What was shipped
+
+- Reordered the match-search matchup controls so keyboard focus moves through Team Name, Exact Match, Opponents, Exact Match.
+- Preserved the existing visual heading layout with feature-specific grid placement and avoided positive `tabindex` values.
+
+### Key decisions
+
+- Used natural DOM order for accessibility rather than manually forcing focus with `tabindex` values.
+
+### Gotchas
+
+- The visual checkbox placement is maintained by the matchup grid while the source order follows the desired keyboard sequence.
+
+### Test coverage areas
+
+- Match-search regression coverage verifies the four matchup input IDs in the required order.
+- Full Gradle checks passed; Angular browser tests: 53/53.
+
 ## Task: Separate wicket notes by line
 
 ### Title
