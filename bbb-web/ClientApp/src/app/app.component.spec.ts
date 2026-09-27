@@ -54,9 +54,19 @@ describe('AppComponent', () => {
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('header')?.textContent).toContain('Maiden');
-    expect(compiled.querySelector('header')?.textContent).toContain('Ball by Ball');
+    expect(compiled.querySelector('header')?.textContent).toContain('search engine');
+    expect(compiled.querySelector('.brand-mark img')?.getAttribute('src')).toBe('assets/maiden-mark.svg');
     expect(compiled.querySelector('router-outlet')).toBeTruthy();
     expect(compiled.querySelector('[data-purpose="latest-results-section"]')).toBeNull();
+  });
+
+  it('should render the ACS-aligned primary navigation in a left-to-right order', () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+
+    const links = Array.from(fixture.nativeElement.querySelectorAll('.primary-nav a')) as HTMLAnchorElement[];
+    expect(links.map((link) => link.textContent?.trim())).toEqual(['Home', 'Matches', 'Series', 'Stats Archive']);
+    expect(fixture.nativeElement.querySelector('.site-header__inner')).toBeTruthy();
   });
 
   it('should not load metadata outside the routed home feature', () => {

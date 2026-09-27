@@ -1,87 +1,82 @@
 <!-- BEGIN: MainHeader -->
-<header class="bg-white border-b border-slate-200 sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-16">
-            <div class="flex items-center gap-8">
-                <a class="flex items-center gap-3 group" routerLink="/">
-                    <div class="w-10 h-10 rounded-xl bg-brand-900 text-white flex items-center justify-center font-bold text-xl shadow-sm transition-transform group-hover:scale-105">
-                        M
-                    </div>
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <span class="font-bold text-slate-900 text-lg leading-none tracking-tight">Maiden</span>
-                            <span class="text-xs bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded-full border border-emerald-200">Ball by Ball</span>
-                        </div>
-                        <p class="text-xs text-slate-500 font-normal leading-tight mt-0.5">Ball-by-ball cricket data</p>
-                    </div>
-                </a>
-                <nav class="hidden md:flex items-center space-x-1" data-purpose="top-navigation">
-                    <a class="px-3.5 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors" routerLink="/">Home</a>
-                    @if (authService.isAuthenticated()) {
-                        <a class="px-3.5 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors" routerLink="/matches/search">Matches</a>
-                    } @else {
-                        <a class="px-3.5 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors" href="/bff/login">Matches</a>
-                    }
-                    <a class="px-3.5 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors" href="#">Series</a>
-                    <a class="px-3.5 py-2 text-sm font-semibold text-emerald-800 bg-emerald-50 rounded-lg transition-colors border border-emerald-100" href="#">Stats Archive</a>
-                </nav>
-            </div>
-            <!-- User Authentication / Controls -->
-            <div class="user-menu">
-                <button
-                    id="user-menu-trigger"
-                    type="button"
-                    class="user-menu-trigger"
-                    aria-haspopup="menu"
-                    [attr.aria-expanded]="isUserMenuOpen()"
-                    aria-label="User menu"
-                    (click)="toggleUserMenu($event)">
-                    <span class="user-icon" aria-hidden="true">
-                        <svg fill="currentColor" viewBox="0 0 20 20">
-                            <path clip-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" fill-rule="evenodd"></path>
-                        </svg>
-                    </span>
-                    @if (authService.isAuthenticated()) {
-                        <span class="user-menu-email">
-                            {{ authService.email() || authService.userName() || 'Authenticated User' }}
-                        </span>
-                    } @else {
-                        <span>Anonymous</span>
-                    }
-                    <svg class="user-menu-chevron" aria-hidden="true" fill="none" viewBox="0 0 24 24">
-                        <path d="m6 9 6 6 6-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
+<header class="site-header">
+    <div class="site-header__inner">
+        <a class="brand" routerLink="/" aria-label="Maiden home">
+            <span class="brand-mark" aria-hidden="true">
+                <img src="assets/maiden-mark.svg" alt="" />
+            </span>
+            <span class="brand-copy">
+                <span class="brand-title-row">
+                    <span class="brand-name">Maiden</span>
+                    <span class="brand-badge">search engine</span>
+                </span>
+                <span class="brand-meta">Ball-by-ball cricket data</span>
+            </span>
+        </a>
+        <nav class="primary-nav" aria-label="Primary navigation" data-purpose="top-navigation">
+            <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">Home</a>
+            @if (authService.isAuthenticated()) {
+                <a routerLink="/matches/search" routerLinkActive="active">Matches</a>
+            } @else {
+                <a href="/bff/login">Matches</a>
+            }
+            <a href="#">Series</a>
+            <a class="active" href="#">Stats Archive</a>
+        </nav>
+        <div class="user-menu">
+            <button
+                id="user-menu-trigger"
+                type="button"
+                class="user-menu-trigger"
+                aria-haspopup="menu"
+                [attr.aria-expanded]="isUserMenuOpen()"
+                aria-label="User menu"
+                (click)="toggleUserMenu($event)">
+                <span class="user-icon" aria-hidden="true">
+                    <svg fill="currentColor" viewBox="0 0 448 512">
+                        <path d="M224 256A128 128 0 1 0 224 0a128 128 0 1 0 0 256zm89.6 32h-11.1c-22.2 10.2-46.9 16-73.3 16s-51.2-5.8-73.3-16h-11.1C65.2 288 0 353.2 0 433.8V464c0 26.5 21.5 48 48 48h352c26.5 0 48-21.5 48-48v-30.2C448 353.2 382.8 288 313.6 288z"></path>
                     </svg>
-                </button>
-
-                @if (isUserMenuOpen()) {
-                    <div class="user-menu-panel" role="menu">
-                        @if (authService.isAuthenticated()) {
-                            <a
-                                id="sign-out-button"
-                                role="menuitem"
-                                [href]="authService.logoutUrl() || '/bff/logout'"
-                                (click)="closeUserMenu()">
-                                Logout
-                            </a>
-                        } @else {
-                            <a
-                                id="login-button"
-                                role="menuitem"
-                                href="/bff/login"
-                                (click)="closeUserMenu()">
-                                Login
-                            </a>
-                            <a
-                                id="signup-button"
-                                role="menuitem"
-                                href="/bff/signup"
-                                (click)="closeUserMenu()">
-                                Signup
-                            </a>
-                        }
-                    </div>
+                </span>
+                @if (authService.isAuthenticated()) {
+                    <span class="user-menu-email">
+                        {{ authService.email() || authService.userName() || 'Authenticated User' }}
+                    </span>
+                } @else {
+                    <span>Anonymous</span>
                 }
-            </div>
+                <svg class="user-menu-chevron" aria-hidden="true" fill="none" viewBox="0 0 24 24">
+                    <path d="m6 9 6 6 6-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
+                </svg>
+            </button>
+
+            @if (isUserMenuOpen()) {
+                <div class="user-menu-panel" role="menu">
+                    @if (authService.isAuthenticated()) {
+                        <a
+                            id="sign-out-button"
+                            role="menuitem"
+                            [href]="authService.logoutUrl() || '/bff/logout'"
+                            (click)="closeUserMenu()">
+                            Logout
+                        </a>
+                    } @else {
+                        <a
+                            id="login-button"
+                            role="menuitem"
+                            href="/bff/login"
+                            (click)="closeUserMenu()">
+                            Login
+                        </a>
+                        <a
+                            id="signup-button"
+                            role="menuitem"
+                            href="/bff/signup"
+                            (click)="closeUserMenu()">
+                            Signup
+                        </a>
+                    }
+                </div>
+            }
         </div>
     </div>
 </header>

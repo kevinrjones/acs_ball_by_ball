@@ -1,13 +1,13 @@
 import {Component, HostListener, inject, signal} from '@angular/core';
 import {CommonModule} from '@angular/common';
-import {RouterLink, RouterOutlet} from '@angular/router';
+import {RouterLink, RouterLinkActive, RouterOutlet} from '@angular/router';
 import {AuthenticationService} from './services/authentication.service';
 import {ApplicationMetadataService} from './services/application-metadata.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterOutlet],
+  imports: [CommonModule, RouterLink, RouterLinkActive, RouterOutlet],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css']
 })
