@@ -81,6 +81,123 @@ describe('SelectedMatchPlaceholderComponent', () => {
     expect(strikerCell.querySelectorAll('.matrix-player-line')).toHaveSize(1);
     expect(nonStrikerCell.querySelectorAll('.matrix-player-line')).toHaveSize(1);
   });
+
+  it('should show dismissal details for an out batter and in the notes', async () => {
+    const dismissal = delivery({
+      deliveryKey: 2, sourceBallId: 102, overNumber: 1, ballInOver: 2, batter: 'D. Hassan',
+      nonStriker: 'Blake', wicketCount: 1, wickets: [{wicketKey: 157781, kind: 'caught', fielders: ['RG Sharma']}]
+    });
+    await configure({}, '101', scoresheet(dismissal));
+    const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
+    fixture.detectChanges();
+
+    const batterCell = fixture.nativeElement.querySelector('.linear-matrix__batter-cell') as HTMLElement;
+    const notesCell = fixture.nativeElement.querySelector('.linear-matrix__notes') as HTMLElement;
+
+    expect(batterCell.textContent).toContain('D. Hassan');
+    expect(batterCell.textContent).toContain('(0r, 1b)');
+    expect(notesCell.textContent).toContain('WICKET 1: D. Hassan — Caught (RG Sharma)');
+  });
+
+  it('should show a dismissed batter score with cumulative boundaries and an out marker', async () => {
+    const firstDelivery = delivery({
+      deliveryKey: 1, sourceBallId: 101, inningsOrder: 1, overNumber: 1, ballInOver: 1,
+      batter: 'D. Hassan', nonStriker: 'Blake', batterRuns: 4, totalRuns: 4
+    });
+    const wideDelivery = delivery({
+      deliveryKey: 2, sourceBallId: 102, inningsOrder: 2, overNumber: 1, ballInOver: 2,
+      batter: 'D. Hassan', nonStriker: 'Blake', batterRuns: 0, wides: 1, totalRuns: 1
+    });
+    const secondDelivery = delivery({
+      deliveryKey: 3, sourceBallId: 103, inningsOrder: 3, overNumber: 2, ballInOver: 1,
+      batter: 'D. Hassan', nonStriker: 'Blake', batterRuns: 6, totalRuns: 6
+    });
+    const dismissal = delivery({
+      deliveryKey: 4, sourceBallId: 104, inningsOrder: 4, overNumber: 2, ballInOver: 2,
+      batter: 'D. Hassan', nonStriker: 'Blake', batterRuns: 1, totalRuns: 1, wicketCount: 1,
+      wickets: [{wicketKey: 157781, kind: 'caught', fielders: ['RG Sharma']}]
+    });
+    await configure({}, '101', scoresheet(firstDelivery, wideDelivery, secondDelivery, dismissal));
+    const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
+    fixture.detectChanges();
+
+    const dismissedScore = fixture.nativeElement.querySelector('.matrix-dismissed') as HTMLElement;
+
+    expect(dismissedScore.textContent?.trim()).toBe('(11r, 3b, 1x4, 1x6)');
+    expect(fixture.nativeElement.textContent).toContain('[OUT]');
+  });
+
+  it('should mark only the dismissed batter as out', async () => {
+    const dismissal = delivery({
+      deliveryKey: 2, sourceBallId: 102, overNumber: 1, ballInOver: 2, batter: 'JG Bethell',
+      nonStriker: 'BM Duckett', wicketCount: 1, wickets: [{wicketKey: 157781, kind: 'caught', fielders: ['RG Sharma']}]
+    });
+    await configure({}, '101', scoresheet(dismissal));
+    const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
+    fixture.detectChanges();
+
+    const batterCells = fixture.nativeElement.querySelectorAll('.linear-matrix__batter-cell') as NodeListOf<HTMLElement>;
+    const dismissedCell = Array.from(batterCells).find((cell) => cell.textContent?.includes('JG Bethell'))!;
+    const notDismissedCell = Array.from(batterCells).find((cell) => cell.textContent?.includes('BM Duckett'))!;
+
+    expect(dismissedCell.textContent).toContain('W');
+    expect(dismissedCell.textContent).toContain('(0r, 1b)');
+    expect(dismissedCell.textContent).toContain('[OUT]');
+    expect(notDismissedCell.querySelector('.matrix-dismissed')).toBeNull();
+    expect(notDismissedCell.querySelector('.matrix-symbol--wicket')).toBeNull();
+  });
+
+  it('should display cumulative wickets in the end-of-over ledger', async () => {
+    const firstWicket = delivery({
+      deliveryKey: 1, sourceBallId: 101, overNumber: 1, ballInOver: 1, batter: 'First Batter',
+      nonStriker: 'Second Batter', wicketCount: 1, wickets: [{wicketKey: 1, kind: 'bowled', fielders: []}]
+    });
+    const secondWicket = delivery({
+      deliveryKey: 2, sourceBallId: 102, overNumber: 2, ballInOver: 1, batter: 'Second Batter',
+      nonStriker: 'Third Batter', wicketCount: 1, wickets: [{wicketKey: 2, kind: 'caught', fielders: []}]
+    });
+    await configure({}, '101', scoresheet(firstWicket, secondWicket));
+    const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
+    fixture.detectChanges();
+
+    const rows = fixture.nativeElement.querySelectorAll('.linear-matrix tbody tr');
+    expect((rows[0].querySelector('.linear-matrix__wickets') as HTMLElement).textContent?.trim()).toBe('1');
+    expect((rows[1].querySelector('.linear-matrix__wickets') as HTMLElement).textContent?.trim()).toBe('2');
+  });
+
+  it('should keep batting lanes stable when the strike changes and a batter is replaced', async () => {
+    const firstBall = delivery({
+      deliveryKey: 1, sourceBallId: 101, overNumber: 1, ballInOver: 1, batter: 'BM Duckett',
+      nonStriker: 'JG Bethell'
+    });
+    const secondBall = delivery({
+      deliveryKey: 2, sourceBallId: 102, overNumber: 1, ballInOver: 2, batter: 'JG Bethell',
+      nonStriker: 'BM Duckett'
+    });
+    const wicketBall = delivery({
+      deliveryKey: 3, sourceBallId: 103, overNumber: 2, ballInOver: 1, batter: 'JG Bethell',
+      nonStriker: 'BM Duckett', wicketCount: 1,
+      wickets: [{wicketKey: 157781, kind: 'caught', fielders: ['RG Sharma']}]
+    });
+    const incomingBatterBall = delivery({
+      deliveryKey: 4, sourceBallId: 104, overNumber: 3, ballInOver: 1, batter: 'BM Duckett',
+      nonStriker: 'H Brook'
+    });
+    await configure({}, '101', scoresheet(firstBall, secondBall, wicketBall, incomingBatterBall));
+    const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
+    fixture.detectChanges();
+
+    const rows = fixture.nativeElement.querySelectorAll('.linear-matrix tbody tr') as NodeListOf<HTMLTableRowElement>;
+    const batterCells = (row: HTMLTableRowElement): NodeListOf<HTMLElement> =>
+      row.querySelectorAll('.linear-matrix__batter-cell');
+
+    expect(batterCells(rows[0])[0].textContent).toContain('BM Duckett');
+    expect(batterCells(rows[0])[1].textContent).toContain('JG Bethell');
+    expect(batterCells(rows[1])[0].textContent).toContain('BM Duckett');
+    expect(batterCells(rows[1])[1].textContent).toContain('JG Bethell');
+    expect(batterCells(rows[2])[0].textContent).toContain('BM Duckett');
+    expect(batterCells(rows[2])[1].textContent).toContain('H Brook');
+  });
 });
 
 async function configure(

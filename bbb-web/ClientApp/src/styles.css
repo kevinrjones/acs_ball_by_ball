@@ -1592,7 +1592,8 @@ a.search-tab {
 }
 
 .matrix-player-line strong {
-  display: block;
+  display: inline-block;
+  margin-right: 0.25rem;
   color: #0f172a;
   font-size: 0.66rem;
 }
@@ -1628,6 +1629,19 @@ a.search-tab {
   color: #94a3b8;
   font-size: 0.59rem;
   white-space: nowrap;
+}
+
+.matrix-player-line .matrix-dismissed {
+  display: inline-block;
+  margin-left: 0.3rem;
+  color: #e11d48;
+  font-size: 0.59rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.matrix-dismissed-marker {
+  margin-left: 0.35rem;
 }
 
 .innings-footer {

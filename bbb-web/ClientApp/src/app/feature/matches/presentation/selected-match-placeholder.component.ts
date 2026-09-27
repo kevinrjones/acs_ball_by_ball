@@ -25,11 +25,28 @@ export interface ScoresheetPlayerNotation {
   readonly deliveries: readonly ScoresheetDelivery[];
   readonly runs: number;
   readonly balls: number;
+  readonly dismissed: boolean;
+  readonly dismissalRuns: number | null;
+  readonly dismissalBalls: number | null;
+  readonly dismissalFours: number | null;
+  readonly dismissalSixes: number | null;
 }
 
 export interface ScoresheetLedger {
   readonly runs: number;
   readonly wickets: number;
+}
+
+interface BattingLaneAssignment {
+  readonly lane: number;
+  readonly player: string;
+}
+
+interface BattingScore {
+  readonly runs: number;
+  readonly balls: number;
+  readonly fours: number;
+  readonly sixes: number;
 }
 
 @Component({
@@ -82,10 +99,12 @@ export class SelectedMatchPlaceholderComponent implements OnInit {
   }
 
   wicketDescription(delivery: ScoresheetDelivery): string {
-    return delivery.wickets.map((wicket) => {
+    const descriptions = delivery.wickets.map((wicket) => {
       const fielders = wicket.fielders.length > 0 ? ` (${wicket.fielders.join(', ')})` : '';
-      return `${wicket.kind || 'Wicket'}${fielders}`;
-    }).join('; ');
+      const kind = wicket.kind?.trim() || 'Wicket';
+      return `${kind.charAt(0).toUpperCase()}${kind.slice(1)}${fielders}`;
+    });
+    return descriptions.length > 0 ? descriptions.join('; ') : delivery.wicketCount > 0 ? 'Wicket' : '';
   }
 
   overRows(innings: ScoresheetInnings): ScoresheetOverRow[] {
@@ -108,26 +127,117 @@ export class SelectedMatchPlaceholderComponent implements OnInit {
       }));
   }
 
-  battingPair(row: ScoresheetOverRow): ScoresheetPlayerNotation[] {
-    const players = new Set<string>();
-    row.deliveries.forEach((delivery) => {
-      players.add(delivery.batter?.trim() || 'Unknown batter');
-      players.add(delivery.nonStriker?.trim() || 'Unknown non-striker');
-    });
+  battingPair(innings: ScoresheetInnings, row: ScoresheetOverRow): ScoresheetPlayerNotation[][] {
+    const assignments = this.battingLaneAssignments(innings);
+    const dismissalScores = this.battingScoresAtDismissal(innings);
+    return [0, 1].map((lane) => {
+      const players = Array.from(new Set(
+        row.deliveries
+          .flatMap((delivery) => assignments.get(delivery.deliveryKey) || [])
+          .filter((assignment) => assignment.lane === lane)
+          .map((assignment) => assignment.player)
+      ));
 
-    return Array.from(players).slice(0, 2).map((player) => {
-      const strikerDeliveries = row.deliveries.filter((delivery) => delivery.batter?.trim() === player);
-      return {
-        player,
-        deliveries: row.deliveries,
-        runs: strikerDeliveries.reduce((total, delivery) => total + delivery.batterRuns, 0),
-        balls: strikerDeliveries.filter((delivery) => delivery.wides === 0 && delivery.noBalls === 0).length
-      };
+      return players.map((player) => {
+        const strikerDeliveries = row.deliveries.filter((delivery) =>
+          assignments.get(delivery.deliveryKey)?.some((assignment) => assignment.player === player) &&
+          delivery.batter?.trim() === player
+        );
+        const dismissalScore = dismissalScores.get(player);
+        return {
+          player,
+          deliveries: row.deliveries,
+          runs: strikerDeliveries.reduce((total, delivery) => total + delivery.batterRuns, 0),
+          balls: strikerDeliveries.filter((delivery) => delivery.wides === 0).length,
+          dismissed: strikerDeliveries.some((delivery) => delivery.wicketCount > 0),
+          dismissalRuns: dismissalScore?.runs ?? null,
+          dismissalBalls: dismissalScore?.balls ?? null,
+          dismissalFours: dismissalScore?.fours ?? null,
+          dismissalSixes: dismissalScore?.sixes ?? null
+        };
+      });
     });
   }
 
-  playerNotationAt(row: ScoresheetOverRow, index: number): ScoresheetPlayerNotation | undefined {
-    return this.battingPair(row)[index];
+  dismissalSummary(entry: ScoresheetPlayerNotation): string {
+    const boundaries = [
+      entry.dismissalFours ? `${entry.dismissalFours}x4` : '',
+      entry.dismissalSixes ? `${entry.dismissalSixes}x6` : ''
+    ].filter(Boolean).join(', ');
+    return `(${entry.dismissalRuns}r, ${entry.dismissalBalls}b${boundaries ? `, ${boundaries}` : ''})`;
+  }
+
+  playerNotationsAt(innings: ScoresheetInnings, row: ScoresheetOverRow, index: number): ScoresheetPlayerNotation[] {
+    return this.battingPair(innings, row)[index] || [];
+  }
+
+  private battingLaneAssignments(innings: ScoresheetInnings): Map<number, BattingLaneAssignment[]> {
+    const lanes: Array<string | undefined> = [undefined, undefined];
+    const playerLanes = new Map<string, number>();
+    const assignments = new Map<number, BattingLaneAssignment[]>();
+    const deliveries = [...innings.deliveries].sort((left, right) =>
+      left.inningsOrder - right.inningsOrder || left.deliveryKey - right.deliveryKey
+    );
+
+    deliveries.forEach((delivery) => {
+      const players = Array.from(new Set([
+        delivery.batter?.trim() || 'Unknown batter',
+        delivery.nonStriker?.trim() || 'Unknown non-striker'
+      ]));
+      players.forEach((player) => {
+        if (!playerLanes.has(player)) {
+          const lane = lanes.indexOf(undefined);
+          if (lane >= 0) {
+            lanes[lane] = player;
+            playerLanes.set(player, lane);
+          }
+        }
+      });
+
+      assignments.set(delivery.deliveryKey, players.flatMap((player) => {
+        const lane = playerLanes.get(player);
+        return lane === undefined ? [] : [{lane, player}];
+      }));
+
+      const batter = players[0];
+      const batterLane = playerLanes.get(batter);
+      if (delivery.wicketCount > 0 && batterLane !== undefined) {
+        lanes[batterLane] = undefined;
+        playerLanes.delete(batter);
+      }
+    });
+
+    return assignments;
+  }
+
+  private battingScoresAtDismissal(innings: ScoresheetInnings): Map<string, BattingScore> {
+    const scores = new Map<string, BattingScore>();
+    const dismissalScores = new Map<string, BattingScore>();
+    const deliveries = [...innings.deliveries].sort((left, right) =>
+      left.inningsOrder - right.inningsOrder || left.deliveryKey - right.deliveryKey
+    );
+
+    deliveries.forEach((delivery) => {
+      const player = delivery.batter?.trim();
+      if (!player) {
+        return;
+      }
+
+      const previous = scores.get(player) || {runs: 0, balls: 0, fours: 0, sixes: 0};
+      const score = {
+        runs: previous.runs + delivery.batterRuns,
+        balls: previous.balls + (delivery.wides === 0 ? 1 : 0),
+        fours: previous.fours + (delivery.batterRuns === 4 ? 1 : 0),
+        sixes: previous.sixes + (delivery.batterRuns === 6 ? 1 : 0)
+      };
+      scores.set(player, score);
+
+      if (delivery.wicketCount > 0 && !dismissalScores.has(player)) {
+        dismissalScores.set(player, score);
+      }
+    });
+
+    return dismissalScores;
   }
 
   bowlerSummaries(row: ScoresheetOverRow): string[] {
@@ -193,9 +303,14 @@ export class SelectedMatchPlaceholderComponent implements OnInit {
 
   overNotes(row: ScoresheetOverRow): string {
     const notes: string[] = [];
-    const wickets = row.deliveries.flatMap((delivery) => delivery.wickets.map((wicket) => wicket.kind || 'Wicket'));
-    if (wickets.length > 0) {
-      notes.push(`${wickets.length} wicket${wickets.length === 1 ? '' : 's'}: ${wickets.join(', ')}`);
+    const wicketNotes = row.deliveries.flatMap((delivery) => {
+      const description = this.wicketDescription(delivery);
+      return description
+        ? description.split('; ').map((wicket) => `${delivery.batter?.trim() || 'Unknown batter'} — ${wicket}`)
+        : [];
+    });
+    if (wicketNotes.length > 0) {
+      notes.push(...wicketNotes.map((wicket, index) => `WICKET ${index + 1}: ${wicket}`));
     }
     if (row.extras !== '—') {
       notes.push(row.extras);

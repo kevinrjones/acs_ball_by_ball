@@ -1,5 +1,155 @@
 # Project Memory
 
+## Task: Add boundary counts to dismissed batter figures
+
+### Title
+
+Show cumulative fours and sixes with dismissal scores
+
+### Date/time completed
+
+2026-09-27 11:40
+
+### What was shipped
+
+- Added cumulative four and six counts to dismissed batter figures in the historical scorebook.
+- Matched the requested dismissal presentation with runs, legitimate balls faced, non-zero boundary counts, and a red `[OUT]` marker.
+- Preserved the existing wide exclusion for balls faced and stable batter lane assignments.
+
+### Key decisions
+
+- Boundary counts are derived from each batter's `batterRuns` values in the complete innings delivery ledger.
+- Zero-valued boundary categories are omitted so a batter with no sixes does not display `0x6`.
+
+### Gotchas
+
+- Dismissal scoring continues to follow the delivery batter because the scoresheet contract does not expose a separate dismissed-player field.
+
+### Test coverage areas
+
+- Angular regression coverage verifies cumulative runs, non-wide balls, one four, one six, and the `[OUT]` marker.
+- Angular browser tests: 47/47 passed.
+
+## Task: Show dismissed batter runs and balls
+
+### Title
+
+Replace dismissal labels with score-at-dismissal figures
+
+### Date/time completed
+
+2026-09-27 11:34
+
+### What was shipped
+
+- Replaced the `[OUT]` label in the historical scorebook batter lane with the dismissed batter's cumulative runs and balls faced.
+- Counted every delivery except wides as a ball faced, including the dismissal delivery, and excluded wides from the displayed score.
+- Added regression coverage spanning multiple overs and a wide delivery to verify the score-at-dismissal calculation.
+
+### Key decisions
+
+- Dismissal figures are calculated in the Angular presentation from the complete innings delivery ledger because the API already provides all required delivery data.
+- Active batter rows retain their existing over-level notation; only dismissed batters show their cumulative score at dismissal.
+
+### Gotchas
+
+- The existing scoresheet contract associates a wicket with the delivery batter, so dismissal scoring follows that established UI attribution.
+
+### Test coverage areas
+
+- Angular regression coverage verifies cumulative runs, non-wide balls faced, removal of `[OUT]`, and existing single-batter wicket attribution.
+- Angular browser tests: 47/47 passed; full Gradle checks and whitespace validation completed successfully.
+
+## Task: Keep scoresheet batter lanes stable
+
+### Title
+
+Preserve Batter 1 and Batter 2 assignments through an innings
+
+### Date/time completed
+
+2026-09-27 11:09
+
+### What was shipped
+
+- Tracked batter lane ownership across the complete innings instead of rebuilding the pair independently for each over.
+- Kept each batter in their assigned column when the strike changes and reused the dismissed batter's lane for the incoming batter.
+- Added coverage for the Duckett/Bethell sequence, including the dismissal and replacement in the second lane.
+
+### Key decisions
+
+- Lane state is derived in the Angular presentation from delivery order because the existing scoresheet contract does not include a batting-position field.
+- The delivery batter remains the dismissal association, matching the existing wicket-marker behavior.
+
+### Gotchas
+
+- If a single over contains both a dismissal and an incoming batter, both player entries can appear in the same lane while retaining the lane's identity.
+
+### Test coverage areas
+
+- Angular scoresheet regression coverage verifies stable lanes across strike changes, wickets, and incoming batters.
+- Angular browser tests: 46/46 passed.
+
+## Task: Correct scoresheet wicket attribution and totals
+
+### Title
+
+Show wicket markers only for the dismissed batter and cumulative wicket totals
+
+### Date/time completed
+
+2026-09-27 11:03
+
+### What was shipped
+
+- Limited the dismissed marker to the batter associated with the wicket delivery instead of also marking the non-striker as out.
+- Changed the scoresheet `W` column from the current over's wicket count to the cumulative innings wicket total.
+- Added regression coverage for single-batter dismissal attribution and cumulative totals across multiple overs.
+
+### Key decisions
+
+- The existing scoresheet contract associates wicket details with a delivery but does not provide a separate dismissed-player field, so the delivery batter is the UI's dismissal association.
+- The existing running ledger remains the source of truth for cumulative wickets and runs.
+
+### Gotchas
+
+- Wicket events such as a non-striker run out cannot be attributed independently until the API contract exposes the dismissed player.
+
+### Test coverage areas
+
+- Angular scoresheet tests verify only the dismissed batter receives the wicket marker and that the ledger progresses from `1` to `2` wickets.
+- Angular browser tests: 45/45 passed; full Gradle checks and whitespace validation completed successfully.
+
+## Task: Show wicket details in the historical scorebook
+
+### Title
+
+Expose dismissal details in batter lanes and over notes
+
+### Date/time completed
+
+2026-09-27 10:58
+
+### What was shipped
+
+- Marked a batter as `[OUT]` when the delivery data identifies their dismissal and kept the wicket symbol in their inline batter notation.
+- Added numbered wicket notes containing the dismissed batter, dismissal kind, and available fielder names; existing extras and boundary notes remain visible.
+- Kept the change within the Angular scoresheet presentation because the API already returns wicket and fielder associations.
+
+### Key decisions
+
+- A wicket delivery marks either named batter involved in the delivery as dismissed, which also supports non-striker dismissals such as run outs.
+- Missing wicket detail falls back to `Wicket`; no unsupported location or dismissal detail is fabricated.
+
+### Gotchas
+
+- The visual detector ran in degraded regex mode because its optional HTML/CSS parser modules are unavailable; reported warnings are pre-existing global styles and the existing wicket-row accent.
+
+### Test coverage areas
+
+- Angular regression coverage verifies inline dismissed-batter output and numbered notes with dismissal kind and fielder.
+- Angular browser tests: 43/43 passed; `./gradlew clean check --no-daemon` and `git diff --check` passed.
+
 ## Task: Return complete historical scorecards in one roundtrip
 
 ### Title

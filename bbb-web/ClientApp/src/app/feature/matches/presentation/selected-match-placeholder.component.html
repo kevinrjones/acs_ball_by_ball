@@ -92,8 +92,8 @@
                       </td>
                       @for (index of [0, 1]; track index) {
                         <td class="linear-matrix__batter-cell">
-                          @if (playerNotationAt(row, index); as entry) {
-                            <div class="matrix-player-line"><strong>{{ entry.player }}</strong><span class="matrix-symbols" aria-label="Batter delivery notation">
+                          @for (entry of playerNotationsAt(innings, row, index); track entry.player) {
+                            <div class="matrix-player-line"><strong>{{ entry.player }}:</strong><span class="matrix-symbols" aria-label="Batter delivery notation">
                               @for (delivery of entry.deliveries; track delivery.deliveryKey) {
                                 @if (delivery.batter?.trim() === entry.player) {
                                   <span class="matrix-symbol" [class]="deliverySymbolClass(delivery)">{{ deliverySymbol(delivery) }}</span>
@@ -101,13 +101,13 @@
                                   <span class="matrix-symbol matrix-symbol--non-striker-placeholder" aria-label="Non-striker on this delivery">•</span>
                                 }
                               }
-                            </span><small>({{ entry.runs }}r, {{ entry.balls }}b)</small></div>
+                            </span>@if (entry.dismissed) { <small class="matrix-dismissed" aria-label="Dismissed batter score">{{ dismissalSummary(entry) }}</small><span class="matrix-dismissed matrix-dismissed-marker" aria-label="Out">[OUT]</span> } @else { <small>({{ entry.runs }}r, {{ entry.balls }}b)</small> }</div>
                           }
                         </td>
                       }
                       <td class="linear-matrix__runs">{{ row.totalRuns }}</td><td class="linear-matrix__notes">{{ overNotes(row) }}</td>
                       <td class="linear-matrix__ledger">{{ runningLedger(innings, row.overNumber).runs }}/{{ runningLedger(innings, row.overNumber).wickets }}</td>
-                      <td class="linear-matrix__wickets">{{ row.wicketCount }}</td><td class="linear-matrix__extras">{{ row.extras }}</td>
+                      <td class="linear-matrix__wickets">{{ runningLedger(innings, row.overNumber).wickets }}</td><td class="linear-matrix__extras">{{ row.extras }}</td>
                     </tr>
                   } @empty {
                     <tr><td class="linear-matrix__empty" colspan="11">No deliveries are available in this innings.</td></tr>
