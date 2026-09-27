@@ -1,0 +1,17 @@
+{
+  "/api": {
+    "target": "http://localhost:9999",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/bff": {
+    "target": "http://localhost:9999",
+    "secure": false,
+    "changeOrigin": true
+  },
+  "/signin-oidc": {
+    "target": "http://localhost:9999",
+    "secure": false,
+    "changeOrigin": true
+  }
+}

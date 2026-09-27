@@ -1,38 +1,133 @@
-<section class="mx-auto max-w-3xl space-y-6" aria-labelledby="selected-match-heading">
-  <a
-    class="text-sm font-semibold text-emerald-800 hover:text-emerald-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 rounded"
-    routerLink="/matches/results"
-    [queryParams]="returnQueryParams()">
-    ← Back to match results
-  </a>
-  <h1 id="selected-match-heading" class="text-3xl font-extrabold tracking-tight text-slate-900">Selected historical match</h1>
-  @if (isValidMatchKey()) {
-    <p class="rounded-2xl border border-slate-200 bg-white p-6 text-slate-700" role="status">
-      Match {{ matchKey() }} is selected. Scoresheet details will appear here when the detail slice is available.
-    </p>
-    <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white" role="region" aria-label="Selected match delivery table">
-      <table class="min-w-full text-left text-sm text-slate-700">
-        <caption class="sr-only">Delivery-by-delivery scoresheet for match {{ matchKey() }}</caption>
-        <thead class="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-          <tr>
-            <th class="px-4 py-3" scope="col">Innings</th>
-            <th class="px-4 py-3" scope="col">Over</th>
-            <th class="px-4 py-3" scope="col">Ball</th>
-            <th class="px-4 py-3" scope="col">Batter</th>
-            <th class="px-4 py-3" scope="col">Bowler</th>
-            <th class="px-4 py-3" scope="col">Runs</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td class="px-4 py-6 text-center text-slate-500" colspan="6">No delivery data is loaded yet.</td>
-          </tr>
-        </tbody>
-      </table>
+<section class="scoresheet-page" aria-labelledby="selected-match-heading">
+  <div class="scoresheet-breadcrumbs">
+    <a class="scoresheet-back-link" routerLink="/matches/results" [queryParams]="returnQueryParams()">← Back to match results</a>
+    <span>/</span><span>Historical Stats &amp; Records</span><span>/</span>
+    <span class="scoresheet-breadcrumbs__current">Match Scorebook</span>
+  </div>
+
+  @if (state() === 'loading') {
+    <p class="scoresheet-status scoresheet-status--loading" role="status" aria-live="polite">Loading the delivery-by-delivery scoresheet...</p>
+  } @else if (state() === 'not-found') {
+    <p class="scoresheet-status scoresheet-status--not-found" role="alert">{{ errorMessage() }}</p>
+  } @else if (state() === 'error') {
+    <div class="scoresheet-status scoresheet-status--error" role="alert">
+      <strong>We could not load this scoresheet.</strong>
+      <p>{{ errorMessage() }}</p>
+      @if (isValidMatchKey()) { <button type="button" class="scoresheet-retry-button" (click)="retry()">Retry</button> }
     </div>
   } @else {
-    <p class="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-rose-800" role="alert">
-      The selected match key is invalid. Return to search and choose a match result.
-    </p>
+    @if (scoresheet(); as sheet) {
+      <header class="scoresheet-hero" aria-labelledby="selected-match-heading">
+        <div class="scoresheet-hero__main">
+          <div class="scoresheet-badges">
+            <span class="scoresheet-badge scoresheet-badge--dark">Match {{ sheet.context.matchKey }}</span>
+            <span class="scoresheet-badge scoresheet-badge--green">{{ sheet.completeness }}</span>
+          </div>
+          <h1 id="selected-match-heading" class="scoresheet-title">
+            {{ sheet.context.team1 || 'Unknown team' }} <span>v</span> {{ sheet.context.team2 || 'Unknown team' }}
+          </h1>
+          <p class="scoresheet-subtitle">{{ sheet.context.competition || 'Competition unavailable' }}</p>
+          <div class="scoresheet-context-line">
+            <span><strong>Date</strong> {{ sheet.context.date || 'Unavailable' }}</span>
+            <span><strong>Ground</strong> {{ sheet.context.ground || 'Unavailable' }}</span>
+            <span><strong>Result</strong> {{ sheet.context.result || 'Unavailable' }}</span>
+          </div>
+        </div>
+        <div class="scoresheet-hero__meta">
+          <span class="scoresheet-meta-label">SCOREBOOK</span>
+          <strong>{{ totalDeliveries(sheet) | number }} deliveries</strong>
+          <span>Complete delivery ledger · one request</span>
+        </div>
+      </header>
+
+      @if (sheet.missingData.length > 0) {
+        <p class="scoresheet-incomplete" role="status"><strong>Incomplete warehouse data:</strong> {{ sheet.missingData.join(', ') }}.</p>
+      }
+
+      @if (totalDeliveries(sheet) === 0) {
+        <p class="scoresheet-status scoresheet-status--empty" role="status">No delivery data is available for this match.</p>
+      } @else {
+        @for (innings of sheet.innings; track innings.inningsNumber) {
+          <section class="scoresheet-innings" [attr.aria-labelledby]="'innings-' + innings.inningsNumber">
+            <header class="innings-header">
+              <div>
+                <div class="innings-header__kicker">Sheet {{ innings.inningsNumber }} · Innings matrix</div>
+                <h2 [id]="'innings-' + innings.inningsNumber">Innings {{ innings.inningsNumber }} · {{ innings.battingTeam || 'Unknown batting team' }}</h2>
+                <p>Bowling: {{ innings.bowlingTeam || 'Unknown bowling team' }}</p>
+              </div>
+              <div class="innings-header__legend" aria-label="Matrix notation legend">
+                <span><i class="matrix-legend-dot matrix-legend-dot--dot"></i>Dot</span>
+                <span><i class="matrix-legend-dot matrix-legend-dot--boundary"></i>4 / 6</span>
+                <span><i class="matrix-legend-dot matrix-legend-dot--wicket"></i>Wicket</span>
+                <span><i class="matrix-legend-dot matrix-legend-dot--extra"></i>Extra</span>
+              </div>
+            </header>
+
+            <div class="scoresheet-table-scroll" role="region" [attr.aria-label]="'Linear over-by-over card for innings ' + innings.inningsNumber" tabindex="0">
+              <table class="linear-matrix">
+                <caption class="visually-hidden">Linear over-by-over scoresheet matrix for innings {{ innings.inningsNumber }}</caption>
+                <thead>
+                  <tr class="linear-matrix__group-row">
+                    <th rowspan="2" scope="col">Source ball</th><th rowspan="2" scope="col">Over</th>
+                    <th colspan="2" scope="colgroup">Bowler allocation &amp; figures</th>
+                    <th colspan="2" scope="colgroup">Batters linear notation</th>
+                    <th rowspan="2" scope="col">Over runs</th><th rowspan="2" class="linear-matrix__notes-heading" scope="col">Notes / dismissals / events</th>
+                    <th colspan="3" scope="colgroup">End-of-over ledger</th>
+                  </tr>
+                  <tr class="linear-matrix__sub-row">
+                    <th scope="col">Bowler(s)</th><th scope="col">Over spell</th><th scope="col">Batter 1</th><th scope="col">Batter 2</th>
+                    <th scope="col">Running total</th><th scope="col">W</th><th scope="col">Extras</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of overRows(innings); track row.overNumber) {
+                    <tr [class.linear-matrix__wicket-row]="row.wicketCount > 0">
+                      <td class="linear-matrix__source">{{ sourceBallRange(row) }}</td>
+                      <td class="linear-matrix__over">{{ row.overNumber }}</td>
+                      <td>
+                        @for (summary of bowlerSummaries(row); track summary) { <div class="matrix-stack-line">{{ summary.split(' · ')[0] }}</div> }
+                      </td>
+                      <td class="linear-matrix__muted">
+                        @for (summary of bowlerSummaries(row); track summary) { <div class="matrix-stack-line">{{ summary.substring(summary.indexOf(' · ') + 3) }}</div> }
+                      </td>
+                      @for (index of [0, 1]; track index) {
+                        <td class="linear-matrix__batter-cell">
+                          @if (playerNotationAt(row, index); as entry) {
+                            <div class="matrix-player-line"><strong>{{ entry.player }}</strong><span class="matrix-symbols" aria-label="Batter delivery notation">
+                              @for (delivery of entry.deliveries; track delivery.deliveryKey) {
+                                @if (delivery.batter?.trim() === entry.player) {
+                                  <span class="matrix-symbol" [class]="deliverySymbolClass(delivery)">{{ deliverySymbol(delivery) }}</span>
+                                } @else {
+                                  <span class="matrix-symbol matrix-symbol--non-striker-placeholder" aria-label="Non-striker on this delivery">•</span>
+                                }
+                              }
+                            </span><small>({{ entry.runs }}r, {{ entry.balls }}b)</small></div>
+                          }
+                        </td>
+                      }
+                      <td class="linear-matrix__runs">{{ row.totalRuns }}</td><td class="linear-matrix__notes">{{ overNotes(row) }}</td>
+                      <td class="linear-matrix__ledger">{{ runningLedger(innings, row.overNumber).runs }}/{{ runningLedger(innings, row.overNumber).wickets }}</td>
+                      <td class="linear-matrix__wickets">{{ row.wicketCount }}</td><td class="linear-matrix__extras">{{ row.extras }}</td>
+                    </tr>
+                  } @empty {
+                    <tr><td class="linear-matrix__empty" colspan="11">No deliveries are available in this innings.</td></tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <footer class="innings-footer">
+              <span>Visible overs: <strong>{{ overRows(innings).length }}</strong></span>
+              <span>Visible deliveries: <strong>{{ innings.deliveries.length }}</strong></span>
+              <span>Innings total: <strong>{{ innings.deliveries.reduce(sumDeliveryRuns, 0) }}</strong></span>
+              <span>Notation: <strong>• dot · 4/6 boundary · W wicket · + extra</strong></span>
+            </footer>
+          </section>
+        }
+        <p class="scoresheet-pagination-note" role="status">
+          Showing all {{ totalDeliveries(sheet) | number }} deliveries from the complete scorecard response.
+        </p>
+      }
+    }
   }
 </section>

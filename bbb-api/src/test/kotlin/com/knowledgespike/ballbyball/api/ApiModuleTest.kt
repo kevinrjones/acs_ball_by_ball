@@ -8,6 +8,7 @@ import com.knowledgespike.ballbyball.api.feature.health.domain.DatabaseHealth
 import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchSearchCriteria
 import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchSearchMatch
 import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchSearchPage
+import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchScoresheetPage
 import com.knowledgespike.ballbyball.api.feature.matches.domain.repository.MatchRepository
 import com.knowledgespike.ballbyball.contracts.MatchSearchRequest
 import com.knowledgespike.ballbyball.contracts.MatchSearchResult
@@ -261,6 +262,33 @@ class ApiModuleTest {
         expectThat(body).contains("\"format\": \"women's t20i\"")
     }
 
+    @Test
+    fun `scoresheet rejects malformed match key before repository access`() = testApplication {
+        application {
+            moduleWithDependencies(FakeMatchRepository(), FakeDatabaseHealth(healthy = true), jwtVerifier = testVerifier)
+        }
+
+        val response = client.get("/api/matches/not-a-key/scoresheet?page=1&pageSize=20") {
+            header(HttpHeaders.Authorization, "Bearer ${createMachineToken()}")
+        }
+
+        expectThat(response.status).isEqualTo(HttpStatusCode.BadRequest)
+    }
+
+    @Test
+    fun `scoresheet ignores pagination parameters and returns not found for an unknown match`() = testApplication {
+        application {
+            moduleWithDependencies(FakeMatchRepository(), FakeDatabaseHealth(healthy = true), jwtVerifier = testVerifier)
+        }
+
+        val response = client.get("/api/matches/999/scoresheet?page=0&pageSize=not-a-number") {
+            header(HttpHeaders.Authorization, "Bearer ${createMachineToken()}")
+        }
+
+        expectThat(response.status).isEqualTo(HttpStatusCode.NotFound)
+        expectThat(response.bodyAsText()).contains("requested match was not found")
+    }
+
 
     private data class FakeMatchRepository(
         val matches: List<MatchSummary> = emptyList(),
@@ -276,6 +304,8 @@ class ApiModuleTest {
         override suspend fun recentMatches(limit: Limit): List<MatchSummary> = matches.take(limit.value)
 
         override suspend fun searchMatches(criteria: MatchSearchCriteria): MatchSearchPage = searchPage
+
+        override suspend fun scoresheet(matchKey: MatchKey): MatchScoresheetPage? = null
     }
 
     private data class FakeDatabaseHealth(val healthy: Boolean) : DatabaseHealth {

@@ -137,6 +137,75 @@ data class MatchSearchPagination(
 )
 
 @Serializable
+enum class ScoresheetCompleteness {
+    COMPLETE,
+    INCOMPLETE,
+    EMPTY
+}
+
+@Serializable
+data class MatchScoresheetContext(
+    val matchKey: MatchKey,
+    val sourceMatchId: SourceMatchId,
+    val fileName: String,
+    val matchType: MatchType?,
+    val season: Season?,
+    val competition: String?,
+    val date: String?,
+    val team1: String?,
+    val team2: String?,
+    val ground: String?,
+    val result: String?
+)
+
+@Serializable
+data class ScoresheetWicket(
+    val wicketKey: Long,
+    val kind: String?,
+    val fielders: List<String>
+)
+
+@Serializable
+data class ScoresheetDelivery(
+    val deliveryKey: Long,
+    val sourceBallId: Int,
+    val inningsOrder: Int,
+    val overNumber: Int,
+    val ballNumber: Int,
+    val ballInOver: Int,
+    val batter: String?,
+    val nonStriker: String?,
+    val bowler: String?,
+    val batterRuns: Int,
+    val extraRuns: Int,
+    val totalRuns: Int,
+    val noBalls: Int,
+    val wides: Int,
+    val byes: Int,
+    val legByes: Int,
+    val nonBoundary: Int?,
+    val powerplay: Int,
+    val wicketCount: Int,
+    val wickets: List<ScoresheetWicket>
+)
+
+@Serializable
+data class ScoresheetInnings(
+    val inningsNumber: Int,
+    val battingTeam: String?,
+    val bowlingTeam: String?,
+    val deliveries: List<ScoresheetDelivery>
+)
+
+@Serializable
+data class MatchScoresheetResponse(
+    val context: MatchScoresheetContext,
+    val completeness: ScoresheetCompleteness,
+    val missingData: List<String>,
+    val innings: List<ScoresheetInnings>
+)
+
+@Serializable
 data class ApplicationMetadata(
     val dataLastUpdated: String,
     val applicationVersion: String

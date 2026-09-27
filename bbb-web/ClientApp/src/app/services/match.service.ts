@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { MatchSearchQuery, MatchSearchResponse, RecentMatchesResponse } from '../models/match.model';
+import { MatchScoresheetResponse, MatchSearchQuery, MatchSearchResponse, RecentMatchesResponse } from '../models/match.model';
 import { Envelope } from '../models/envelope.model';
 
 @Injectable({
@@ -34,5 +34,9 @@ export class MatchService {
       .set('pageSize', query.pageSize.toString());
 
     return this.http.get<Envelope<MatchSearchResponse>>(`${this.apiUrl}/search`, { params });
+  }
+
+  getScoresheet(matchKey: number): Observable<Envelope<MatchScoresheetResponse>> {
+    return this.http.get<Envelope<MatchScoresheetResponse>>(`${this.apiUrl}/${matchKey}/scoresheet`);
   }
 }

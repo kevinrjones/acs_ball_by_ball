@@ -12,6 +12,8 @@ ng serve
 
 Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
 
+The development server proxies `/api`, `/bff`, and `/signin-oidc` to the Ktor web/BFF at `http://localhost:9999`. Start that application as well when testing data loading or authentication from the standalone Angular server; the BFF then forwards API requests to `bbb-api` and supplies the required server-side credentials.
+
 ## Code scaffolding
 
 Angular CLI includes powerful code scaffolding tools. To generate a new component, run:

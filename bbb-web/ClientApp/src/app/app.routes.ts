@@ -9,5 +9,5 @@ export const routes: Routes = [
   {path: '', component: HomeComponent},
   {path: 'matches/search', component: MatchSearchComponent, canActivate: [authenticatedGuard]},
   {path: 'matches/results', component: MatchResultsComponent, canActivate: [authenticatedGuard]},
-  {path: 'matches/:matchKey', component: SelectedMatchPlaceholderComponent, canActivate: [authenticatedGuard]}
+  {path: 'matches/:matchKey/scoresheet', component: SelectedMatchPlaceholderComponent, canActivate: [authenticatedGuard]}
 ];

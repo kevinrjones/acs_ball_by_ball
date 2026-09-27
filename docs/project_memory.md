@@ -1,5 +1,36 @@
 # Project Memory
 
+## Task: Return complete historical scorecards in one roundtrip
+
+### Title
+
+Remove pagination from selected-match scorecard delivery responses
+
+### Date/time completed
+
+2026-09-27 10:02
+
+### What was shipped
+
+- Changed the scoresheet API, BFF, and Angular contract to return every delivery for the selected match in one response.
+- Removed scorecard `page`, `pageSize`, `hasNext`, and `nextPage` metadata and removed SQL `limit`/`offset` from delivery loading.
+- Updated the linear over-by-over scorebook copy and task checklist to distinguish complete scorecards from paged match search results.
+
+### Key decisions
+
+- Match search remains paged; selected scorecards are complete and are requested only by match key.
+- Wicket and fielder bridge lookups continue to run against the complete delivery key set to avoid missing associations.
+
+### Gotchas
+
+- Legacy pagination query parameters are ignored for backward-compatible URLs; the BFF no longer forwards them upstream.
+- Large scorecards now transfer and render as one response, so the existing horizontal table scrolling remains important on narrow screens.
+
+### Test coverage areas
+
+- Shared serialization and parser tests verify the non-paged scorecard contract.
+- API, BFF, repository integration, Angular browser tests, and `./gradlew clean check --no-daemon` pass.
+
 ## Task: Replicate ACS match card search
 
 ### Title

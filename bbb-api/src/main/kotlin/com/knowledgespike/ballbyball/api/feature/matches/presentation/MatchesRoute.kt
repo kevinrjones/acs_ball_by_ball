@@ -7,15 +7,23 @@ import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchSearc
 import com.knowledgespike.ballbyball.api.feature.matches.domain.service.MatchService
 import com.knowledgespike.ballbyball.api.routing.respondBadRequest
 import com.knowledgespike.ballbyball.api.routing.respondOk
+import com.knowledgespike.ballbyball.contracts.Envelope
 import com.knowledgespike.ballbyball.contracts.MatchSearchPagination
 import com.knowledgespike.ballbyball.contracts.MatchSearchResponse
 import com.knowledgespike.ballbyball.contracts.MatchSearchResult
+import com.knowledgespike.ballbyball.contracts.MatchScoresheetContext
+import com.knowledgespike.ballbyball.contracts.MatchScoresheetResponse
+import com.knowledgespike.ballbyball.contracts.ScoresheetDelivery
+import com.knowledgespike.ballbyball.contracts.ScoresheetInnings
+import com.knowledgespike.ballbyball.contracts.ScoresheetWicket
+import com.knowledgespike.ballbyball.contracts.parseMatchScoresheetRequest
 import com.knowledgespike.ballbyball.contracts.parseMatchSearchRequest
 import com.knowledgespike.ballbyball.contracts.RecentMatchesResponse
 import com.knowledgespike.ballbyball.contracts.MatchSearchRequest
 import com.knowledgespike.ballbyball.types.values.Limit
 import io.ktor.server.auth.authenticate
-import io.ktor.server.config.MapApplicationConfig
+import io.ktor.http.HttpStatusCode
+import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.route
@@ -43,9 +51,45 @@ fun Route.routeMatches(matchService: MatchService) {
                     }
                 )
             }
+            get("/matches/{matchKey}/scoresheet") {
+                parseMatchScoresheetRequest { name ->
+                    if (name == "matchKey") {
+                        call.parameters[name]
+                    } else {
+                        call.request.queryParameters[name]
+                    }
+                }.fold(
+                    ifLeft = { errors -> call.respondBadRequest(errors) },
+                    ifRight = { request ->
+                        try {
+                            val scoresheet = matchService.scoresheet(
+                                request.matchKey
+                            )
+                            if (scoresheet == null) {
+                                call.respond(
+                                    HttpStatusCode.NotFound,
+                                    Envelope.failure("The requested match was not found")
+                                )
+                            } else {
+                                call.respondOk(scoresheet.toResponse())
+                            }
+                        } catch (cause: kotlinx.coroutines.CancellationException) {
+                            throw cause
+                        } catch (cause: Exception) {
+                            log.error("Scoresheet request failed", cause)
+                            call.respond(
+                                HttpStatusCode.BadGateway,
+                                Envelope.failure("The scoresheet is currently unavailable")
+                            )
+                        }
+                    }
+                )
+            }
         }
     }
 }
+
+private val log = LoggerFactory.getLogger("com.knowledgespike.ballbyball.api.matches")
 
 private fun com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchSearchPage.toResponse() =
     MatchSearchResponse(
@@ -65,4 +109,56 @@ private fun com.knowledgespike.ballbyball.api.feature.matches.domain.model.Match
             )
         },
         pagination = MatchSearchPagination(page, pageSize, totalResults, hasNext, nextPage)
+    )
+
+private fun com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchScoresheetPage.toResponse() =
+    MatchScoresheetResponse(
+        context = MatchScoresheetContext(
+            matchKey = context.matchKey,
+            sourceMatchId = context.sourceMatchId,
+            fileName = context.fileName,
+            matchType = context.matchType,
+            season = context.season,
+            competition = context.competition,
+            date = context.date,
+            team1 = context.team1,
+            team2 = context.team2,
+            ground = context.ground,
+            result = context.result
+        ),
+        completeness = completeness,
+        missingData = missingData,
+        innings = innings.map { innings ->
+            ScoresheetInnings(
+                inningsNumber = innings.inningsNumber,
+                battingTeam = innings.battingTeam,
+                bowlingTeam = innings.bowlingTeam,
+                deliveries = innings.deliveries.map { delivery ->
+                    ScoresheetDelivery(
+                        deliveryKey = delivery.deliveryKey,
+                        sourceBallId = delivery.sourceBallId,
+                        inningsOrder = delivery.inningsOrder,
+                        overNumber = delivery.overNumber,
+                        ballNumber = delivery.ballNumber,
+                        ballInOver = delivery.ballInOver,
+                        batter = delivery.batter,
+                        nonStriker = delivery.nonStriker,
+                        bowler = delivery.bowler,
+                        batterRuns = delivery.batterRuns,
+                        extraRuns = delivery.extraRuns,
+                        totalRuns = delivery.totalRuns,
+                        noBalls = delivery.noBalls,
+                        wides = delivery.wides,
+                        byes = delivery.byes,
+                        legByes = delivery.legByes,
+                        nonBoundary = delivery.nonBoundary,
+                        powerplay = delivery.powerplay,
+                        wicketCount = delivery.wicketCount,
+                        wickets = delivery.wickets.map { wicket ->
+                            ScoresheetWicket(wicket.wicketKey, wicket.kind, wicket.fielders)
+                        }
+                    )
+                }
+            )
+        }
     )

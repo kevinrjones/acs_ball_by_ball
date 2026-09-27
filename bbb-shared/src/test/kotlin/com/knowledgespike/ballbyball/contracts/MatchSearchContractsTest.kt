@@ -14,6 +14,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Test
 import strikt.api.expectThat
+import strikt.assertions.contains
 import strikt.assertions.isEqualTo
 import strikt.assertions.isTrue
 
@@ -106,5 +107,74 @@ class MatchSearchContractsTest {
 
         expectThat(result.isLeft()).isTrue()
         expectThat(result.leftOrNull()?.size).isEqualTo(9)
+    }
+
+    @Test
+    fun `scoresheet parser validates the path key`() {
+        val result = parseMatchScoresheetRequest { parameter ->
+            mapOf("matchKey" to "not-a-key")[parameter]
+        }
+
+        expectThat(result.isLeft()).isTrue()
+        expectThat(result.leftOrNull()?.size).isEqualTo(1)
+    }
+
+    @Test
+    fun `scoresheet response serializes nullable context and nested wicket associations`() {
+        val response = MatchScoresheetResponse(
+            context = MatchScoresheetContext(
+                matchKey = com.knowledgespike.ballbyball.types.values.MatchKey.from(9),
+                sourceMatchId = com.knowledgespike.ballbyball.types.values.SourceMatchId.from(42),
+                fileName = "match.json",
+                matchType = null,
+                season = null,
+                competition = null,
+                date = null,
+                team1 = "South Africa",
+                team2 = "India",
+                ground = null,
+                result = null
+            ),
+            completeness = ScoresheetCompleteness.INCOMPLETE,
+            missingData = listOf("deliveries"),
+            innings = listOf(
+                ScoresheetInnings(
+                    inningsNumber = 1,
+                    battingTeam = "South Africa",
+                    bowlingTeam = "India",
+                    deliveries = listOf(
+                        ScoresheetDelivery(
+                            deliveryKey = 100,
+                            sourceBallId = 1,
+                            inningsOrder = 1,
+                            overNumber = 0,
+                            ballNumber = 1,
+                            ballInOver = 1,
+                            batter = "Batter",
+                            nonStriker = "Non-striker",
+                            bowler = "Bowler",
+                            batterRuns = 0,
+                            extraRuns = 0,
+                            totalRuns = 0,
+                            noBalls = 0,
+                            wides = 0,
+                            byes = 0,
+                            legByes = 0,
+                            nonBoundary = null,
+                            powerplay = 0,
+                            wicketCount = 1,
+                            wickets = listOf(ScoresheetWicket(1, "caught", listOf("Fielder")))
+                        )
+                    )
+                )
+            )
+        )
+
+        val encoded = json.encodeToString(response)
+
+        expectThat(encoded).contains("\"completeness\":\"INCOMPLETE\"")
+        expectThat(encoded).contains("\"fielders\":[\"Fielder\"]")
+        expectThat(encoded).contains("\"date\":null")
+        expectThat(encoded.contains("pagination")).isEqualTo(false)
     }
 }

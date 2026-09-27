@@ -3,11 +3,14 @@ package com.knowledgespike.ballbyball.web.adapter.out.api
 import com.knowledgespike.ballbyball.contracts.Envelope
 import com.knowledgespike.ballbyball.contracts.MatchSearchRequest
 import com.knowledgespike.ballbyball.contracts.MatchSearchResponse
+import com.knowledgespike.ballbyball.contracts.MatchScoresheetResponse
 import com.knowledgespike.ballbyball.contracts.RecentMatchesResponse
 import com.knowledgespike.ballbyball.web.application.MatchApiClient
+import com.knowledgespike.ballbyball.web.application.MatchScoresheetResult
 import com.knowledgespike.ballbyball.web.application.RecentMatchesResult
 import com.knowledgespike.ballbyball.web.application.SearchMatchesResult
 import com.knowledgespike.ballbyball.web.domain.service.TokenService
+import com.knowledgespike.ballbyball.types.values.MatchKey
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -75,5 +78,27 @@ class KtorMatchApiClient(
     } catch (cause: Exception) {
         log.warn("Historical match search request failed", cause)
         SearchMatchesResult.Unavailable()
+    }
+
+    override suspend fun scoresheet(
+        matchKey: MatchKey
+    ): MatchScoresheetResult = try {
+        val token = tokenService?.getAccessToken()
+        val response = httpClient.get("$baseUrl/api/matches/${matchKey.value}/scoresheet") {
+            if (!token.isNullOrBlank()) {
+                header(HttpHeaders.Authorization, "Bearer $token")
+            }
+        }
+        if (!response.status.isSuccess()) {
+            MatchScoresheetResult.Unavailable(response.status)
+        } else {
+            val envelope = response.body<Envelope<MatchScoresheetResponse>>()
+            MatchScoresheetResult.Success(envelope.result, envelope.timeGenerated)
+        }
+    } catch (cause: CancellationException) {
+        throw cause
+    } catch (cause: Exception) {
+        log.warn("Historical match scoresheet request failed", cause)
+        MatchScoresheetResult.Unavailable()
     }
 }

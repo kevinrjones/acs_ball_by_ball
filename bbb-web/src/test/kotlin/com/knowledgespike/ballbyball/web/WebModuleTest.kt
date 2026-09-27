@@ -14,6 +14,7 @@ import com.knowledgespike.ballbyball.web.application.MatchApiClient
 import com.knowledgespike.ballbyball.web.application.ApplicationMetadataService
 import com.knowledgespike.ballbyball.web.application.RecentMatchesResult
 import com.knowledgespike.ballbyball.web.application.SearchMatchesResult
+import com.knowledgespike.ballbyball.web.application.MatchScoresheetResult
 import com.knowledgespike.ballbyball.web.bootstrap.moduleWithApiClient
 import com.knowledgespike.ballbyball.web.bootstrap.moduleWithDependencies
 import com.knowledgespike.ballbyball.web.config.KbffConfigFactory
@@ -311,6 +312,32 @@ class WebModuleTest {
             "/api/matches/search?team=South+Africa&teamExactMatch=true&opponents=India&opponentsExactMatch=false&venue=0&matchType=all&matchResult=0&page=2&pageSize=10"
         )
         expectThat(authHeaderValue).isEqualTo("Bearer search-token")
+        mockHttpClient.close()
+    }
+
+    @Test
+    fun `ktor match api client preserves scoresheet path and not found status`() = runBlocking {
+        var requestedPath: String? = null
+        var authHeaderValue: String? = null
+        val mockHttpClient = HttpClient(MockEngine) {
+            engine {
+                addHandler { request ->
+                    requestedPath = request.url.encodedPath + "?" + request.url.encodedQuery
+                    authHeaderValue = request.headers[HttpHeaders.Authorization]
+                    respond("not found", HttpStatusCode.NotFound)
+                }
+            }
+        }
+        val tokenService = object : TokenService {
+            override suspend fun getAccessToken(): String = "scoresheet-token"
+        }
+        val client = KtorMatchApiClient("http://api", mockHttpClient, tokenService)
+
+        val result = client.scoresheet(MatchKey.from(42))
+
+        expectThat(result).isEqualTo(MatchScoresheetResult.Unavailable(HttpStatusCode.NotFound))
+        expectThat(requestedPath).isEqualTo("/api/matches/42/scoresheet?")
+        expectThat(authHeaderValue).isEqualTo("Bearer scoresheet-token")
         mockHttpClient.close()
     }
 
@@ -694,5 +721,7 @@ class WebModuleTest {
             onSearch()
             return searchResult
         }
+
+        override suspend fun scoresheet(matchKey: MatchKey): MatchScoresheetResult = MatchScoresheetResult.Unavailable()
     }
 }

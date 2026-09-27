@@ -70,6 +70,65 @@ export interface MatchSearchResponse {
   readonly pagination: MatchSearchPagination;
 }
 
+export type ScoresheetCompleteness = 'COMPLETE' | 'INCOMPLETE' | 'EMPTY';
+
+export interface ScoresheetWicket {
+  readonly wicketKey: number;
+  readonly kind?: string | null;
+  readonly fielders: readonly string[];
+}
+
+export interface ScoresheetDelivery {
+  readonly deliveryKey: number;
+  readonly sourceBallId: number;
+  readonly inningsOrder: number;
+  readonly overNumber: number;
+  readonly ballNumber: number;
+  readonly ballInOver: number;
+  readonly batter?: string | null;
+  readonly nonStriker?: string | null;
+  readonly bowler?: string | null;
+  readonly batterRuns: number;
+  readonly extraRuns: number;
+  readonly totalRuns: number;
+  readonly noBalls: number;
+  readonly wides: number;
+  readonly byes: number;
+  readonly legByes: number;
+  readonly nonBoundary?: number | null;
+  readonly powerplay: number;
+  readonly wicketCount: number;
+  readonly wickets: readonly ScoresheetWicket[];
+}
+
+export interface ScoresheetInnings {
+  readonly inningsNumber: number;
+  readonly battingTeam?: string | null;
+  readonly bowlingTeam?: string | null;
+  readonly deliveries: readonly ScoresheetDelivery[];
+}
+
+export interface MatchScoresheetContext {
+  readonly matchKey: number;
+  readonly sourceMatchId: number;
+  readonly fileName: string;
+  readonly matchType?: string | null;
+  readonly season?: string | null;
+  readonly competition?: string | null;
+  readonly date?: string | null;
+  readonly team1?: string | null;
+  readonly team2?: string | null;
+  readonly ground?: string | null;
+  readonly result?: string | null;
+}
+
+export interface MatchScoresheetResponse {
+  readonly context: MatchScoresheetContext;
+  readonly completeness: ScoresheetCompleteness;
+  readonly missingData: readonly string[];
+  readonly innings: readonly ScoresheetInnings[];
+}
+
 export interface ApiError {
   code: string;
   message: string;

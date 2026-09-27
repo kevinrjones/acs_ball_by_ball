@@ -4,6 +4,11 @@ import com.knowledgespike.ballbyball.api.feature.matches.domain.repository.Match
 import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchSearchCriteria
 import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchSearchMatch
 import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchSearchPage
+import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchScoresheetContext
+import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchScoresheetDelivery
+import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchScoresheetInnings
+import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchScoresheetPage
+import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchScoresheetWicket
 import com.knowledgespike.ballbyball.contracts.MatchSummary
 import com.knowledgespike.ballbyball.types.values.Limit
 import com.knowledgespike.ballbyball.types.values.MatchKey
@@ -11,6 +16,7 @@ import com.knowledgespike.ballbyball.types.values.MatchType
 import com.knowledgespike.ballbyball.types.values.PageNumber
 import com.knowledgespike.ballbyball.types.values.Season
 import com.knowledgespike.ballbyball.types.values.SourceMatchId
+import com.knowledgespike.ballbyball.contracts.ScoresheetCompleteness
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -46,6 +52,15 @@ class JooqMatchRepository(
     private val factMatch = table(name("fact_match"))
     private val dimInnings = table(name("dim_innings"))
     private val factDelivery = table(name("fact_delivery"))
+    private val dimInningsBattingTeam = table(name("dim_team")).`as`("ib")
+    private val dimInningsBowlingTeam = table(name("dim_team")).`as`("io")
+    private val dimPersonBatter = table(name("dim_person")).`as`("pb")
+    private val dimPersonNonStriker = table(name("dim_person")).`as`("pns")
+    private val dimPersonBowler = table(name("dim_person")).`as`("pbo")
+    private val dimPersonFielder = table(name("dim_person")).`as`("pf")
+    private val dimWicket = table(name("dim_wicket"))
+    private val bridgeDeliveryWicket = table(name("bridge_delivery_wicket"))
+    private val bridgeDeliveryFielder = table(name("bridge_delivery_fielder"))
 
     private val mMatchKey = field(name("dim_match", "match_key"), Long::class.javaObjectType)
     private val mSourceMatchId = field(name("dim_match", "source_match_id"), Int::class.javaObjectType)
@@ -90,6 +105,43 @@ class JooqMatchRepository(
     private val fdWicketCount = field(name("fact_delivery", "wicket_count"), Int::class.javaObjectType)
     private val fdWides = field(name("fact_delivery", "wides"), Int::class.javaObjectType)
     private val fdNoBalls = field(name("fact_delivery", "no_balls"), Int::class.javaObjectType)
+    private val fdDeliveryKey = field(name("fact_delivery", "delivery_key"), Long::class.javaObjectType)
+    private val fdSourceBallId = field(name("fact_delivery", "source_ball_id"), Int::class.javaObjectType)
+    private val fdOverNumber = field(name("fact_delivery", "over_number"), Int::class.javaObjectType)
+    private val fdBallNumber = field(name("fact_delivery", "ball_number"), Int::class.javaObjectType)
+    private val fdBallInOver = field(name("fact_delivery", "ball_in_over"), Int::class.javaObjectType)
+    private val fdInningsOrder = field(name("fact_delivery", "innings_order"), Int::class.javaObjectType)
+    private val fdBatterKey = field(name("fact_delivery", "batter_key"), Long::class.javaObjectType)
+    private val fdNonStrikerKey = field(name("fact_delivery", "non_striker_key"), Long::class.javaObjectType)
+    private val fdBowlerKey = field(name("fact_delivery", "bowler_key"), Long::class.javaObjectType)
+    private val fdBatterRuns = field(name("fact_delivery", "batter_runs"), Int::class.javaObjectType)
+    private val fdExtraRuns = field(name("fact_delivery", "extra_runs"), Int::class.javaObjectType)
+    private val fdByes = field(name("fact_delivery", "byes"), Int::class.javaObjectType)
+    private val fdLegByes = field(name("fact_delivery", "leg_byes"), Int::class.javaObjectType)
+    private val fdNonBoundary = field(name("fact_delivery", "non_boundary"), Int::class.javaObjectType)
+    private val fdPowerplay = field(name("fact_delivery", "powerplay"), Int::class.javaObjectType)
+    private val pbPersonKey = field(name("pb", "person_key"), Long::class.javaObjectType)
+    private val pbFullName = field(name("pb", "full_name"), String::class.java)
+    private val pnsPersonKey = field(name("pns", "person_key"), Long::class.javaObjectType)
+    private val pnsFullName = field(name("pns", "full_name"), String::class.java)
+    private val pboPersonKey = field(name("pbo", "person_key"), Long::class.javaObjectType)
+    private val pboFullName = field(name("pbo", "full_name"), String::class.java)
+    private val pfPersonKey = field(name("pf", "person_key"), Long::class.javaObjectType)
+    private val pfFullName = field(name("pf", "full_name"), String::class.java)
+    private val ibTeamKey = field(name("ib", "team_key"), Long::class.javaObjectType)
+    private val ibTeamName = field(name("ib", "team_name"), String::class.java)
+    private val ioTeamKey = field(name("io", "team_key"), Long::class.javaObjectType)
+    private val ioTeamName = field(name("io", "team_name"), String::class.java)
+    private val iMatchKey = field(name("dim_innings", "match_key"), Long::class.javaObjectType)
+    private val iBattingTeamKey = field(name("dim_innings", "batting_team_key"), Long::class.javaObjectType)
+    private val iBowlingTeamKey = field(name("dim_innings", "bowling_team_key"), Long::class.javaObjectType)
+    private val dwDeliveryKey = field(name("bridge_delivery_wicket", "delivery_key"), Long::class.javaObjectType)
+    private val dwWicketKey = field(name("bridge_delivery_wicket", "wicket_key"), Long::class.javaObjectType)
+    private val dfDeliveryKey = field(name("bridge_delivery_fielder", "delivery_key"), Long::class.javaObjectType)
+    private val dfWicketKey = field(name("bridge_delivery_fielder", "wicket_key"), Long::class.javaObjectType)
+    private val dfPersonKey = field(name("bridge_delivery_fielder", "person_key"), Long::class.javaObjectType)
+    private val wWicketKey = field(name("dim_wicket", "wicket_key"), Long::class.javaObjectType)
+    private val wKind = field(name("dim_wicket", "wicket_kind"), String::class.java)
 
     private val searchConditionBuilder = MatchSearchConditionBuilder(
         MatchSearchFields(
@@ -307,6 +359,216 @@ class JooqMatchRepository(
             throw cause
         } catch (cause: Exception) {
             log.error("Historical match search failed", cause)
+            throw cause
+        }
+    }
+
+    override suspend fun scoresheet(
+        matchKey: MatchKey
+    ): MatchScoresheetPage? = withContext(ioDispatcher) {
+        try {
+            val match = dsl.select(
+                mMatchKey,
+                mSourceMatchId,
+                mFileName,
+                mMatchType,
+                mSeason,
+                mEventName,
+                mMatchDateText,
+                dCalendarDate,
+                mTeam1Key,
+                mTeam2Key,
+                mWinnerTeamKey,
+                mVictoryType,
+                t1TeamName,
+                t2TeamName,
+                gGroundName,
+                fmMargin
+            )
+                .from(dimMatch)
+                .leftJoin(dimDate).on(mMatchStartDateKey.eq(dDateKey))
+                .leftJoin(dimTeam1).on(mTeam1Key.eq(t1TeamKey))
+                .leftJoin(dimTeam2).on(mTeam2Key.eq(t2TeamKey))
+                .leftJoin(dimGround).on(mGroundKey.eq(gGroundKey))
+                .leftJoin(factMatch).on(fmMatchKey.eq(mMatchKey))
+                .where(mMatchKey.eq(matchKey.value))
+                .fetchOne() ?: return@withContext null
+
+            val team1Key = match.get(mTeam1Key)
+            val team2Key = match.get(mTeam2Key)
+            val winnerKey = match.get(mWinnerTeamKey)
+            val winnerName = when (winnerKey) {
+                team1Key -> match.get(t1TeamName)
+                team2Key -> match.get(t2TeamName)
+                else -> null
+            }
+            val context = MatchScoresheetContext(
+                matchKey = MatchKey.from(requireNotNull(match.get(mMatchKey))),
+                sourceMatchId = SourceMatchId.from(requireNotNull(match.get(mSourceMatchId))),
+                fileName = requireNotNull(match.get(mFileName)),
+                matchType = match.get(mMatchType)?.takeIf { it.isNotBlank() }?.let(MatchType::from),
+                season = match.get(mSeason)?.takeIf { it.isNotBlank() }?.let(Season::from),
+                competition = match.get(mEventName)?.takeIf { it.isNotBlank() },
+                date = formatDateText(match.get(mMatchDateText), match.get(dCalendarDate))
+                    .takeUnless { it == "MISSING" },
+                team1 = match.get(t1TeamName)?.takeIf { it.isNotBlank() },
+                team2 = match.get(t2TeamName)?.takeIf { it.isNotBlank() },
+                ground = match.get(gGroundName)?.takeIf { it.isNotBlank() },
+                result = formatResult(winnerName, match.get(mVictoryType), match.get(fmMargin))
+                    .takeUnless { it == "MISSING" }
+            )
+
+            val inningsRows = dsl.select(iInningsKey, iInningsNumber, ibTeamName, ioTeamName)
+                .from(dimInnings)
+                .leftJoin(dimInningsBattingTeam).on(iBattingTeamKey.eq(ibTeamKey))
+                .leftJoin(dimInningsBowlingTeam).on(iBowlingTeamKey.eq(ioTeamKey))
+                .where(iMatchKey.eq(matchKey.value))
+                .orderBy(iInningsNumber.asc(), iInningsKey.asc())
+                .fetch()
+
+            val totalDeliveries = dsl.selectCount()
+                .from(factDelivery)
+                .where(fdMatchKey.eq(matchKey.value))
+                .fetchOne(count()) ?: 0
+            val deliveryInnings = dsl.selectDistinct(fdInningsKey)
+                .from(factDelivery)
+                .where(fdMatchKey.eq(matchKey.value))
+                .fetch(fdInningsKey)
+                .filterNotNull()
+
+            val deliveryRows = dsl.select(
+                fdDeliveryKey,
+                fdSourceBallId,
+                fdInningsKey,
+                fdInningsOrder,
+                fdOverNumber,
+                fdBallNumber,
+                fdBallInOver,
+                pbFullName,
+                pnsFullName,
+                pboFullName,
+                fdBatterRuns,
+                fdExtraRuns,
+                fdTotalRuns,
+                fdNoBalls,
+                fdWides,
+                fdByes,
+                fdLegByes,
+                fdNonBoundary,
+                fdPowerplay,
+                fdWicketCount
+            )
+                .from(factDelivery)
+                .leftJoin(dimPersonBatter).on(fdBatterKey.eq(pbPersonKey))
+                .leftJoin(dimPersonNonStriker).on(fdNonStrikerKey.eq(pnsPersonKey))
+                .leftJoin(dimPersonBowler).on(fdBowlerKey.eq(pboPersonKey))
+                .where(fdMatchKey.eq(matchKey.value))
+                .orderBy(
+                    fdInningsOrder.asc(),
+                    fdOverNumber.asc(),
+                    fdBallInOver.asc(),
+                    fdBallNumber.asc(),
+                    fdDeliveryKey.asc()
+                )
+                .fetch()
+
+            val deliveryKeys = deliveryRows.mapNotNull { it.get(fdDeliveryKey) }
+            val wicketRows = if (deliveryKeys.isEmpty()) {
+                emptyList()
+            } else {
+                dsl.select(dwDeliveryKey, dwWicketKey, wKind)
+                    .from(bridgeDeliveryWicket)
+                    .join(dimWicket).on(dwWicketKey.eq(wWicketKey))
+                    .where(dwDeliveryKey.`in`(deliveryKeys))
+                    .fetch()
+            }
+            val fielderRows = if (deliveryKeys.isEmpty()) {
+                emptyList()
+            } else {
+                dsl.select(dfDeliveryKey, dfWicketKey, pfFullName)
+                    .from(bridgeDeliveryFielder)
+                    .leftJoin(dimPersonFielder).on(dfPersonKey.eq(pfPersonKey))
+                    .where(dfDeliveryKey.`in`(deliveryKeys))
+                    .fetch()
+            }
+            val fieldersByWicket = fielderRows.groupBy {
+                Pair(it.get(dfDeliveryKey), it.get(dfWicketKey))
+            }.mapValues { (_, rows) -> rows.mapNotNull { it.get(pfFullName) } }
+            val wicketsByDelivery = wicketRows.groupBy { it.get(dwDeliveryKey) }.mapValues { (_, rows) ->
+                rows.mapNotNull { row ->
+                    val deliveryId = row.get(dwDeliveryKey)
+                    val wicketId = row.get(dwWicketKey)
+                    if (deliveryId == null || wicketId == null) {
+                        null
+                    } else {
+                        MatchScoresheetWicket(
+                            wicketKey = wicketId,
+                            kind = row.get(wKind),
+                            fielders = fieldersByWicket[Pair(deliveryId, wicketId)].orEmpty()
+                        )
+                    }
+                }
+            }
+
+            val deliveriesByInnings = deliveryRows.groupBy { it.get(fdInningsKey) }.mapValues { (_, rows) ->
+                rows.mapNotNull { row ->
+                    val deliveryId = row.get(fdDeliveryKey) ?: return@mapNotNull null
+                    MatchScoresheetDelivery(
+                        deliveryKey = deliveryId,
+                        sourceBallId = row.get(fdSourceBallId) ?: 0,
+                        inningsOrder = row.get(fdInningsOrder) ?: 0,
+                        overNumber = row.get(fdOverNumber) ?: 0,
+                        ballNumber = row.get(fdBallNumber) ?: 0,
+                        ballInOver = row.get(fdBallInOver) ?: 0,
+                        batter = row.get(pbFullName),
+                        nonStriker = row.get(pnsFullName),
+                        bowler = row.get(pboFullName),
+                        batterRuns = row.get(fdBatterRuns) ?: 0,
+                        extraRuns = row.get(fdExtraRuns) ?: 0,
+                        totalRuns = row.get(fdTotalRuns) ?: 0,
+                        noBalls = row.get(fdNoBalls) ?: 0,
+                        wides = row.get(fdWides) ?: 0,
+                        byes = row.get(fdByes) ?: 0,
+                        legByes = row.get(fdLegByes) ?: 0,
+                        nonBoundary = row.get(fdNonBoundary),
+                        powerplay = row.get(fdPowerplay) ?: 0,
+                        wicketCount = row.get(fdWicketCount) ?: 0,
+                        wickets = wicketsByDelivery[deliveryId].orEmpty()
+                    )
+                }
+            }
+            val innings = inningsRows.map { row ->
+                val inningsKey = row.get(iInningsKey)
+                MatchScoresheetInnings(
+                    inningsNumber = row.get(iInningsNumber) ?: 0,
+                    battingTeam = row.get(ibTeamName),
+                    bowlingTeam = row.get(ioTeamName),
+                    deliveries = deliveriesByInnings[inningsKey].orEmpty()
+                )
+            }
+            val missingData = buildList {
+                if (inningsRows.isEmpty()) add("innings")
+                if (totalDeliveries == 0) add("deliveries")
+                if (inningsRows.any { !deliveryInnings.contains(it.get(iInningsKey)) }) {
+                    add("deliveries for one or more innings")
+                }
+                if (context.team1 == null || context.team2 == null) add("team names")
+            }.distinct()
+            val completeness = when {
+                inningsRows.isEmpty() && totalDeliveries == 0 -> ScoresheetCompleteness.EMPTY
+                missingData.isEmpty() -> ScoresheetCompleteness.COMPLETE
+                else -> ScoresheetCompleteness.INCOMPLETE
+            }
+            MatchScoresheetPage(
+                context = context,
+                completeness = completeness,
+                missingData = missingData,
+                innings = innings
+            )
+        } catch (cause: CancellationException) {
+            throw cause
+        } catch (cause: Exception) {
+            log.error("Historical match scoresheet query failed", cause)
             throw cause
         }
     }

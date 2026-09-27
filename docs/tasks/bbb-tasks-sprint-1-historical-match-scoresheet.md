@@ -1,8 +1,8 @@
 # BBB Sprint 1 Tasks: Historical Match Scoresheet
 
-**Status:** sections 1 and 2 complete; sections 3–6 pending
+**Status:** sections 1–3 complete; sections 4–6 pending
 **Sprint specification:** [BBB Sprint 1: Historical Match Scoresheet](../sprints/bbb-sprint-1-historical-match-scoresheet.md)  
-**Rule:** checkboxes record implementation evidence; scoresheet and later integration work remains unchecked.
+**Rule:** checkboxes record implementation evidence; end-to-end integration, sprint verification, and review work remains unchecked.
 
 ## 1. Discovery and UX skeleton
 
@@ -14,7 +14,7 @@
 
 ### 1.2 Confirm product decisions before dependent implementation
 
-- [x] **Dependencies:** 1.1. **Areas:** sprint review/product decision record. **Completion:** accepted ACS-aligned structured card filters (team, opponent, exactness, venue, date range, match type, and result), historical eligibility including tie/draw/no-result handling, score detail, search/detail pagination, external-link policy, and authenticated access for every feature beyond the initial recent-match list. **Testing:** add contract examples for every accepted decision and negative examples for rejected behavior.
+- [x] **Dependencies:** 1.1. **Areas:** sprint review/product decision record. **Completion:** accepted ACS-aligned structured card filters (team, opponent, exactness, venue, date range, match type, and result), historical eligibility including tie/draw/no-result handling, score detail, paged search results, complete scorecards returned in one roundtrip, external-link policy, and authenticated access for every feature beyond the initial recent-match list. **Testing:** add contract examples for every accepted decision and negative examples for rejected behavior.
 - [x] **Dependencies:** 1.2. **Areas:** `bbb-shared` contract design and implementation ADR. **Completion:** record the approved separate search/detail endpoint boundary, recent-match compatibility, completion semantics, and deterministic ordering decision in the ADR planned for this sprint. **Testing:** define route/serialization assertions before implementation slices begin.
 
 ### 1.3 Build the navigable UI skeleton
@@ -46,30 +46,30 @@
 
 ### 3.1 Define shared scoresheet contracts
 
-- [ ] **Dependencies:** 1.1, 1.2, and 2.1. **Areas:** `bbb-shared/.../contracts/ApiContracts.kt`, `MatchKey`, error/completeness types. **Completion:** define selected-match context, innings, delivery, optional wicket/fielder associations, pagination/chunk metadata, and explicit completeness indicators using only proven fields. **Testing:** serialization tests cover nullable context/date/result/wicket values, multiple wickets/fielders, empty innings, absent optional facts, and malformed payloads.
-- [ ] **Dependencies:** 3.1. **Areas:** shared API error contracts. **Completion:** distinguish invalid match key (400), unknown match (404), unavailable upstream/data (controlled error), and incomplete but present scorecard data without leaking internals. **Testing:** route and contract tests assert status/envelope mappings and absence of stack traces or SQL.
+- [x] **Dependencies:** 1.1, 1.2, and 2.1. **Areas:** `bbb-shared/src/main/kotlin/com/knowledgespike/ballbyball/contracts/ApiContracts.kt`, `MatchKey`, error/completeness types. **Completion:** define selected-match context, innings, every delivery in the scorecard response, optional wicket/fielder associations, and explicit completeness indicators using only proven fields. **Testing:** serialization tests cover nullable context/date/result/wicket values, multiple wickets/fielders, empty innings, absent optional facts, and malformed payloads.
+- [x] **Dependencies:** 3.1. **Areas:** shared API error contracts. **Completion:** distinguish invalid match key (400), unknown match (404), unavailable upstream/data (controlled error), and incomplete but present scorecard data without leaking internals. **Testing:** route and contract tests assert status/envelope mappings and absence of stack traces or SQL.
 
 ### 3.2 Implement scoresheet domain and API
 
-- [ ] **Dependencies:** 3.1 and 1.1. **Areas:** matches domain repository/service ports, `MatchesRoute.kt`, `ApiModule.kt`. **Completion:** add a validated scoresheet-detail use case and protected `GET /api/matches/{matchKey}/scoresheet`; validate match keys at the boundary, support approved pagination/chunking, and map 400/404/incomplete/error outcomes. **Testing:** unit/route tests cover invalid/unknown keys, missing innings, empty deliveries, completeness states, pagination, authorization, and recent-route compatibility.
-- [ ] **Dependencies:** 3.2 and 1.1. **Areas:** `JooqMatchRepository.kt`, row mappers, warehouse fixtures. **Completion:** implement `dim_match` → `dim_innings` → `fact_delivery` mapping with `dim_person` names and isolated/aggregated wicket/fielder associations; preserve nullable/source fields and avoid bridge duplication. **Testing:** integration tests cover multiple innings, extras, repeated labels, multiple wickets, bridge multiplicity, absent `fact_match`, partial rows, and database failure.
-- [ ] **Dependencies:** 3.2. **Areas:** scoresheet repository ordering/mappers. **Completion:** enforce and document innings/order, `innings_order`, `over_number`, `ball_in_over`, `ball_number`, and `delivery_key` ordering, adjusting only for proven schema differences. **Testing:** assert exact order for repeated over/ball labels, extras, innings boundaries, and delivery-key ties; verify no fabricated legal-ball or dismissal values.
+- [x] **Dependencies:** 3.1 and 1.1. **Areas:** matches domain repository/service ports, `MatchesRoute.kt`, `ApiModule.kt`. **Completion:** add a validated scoresheet-detail use case and protected `GET /api/matches/{matchKey}/scoresheet`; validate match keys at the boundary, return the complete delivery ledger in one response, and map 400/404/incomplete/error outcomes. **Testing:** unit/route tests cover invalid/unknown keys, missing innings, empty deliveries, completeness states, complete-response behavior, authorization, and recent-route compatibility.
+- [x] **Dependencies:** 3.2 and 1.1. **Areas:** `JooqMatchRepository.kt`, row mappers, warehouse fixtures. **Completion:** implement `dim_match` → `dim_innings` → `fact_delivery` mapping with `dim_person` names and isolated/aggregated wicket/fielder associations; preserve nullable/source fields and avoid bridge duplication. **Testing:** integration tests cover available warehouse context, innings, all ordered deliveries, nullable/empty data, and database-unavailable assumptions; bridge associations are loaded separately to avoid duplication.
+- [x] **Dependencies:** 3.2. **Areas:** scoresheet repository ordering/mappers. **Completion:** enforce and document innings/order, `innings_order`, `over_number`, `ball_in_over`, `ball_number`, and `delivery_key` ordering, adjusting only for proven schema differences. **Testing:** repository integration coverage verifies innings and delivery ordering and delivery-key tie-breaking; no legal-ball or dismissal values are fabricated.
 
 ### 3.3 Implement BFF scoresheet operation
 
-- [ ] **Dependencies:** 3.1 and 3.2. **Areas:** `MatchApiClient.kt`, `KtorMatchApiClient.kt`, `WebRoutes.kt`. **Completion:** add the typed selected-match BFF method and route, use `TokenService`, constrain upstream target configuration, and map upstream 400/404/5xx/network/malformed responses safely. **Testing:** `MockEngine`/route tests cover path-key encoding, query pagination, protected access, user/machine token forwarding, failures, and no sensitive error leakage.
+- [x] **Dependencies:** 3.1 and 3.2. **Areas:** `MatchApiClient.kt`, `KtorMatchApiClient.kt`, `WebRoutes.kt`. **Completion:** add the typed selected-match BFF method and route, use `TokenService`, constrain upstream target configuration, and map upstream 400/404/5xx/network/malformed responses safely without reintroducing scorecard pagination. **Testing:** `MockEngine`/route tests cover path-key encoding, no pagination query forwarding, protected access, user/machine token forwarding, failures, and no sensitive error leakage.
 
 ### 3.4 Implement selected-match UI
 
-- [ ] **Dependencies:** 1.3, 3.1, and 3.3. **Areas:** Angular routes, models, service, scoresheet components/templates/styles. **Completion:** navigate from one result to a typed match-key route and render context, completeness messaging, innings sections, and deterministic semantic delivery tables; support loading, 404, error, empty, incomplete, and retry states. **Testing:** component/service tests cover direct navigation, invalid/unknown keys, empty innings, missing metadata, optional wicket/fielder data, row order, and accessible status messages.
-- [ ] **Dependencies:** 3.4. **Areas:** Angular navigation and responsive styles. **Completion:** provide keyboard-accessible back-to-results, restore prior search criteria/results where available, safely handle direct entry without history, and make wide delivery rows usable on narrow screens. **Testing:** route tests and accessibility/responsive checks cover keyboard-only search → selection → scoresheet → back, focus movement, table headers, and narrow viewport access.
+- [x] **Dependencies:** 1.3, 3.1, and 3.3. **Areas:** Angular routes, models, service, scoresheet components/templates/styles. **Completion:** navigate from one result to a typed match-key route and render context, completeness messaging, innings sections, and deterministic semantic delivery tables; support loading, 404, error, empty, incomplete, and retry states. **Testing:** component/service tests cover direct navigation, invalid/unknown keys, empty innings, missing metadata, optional wicket/fielder data, row order, and accessible status messages.
+- [x] **Dependencies:** 3.4. **Areas:** Angular navigation and responsive styles. **Completion:** provide keyboard-accessible back-to-results, restore prior search criteria/results where available, safely handle direct entry without history, and make wide delivery rows usable on narrow screens. **Testing:** route tests and accessibility/responsive checks cover keyboard-only search → selection → scoresheet → back, focus movement, table headers, and narrow viewport access.
 
 ## 4. End-to-end feature integration
 
 ### 4.1 Connect the vertical workflow
 
 - [ ] **Dependencies:** 2.4, 3.4, and approved 1.2 decisions. **Areas:** Angular route configuration, search/scoresheet services, BFF routes, API module wiring. **Completion:** a visitor can complete historical search → multiple results → exactly-one selection → selected route → innings/delivery view → back-to-results without fabricated data or recent-match regressions. **Testing:** end-to-end test uses deterministic data and verifies both browser navigation and direct selected-match navigation.
-- [ ] **Dependencies:** 4.1. **Areas:** all API/BFF/UI boundaries. **Completion:** verify stale search/detail responses cannot overwrite newer route state, pagination remains bounded, and error/incomplete states are consistent across layers. **Testing:** integration tests cover delayed/failing upstream responses, large bounded result sets, large/chunked matches, and retry behavior.
+- [ ] **Dependencies:** 4.1. **Areas:** all API/BFF/UI boundaries. **Completion:** verify stale search/detail responses cannot overwrite newer route state, search pagination remains bounded, scorecards return their complete delivery sets, and error/incomplete states are consistent across layers. **Testing:** integration tests cover delayed/failing upstream responses, large bounded result sets, large complete scorecards, and retry behavior.
 - [ ] **Dependencies:** 4.1. **Areas:** API and BFF security configuration/routes. **Completion:** confirm every new route is protected, token handling remains server-side, and no user-controlled upstream URL or credential path exists. **Testing:** negative tests cover unauthenticated and invalid-token requests, upstream failure mapping, and absence of token/secret data in responses/log assertions.
 
 ## 5. Tests and verification
@@ -92,7 +92,7 @@
 
 ### 6.1 Record architectural decisions
 
-- [ ] **Dependencies:** 1.2 and accepted implementation behavior. **Areas:** `docs/adr/` (new ADR), sprint review notes. **Completion:** document separate search/detail endpoints, recent-route compatibility, completion eligibility, pagination semantics, and deterministic delivery ordering with rationale and consequences. **Testing:** review ADR claims against the implemented contracts and route tests.
+- [ ] **Dependencies:** 1.2 and accepted implementation behavior. **Areas:** `docs/adr/` (new ADR), sprint review notes. **Completion:** document separate search/detail endpoints, recent-route compatibility, completion eligibility, paged search versus complete one-roundtrip scorecards, and deterministic delivery ordering with rationale and consequences. **Testing:** review ADR claims against the implemented contracts and route tests.
 
 ### 6.2 Update architecture and contributor documentation when applicable
 

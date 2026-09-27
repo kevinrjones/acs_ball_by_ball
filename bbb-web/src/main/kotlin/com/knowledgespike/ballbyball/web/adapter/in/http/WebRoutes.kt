@@ -3,11 +3,14 @@ package com.knowledgespike.ballbyball.web.adapter.`in`.http
 import com.knowledgespike.ballbyball.contracts.Envelope
 import com.knowledgespike.ballbyball.contracts.MatchSearchRequest
 import com.knowledgespike.ballbyball.contracts.parseMatchSearchRequest
+import com.knowledgespike.ballbyball.contracts.MatchScoresheetResponse
+import com.knowledgespike.ballbyball.contracts.parseMatchScoresheetRequest
 import com.knowledgespike.ballbyball.contracts.RecentMatchesResponse
 import com.knowledgespike.ballbyball.web.application.MatchApiClient
 import com.knowledgespike.ballbyball.web.application.ApplicationMetadataService
 import com.knowledgespike.ballbyball.web.application.RecentMatchesResult
 import com.knowledgespike.ballbyball.web.application.SearchMatchesResult
+import com.knowledgespike.ballbyball.web.application.MatchScoresheetResult
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.authenticate
 import io.ktor.server.http.content.singlePageApplication
@@ -60,6 +63,41 @@ fun Route.registerWebRoutes(
                                         ?: "The API is unavailable."
                                 )
                             )
+                        }
+                    }
+                )
+            }
+            get("/matches/{matchKey}/scoresheet") {
+                parseMatchScoresheetRequest { name ->
+                    if (name == "matchKey") call.parameters[name] else call.request.queryParameters[name]
+                }.fold(
+                    ifLeft = { errors -> call.respond(HttpStatusCode.BadRequest, Envelope.failure(errors)) },
+                    ifRight = { request ->
+                        when (val result = matchApiClient.scoresheet(request.matchKey)) {
+                            is MatchScoresheetResult.Success -> call.respond(
+                                HttpStatusCode.OK,
+                                Envelope.success(result.response)
+                            )
+
+                            is MatchScoresheetResult.Unavailable -> when (result.status) {
+                                HttpStatusCode.BadRequest -> call.respond(
+                                    HttpStatusCode.BadRequest,
+                                    Envelope.failure("The scoresheet request was invalid")
+                                )
+
+                                HttpStatusCode.NotFound -> call.respond(
+                                    HttpStatusCode.NotFound,
+                                    Envelope.failure("The requested match was not found")
+                                )
+
+                                else -> call.respond(
+                                    HttpStatusCode.BadGateway,
+                                    Envelope.failure(
+                                        result.status?.let { "The API is unavailable (${it.value})." }
+                                            ?: "The API is unavailable."
+                                    )
+                                )
+                            }
                         }
                     }
                 )
