@@ -1,16 +1,7 @@
 package com.knowledgespike.ballbyball.contracts
 
 import arrow.core.Either
-import com.knowledgespike.ballbyball.types.values.ExactMatch
-import com.knowledgespike.ballbyball.types.values.MatchResultFilter
-import com.knowledgespike.ballbyball.types.values.MatchTypeFilter
-import com.knowledgespike.ballbyball.types.values.PageNumber
-import com.knowledgespike.ballbyball.types.values.PageSize
-import com.knowledgespike.ballbyball.types.values.SearchDate
-import com.knowledgespike.ballbyball.types.values.SearchDateRange
-import com.knowledgespike.ballbyball.types.values.SearchTeam
-import com.knowledgespike.ballbyball.types.values.VenueFilter
-import kotlinx.serialization.encodeToString
+import com.knowledgespike.ballbyball.types.values.*
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Test
 import strikt.api.expectThat

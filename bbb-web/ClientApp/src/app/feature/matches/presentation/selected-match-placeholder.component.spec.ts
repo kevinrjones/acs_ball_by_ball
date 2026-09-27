@@ -52,7 +52,7 @@ describe('SelectedMatchPlaceholderComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('4');
     expect(fixture.nativeElement.textContent).toContain('Wicket');
     expect(fixture.nativeElement.textContent).toContain('4/1');
-    expect(fixture.componentInstance.overRows(fixture.componentInstance.scoresheet()!.innings[0])).toHaveSize(1);
+    expect(fixture.componentInstance.scoresheet()!.innings[0].rows).toHaveSize(1);
   });
 
   it('should display batters side-by-side with placeholders for the non-striker', async () => {
@@ -68,9 +68,9 @@ describe('SelectedMatchPlaceholderComponent', () => {
     const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
     fixture.detectChanges();
 
-    const cells = fixture.nativeElement.querySelectorAll('.linear-matrix tbody tr td');
-    const strikerCell = cells[3] as HTMLElement;
-    const nonStrikerCell = cells[4] as HTMLElement;
+    const batterCells = fixture.nativeElement.querySelectorAll('.linear-matrix__batter-cell') as NodeListOf<HTMLElement>;
+    const strikerCell = batterCells[0];
+    const nonStrikerCell = batterCells[1];
 
     expect(strikerCell.classList).toContain('linear-matrix__batter-cell');
     expect(nonStrikerCell.classList).toContain('linear-matrix__batter-cell');

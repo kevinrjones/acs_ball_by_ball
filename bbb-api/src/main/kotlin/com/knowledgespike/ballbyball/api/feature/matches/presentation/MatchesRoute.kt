@@ -2,31 +2,16 @@ package com.knowledgespike.ballbyball.api.feature.matches.presentation
 
 import arrow.core.raise.fold
 import com.knowledgespike.ballbyball.api.bootstrap.AUTH_JWT
-import com.knowledgespike.ballbyball.api.feature.health.data.repository.JooqDatabaseHealth
 import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchSearchCriteria
 import com.knowledgespike.ballbyball.api.feature.matches.domain.service.MatchService
 import com.knowledgespike.ballbyball.api.routing.respondBadRequest
 import com.knowledgespike.ballbyball.api.routing.respondOk
-import com.knowledgespike.ballbyball.contracts.Envelope
-import com.knowledgespike.ballbyball.contracts.MatchSearchPagination
-import com.knowledgespike.ballbyball.contracts.MatchSearchResponse
-import com.knowledgespike.ballbyball.contracts.MatchSearchResult
-import com.knowledgespike.ballbyball.contracts.MatchScoresheetContext
-import com.knowledgespike.ballbyball.contracts.MatchScoresheetResponse
-import com.knowledgespike.ballbyball.contracts.ScoresheetDelivery
-import com.knowledgespike.ballbyball.contracts.ScoresheetInnings
-import com.knowledgespike.ballbyball.contracts.ScoresheetWicket
-import com.knowledgespike.ballbyball.contracts.parseMatchScoresheetRequest
-import com.knowledgespike.ballbyball.contracts.parseMatchSearchRequest
-import com.knowledgespike.ballbyball.contracts.RecentMatchesResponse
-import com.knowledgespike.ballbyball.contracts.MatchSearchRequest
+import com.knowledgespike.ballbyball.contracts.*
 import com.knowledgespike.ballbyball.types.values.Limit
-import io.ktor.server.auth.authenticate
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.response.respond
-import io.ktor.server.routing.Route
-import io.ktor.server.routing.get
-import io.ktor.server.routing.route
+import io.ktor.http.*
+import io.ktor.server.auth.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import org.slf4j.LoggerFactory
 
 fun Route.routeMatches(matchService: MatchService) {

@@ -64,6 +64,10 @@
 - [x] **Dependencies:** 1.3, 3.1, and 3.3. **Areas:** Angular routes, models, service, scoresheet components/templates/styles. **Completion:** navigate from one result to a typed match-key route and render context, completeness messaging, innings sections, and deterministic semantic delivery tables; support loading, 404, error, empty, incomplete, and retry states. **Testing:** component/service tests cover direct navigation, invalid/unknown keys, empty innings, missing metadata, optional wicket/fielder data, row order, and accessible status messages.
 - [x] **Dependencies:** 3.4. **Areas:** Angular navigation and responsive styles. **Completion:** provide keyboard-accessible back-to-results, restore prior search criteria/results where available, safely handle direct entry without history, and make wide delivery rows usable on narrow screens. **Testing:** route tests and accessibility/responsive checks cover keyboard-only search → selection → scoresheet → back, focus movement, table headers, and narrow viewport access.
 
+### 3.5 Refine scoresheet presentation architecture
+
+- [x] **Dependencies:** 3.4. **Areas:** `scoresheet-presenter.ts`, selected-match component/template, feature-scoped styles, scoresheet contract documentation. **Completion:** prepare the complete scoresheet view model once per response, keep batter lanes stable, separate over and cumulative ledger formatting, document delivery-batter wicket attribution, and remove matrix presentation rules from the global stylesheet. **Testing:** presenter and component regression coverage verifies cumulative ledgers, wicket/dismissal details, placeholders, stable lanes, input immutability, and accessible rendering without positional selectors.
+
 ## 4. End-to-end feature integration
 
 ### 4.1 Connect the vertical workflow

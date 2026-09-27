@@ -165,6 +165,11 @@ data class ScoresheetWicket(
     val fielders: List<String>
 )
 
+/**
+ * A wicket is associated with its delivery. The warehouse contract does not
+ * expose a separate dismissed-player field, so consumers must attribute a
+ * wicket to the delivery's `batter`.
+ */
 @Serializable
 data class ScoresheetDelivery(
     val deliveryKey: Long,

@@ -1,5 +1,37 @@
 # Project Memory
 
+## Task: Apply scoresheet quality review fixes
+
+### Title
+
+Prepare scoresheet presentation data once and isolate its styles
+
+### Date/time completed
+
+2026-09-27 15:50
+
+### What was shipped
+
+- Added a pure `scoresheet-presenter.ts` transformation that prepares grouped over rows, stable batter lanes, symbols, dismissal summaries, bowler figures, notes, and cumulative ledgers once per API response.
+- Removed repeated scoresheet calculations from the Angular template and moved matrix presentation rules into the selected-match feature stylesheet.
+- Separated per-over extra notes from cumulative ledger extra formatting and documented delivery-batter wicket attribution in the shared contract.
+
+### Key decisions
+
+- The prepared view model is immutable from the component's perspective and preserves the complete delivery list while ordering only the presentation copy.
+- Until the warehouse exposes a dismissed-player field, a wicket is attributed to the delivery's `batter`, matching the existing contract behavior.
+- Presenter and component tests use stable semantic classes and prepared properties rather than table-cell positions.
+
+### Gotchas
+
+- The shared contract still does not identify a dismissed player independently of the delivery batter; non-striker/run-out attribution remains a documented data limitation.
+- The `Source ball` field remains in the response for identity and ordering but is not rendered in the matrix.
+
+### Test coverage areas
+
+- Presenter tests cover cumulative extra categories, over versus ledger formatting, stable batter lanes, non-striker placeholders, dismissal figures, and input immutability.
+- Angular browser tests: 51/51 passed.
+
 ## Task: Remove source ball column from scoresheet
 
 ### Title

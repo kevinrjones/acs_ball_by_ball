@@ -1,23 +1,15 @@
 package com.knowledgespike.ballbyball.web.adapter.`in`.http
 
 import com.knowledgespike.ballbyball.contracts.Envelope
-import com.knowledgespike.ballbyball.contracts.MatchSearchRequest
-import com.knowledgespike.ballbyball.contracts.parseMatchSearchRequest
-import com.knowledgespike.ballbyball.contracts.MatchScoresheetResponse
-import com.knowledgespike.ballbyball.contracts.parseMatchScoresheetRequest
 import com.knowledgespike.ballbyball.contracts.RecentMatchesResponse
-import com.knowledgespike.ballbyball.web.application.MatchApiClient
-import com.knowledgespike.ballbyball.web.application.ApplicationMetadataService
-import com.knowledgespike.ballbyball.web.application.RecentMatchesResult
-import com.knowledgespike.ballbyball.web.application.SearchMatchesResult
-import com.knowledgespike.ballbyball.web.application.MatchScoresheetResult
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.auth.authenticate
-import io.ktor.server.http.content.singlePageApplication
-import io.ktor.server.response.respond
-import io.ktor.server.routing.Route
-import io.ktor.server.routing.get
-import io.ktor.server.routing.route
+import com.knowledgespike.ballbyball.contracts.parseMatchScoresheetRequest
+import com.knowledgespike.ballbyball.contracts.parseMatchSearchRequest
+import com.knowledgespike.ballbyball.web.application.*
+import io.ktor.http.*
+import io.ktor.server.auth.*
+import io.ktor.server.http.content.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 
 fun Route.registerWebRoutes(
     matchApiClient: MatchApiClient,

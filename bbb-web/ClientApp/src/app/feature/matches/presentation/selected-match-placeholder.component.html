@@ -35,7 +35,7 @@
         </div>
         <div class="scoresheet-hero__meta">
           <span class="scoresheet-meta-label">SCOREBOOK</span>
-          <strong>{{ totalDeliveries(sheet) | number }} deliveries</strong>
+          <strong>{{ sheet.totalDeliveries | number }} deliveries</strong>
         </div>
       </header>
 
@@ -43,7 +43,7 @@
         <p class="scoresheet-incomplete" role="status"><strong>Incomplete warehouse data:</strong> {{ sheet.missingData.join(', ') }}.</p>
       }
 
-      @if (totalDeliveries(sheet) === 0) {
+      @if (sheet.totalDeliveries === 0) {
         <p class="scoresheet-status scoresheet-status--empty" role="status">No delivery data is available for this match.</p>
       } @else {
         @for (innings of sheet.innings; track innings.inningsNumber) {
@@ -79,33 +79,29 @@
                   </tr>
                 </thead>
                 <tbody>
-                  @for (row of overRows(innings); track row.overNumber) {
+                  @for (row of innings.rows; track row.overNumber) {
                     <tr [class.linear-matrix__wicket-row]="row.wicketCount > 0">
                       <td class="linear-matrix__over">{{ row.overNumber }}</td>
                       <td>
-                        @for (summary of bowlerSummaries(row); track summary) { <div class="matrix-stack-line">{{ summary.split(' · ')[0] }}</div> }
+                        @for (summary of row.bowlerSummaries; track summary.bowler) { <div class="matrix-stack-line">{{ summary.bowler }}</div> }
                       </td>
                       <td class="linear-matrix__muted">
-                        @for (summary of bowlerSummaries(row); track summary) { <div class="matrix-stack-line">{{ summary.substring(summary.indexOf(' · ') + 3) }}</div> }
+                        @for (summary of row.bowlerSummaries; track summary.bowler) { <div class="matrix-stack-line">{{ summary.balls }} balls · {{ summary.runs }} runs · {{ summary.wickets }} wkts</div> }
                       </td>
-                      @for (index of [0, 1]; track index) {
+                      @for (entries of row.battingLanes; track $index) {
                         <td class="linear-matrix__batter-cell">
-                          @for (entry of playerNotationsAt(innings, row, index); track entry.player) {
+                          @for (entry of entries; track entry.player) {
                             <div class="matrix-player-line"><strong>{{ entry.player }}:</strong><span class="matrix-symbols" aria-label="Batter delivery notation">
-                              @for (delivery of entry.deliveries; track delivery.deliveryKey) {
-                                @if (delivery.batter?.trim() === entry.player) {
-                                  <span class="matrix-symbol" [class]="deliverySymbolClass(delivery)">{{ deliverySymbol(delivery) }}</span>
-                                } @else {
-                                  <span class="matrix-symbol matrix-symbol--non-striker-placeholder" aria-label="Non-striker on this delivery">•</span>
-                                }
+                              @for (symbol of entry.symbols; track symbol.deliveryKey) {
+                                <span class="matrix-symbol" [class]="symbol.className" [attr.aria-label]="symbol.ariaLabel">{{ symbol.value }}</span>
                               }
-                            </span>@if (entry.dismissed) { <small class="matrix-dismissed" aria-label="Dismissed batter score">{{ dismissalSummary(entry) }}</small><span class="matrix-dismissed matrix-dismissed-marker" aria-label="Out">[OUT]</span> } @else { <small>({{ entry.runs }}r, {{ entry.balls }}b)</small> }</div>
+                            </span>@if (entry.dismissed) { <small class="matrix-dismissed" aria-label="Dismissed batter score">{{ entry.scoreLabel }}</small><span class="matrix-dismissed matrix-dismissed-marker" aria-label="Out">[OUT]</span> } @else { <small>{{ entry.scoreLabel }}</small> }</div>
                           }
                         </td>
                       }
-                      <td class="linear-matrix__runs">{{ row.totalRuns }}</td><td class="linear-matrix__notes">{{ overNotes(row) }}</td>
-                      <td class="linear-matrix__ledger">{{ runningLedger(innings, row.overNumber).runs }}/{{ runningLedger(innings, row.overNumber).wickets }}</td>
-                      <td class="linear-matrix__wickets">{{ runningLedger(innings, row.overNumber).wickets }}</td><td class="linear-matrix__extras">{{ formatExtras(runningLedger(innings, row.overNumber).extras) }}</td>
+                      <td class="linear-matrix__runs">{{ row.totalRuns }}</td><td class="linear-matrix__notes">{{ row.notes }}</td>
+                      <td class="linear-matrix__ledger">{{ row.ledger.runs }}/{{ row.ledger.wickets }}</td>
+                      <td class="linear-matrix__wickets">{{ row.ledger.wickets }}</td><td class="linear-matrix__extras">{{ row.ledger.extrasDisplay }}</td>
                     </tr>
                   } @empty {
                     <tr><td class="linear-matrix__empty" colspan="10">No deliveries are available in this innings.</td></tr>
@@ -115,15 +111,15 @@
             </div>
 
             <footer class="innings-footer">
-              <span>Visible overs: <strong>{{ overRows(innings).length }}</strong></span>
+              <span>Visible overs: <strong>{{ innings.rows.length }}</strong></span>
               <span>Visible deliveries: <strong>{{ innings.deliveries.length }}</strong></span>
-              <span>Innings total: <strong>{{ innings.deliveries.reduce(sumDeliveryRuns, 0) }}</strong></span>
+              <span>Innings total: <strong>{{ innings.totalRuns }}</strong></span>
               <span>Notation: <strong>• dot · 4/6 boundary · W wicket · + extra</strong></span>
             </footer>
           </section>
         }
         <p class="scoresheet-pagination-note" role="status">
-          Showing all {{ totalDeliveries(sheet) | number }} deliveries from the complete scorecard response.
+          Showing all {{ sheet.totalDeliveries | number }} deliveries from the complete scorecard response.
         </p>
       }
     }
