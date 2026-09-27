@@ -53,8 +53,8 @@ class MatchSearchContractsTest {
         val response = MatchSearchResponse(
             matches = listOf(
                 MatchSearchResult(
-                    matchKey = com.knowledgespike.ballbyball.types.values.MatchKey.from(9),
-                    sourceMatchId = com.knowledgespike.ballbyball.types.values.SourceMatchId.from(42),
+                    matchKey = MatchKey.from(9),
+                    sourceMatchId = SourceMatchId.from(42),
                     fileName = "match.json",
                     matchType = null,
                     season = null,
@@ -114,8 +114,8 @@ class MatchSearchContractsTest {
     fun `scoresheet response serializes nullable context and nested wicket associations`() {
         val response = MatchScoresheetResponse(
             context = MatchScoresheetContext(
-                matchKey = com.knowledgespike.ballbyball.types.values.MatchKey.from(9),
-                sourceMatchId = com.knowledgespike.ballbyball.types.values.SourceMatchId.from(42),
+                matchKey = MatchKey.from(9),
+                sourceMatchId = SourceMatchId.from(42),
                 fileName = "match.json",
                 matchType = null,
                 season = null,
