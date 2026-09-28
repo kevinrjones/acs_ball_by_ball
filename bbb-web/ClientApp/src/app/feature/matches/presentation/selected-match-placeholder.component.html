@@ -35,7 +35,6 @@
         </div>
         <div class="scoresheet-hero__meta">
           <span class="scoresheet-meta-label">SCOREBOOK</span>
-          <strong>{{ sheet.totalDeliveries | number }} deliveries</strong>
         </div>
       </header>
 
@@ -46,8 +45,41 @@
       @if (sheet.totalDeliveries === 0) {
         <p class="scoresheet-status scoresheet-status--empty" role="status">No delivery data is available for this match.</p>
       } @else {
+        <section class="scoresheet-innings-cards" aria-label="Match innings">
+          @for (innings of sheet.innings; track innings.inningsNumber) {
+            <button
+              type="button"
+              class="scoresheet-innings-card"
+              [class.scoresheet-innings-card--active]="activeInningsNumber() === innings.inningsNumber"
+              [attr.aria-pressed]="activeInningsNumber() === innings.inningsNumber"
+              [attr.aria-label]="'View ' + (innings.battingTeam || 'Unknown team') + ' ' + inningsOrdinal(innings.inningsNumber) + ', ' + innings.cardScoreLabel"
+              (click)="selectInnings(innings.inningsNumber)"
+              (keydown)="onInningsCardKeydown($event, innings.inningsNumber)">
+              <span class="scoresheet-innings-card__topline">
+                <span class="scoresheet-innings-card__identity">
+                  <i class="scoresheet-innings-card__marker" aria-hidden="true"></i>
+                  <span>{{ innings.battingTeam || 'Unknown team' }} {{ inningsOrdinal(innings.inningsNumber) }}</span>
+                </span>
+                <span class="scoresheet-innings-card__badge">{{ activeInningsNumber() === innings.inningsNumber ? 'VIEWING' : 'INNINGS ' + innings.inningsNumber }}</span>
+              </span>
+              <span class="scoresheet-innings-card__summary">
+                <strong>{{ innings.cardScoreLabel }}</strong>
+                <span><b>{{ innings.oversLabel }}</b><small>RR {{ innings.runRateLabel }}</small></span>
+              </span>
+              <span class="scoresheet-innings-card__footer">
+                <span>{{ innings.cardFooterLabel }}</span>
+                <span>{{ innings.totalRuns }} runs</span>
+              </span>
+            </button>
+          }
+        </section>
+
         @for (innings of sheet.innings; track innings.inningsNumber) {
-          <section class="scoresheet-innings" [attr.aria-labelledby]="'innings-' + innings.inningsNumber">
+          @if (activeInningsNumber() === innings.inningsNumber) {
+          <section
+            class="scoresheet-innings"
+            tabindex="0"
+            [attr.aria-label]="'Scorebook for ' + (innings.battingTeam || 'Unknown team') + ' ' + inningsOrdinal(innings.inningsNumber)">
             <header class="innings-header">
               <div>
                 <div class="innings-header__kicker">Innings {{ innings.inningsNumber }}</div>
@@ -114,9 +146,10 @@
               <span>Overs: <strong>{{ innings.rows.length }}</strong></span>
               <span>Deliveries: <strong>{{ innings.deliveries.length }}</strong></span>
               <span>Innings total: <strong>{{ innings.totalRuns }}</strong></span>
-              <span>Notation: <strong>• dot · 4/6 boundary · W wicket · + extra</strong></span>
+              <span>Notation: <strong>• dot · 4/6 boundary · W wicket · wd / nb / lb / b extras</strong></span>
             </footer>
           </section>
+          }
         }
         <p class="scoresheet-pagination-note" role="status">
           Showing all {{ sheet.totalDeliveries | number }} deliveries from the complete scorecard response.

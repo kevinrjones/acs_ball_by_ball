@@ -3,7 +3,7 @@ import {ActivatedRoute, convertToParamMap} from '@angular/router';
 import {of} from 'rxjs';
 import {MatchService} from '../../../services/match.service';
 import {SelectedMatchPlaceholderComponent} from './selected-match-placeholder.component';
-import {MatchScoresheetResponse, ScoresheetDelivery} from '../../../models/match.model';
+import {MatchScoresheetResponse, ScoresheetDelivery, ScoresheetInnings} from '../../../models/match.model';
 
 describe('SelectedMatchPlaceholderComponent', () => {
   it('should preserve the complete valid search query when returning to results', async () => {
@@ -53,6 +53,41 @@ describe('SelectedMatchPlaceholderComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Wicket');
     expect(fixture.nativeElement.textContent).toContain('4/1');
     expect(fixture.componentInstance.scoresheet()!.innings[0].rows).toHaveSize(1);
+  });
+
+  it('should show one summary card per innings and only the selected innings panel', async () => {
+    const firstInnings = innings(1, 'England', 'India', delivery({deliveryKey: 1, batter: 'England batter', batterRuns: 302, totalRuns: 302}));
+    const secondInnings = innings(2, 'India', 'England', delivery({deliveryKey: 2, batter: 'India batter', batterRuns: 150, totalRuns: 150}));
+    const thirdInnings = innings(3, 'England', 'India', delivery({deliveryKey: 3, batter: 'England batter two', batterRuns: 75, totalRuns: 75}));
+    await configure({}, '101', scoresheetWithInnings(firstInnings, secondInnings, thirdInnings));
+    const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
+    fixture.detectChanges();
+
+    const cards = fixture.nativeElement.querySelectorAll('.scoresheet-innings-card') as NodeListOf<HTMLButtonElement>;
+    expect(cards).toHaveSize(3);
+    expect(Array.from(cards).map((card) => `${card.querySelector('.scoresheet-innings-card__identity')?.textContent?.trim()} ${card.querySelector('.scoresheet-innings-card__summary strong')?.textContent?.trim()}`)).toEqual([
+      'England 1st 302', 'India 2nd 150', 'England 3rd 75'
+    ]);
+    expect(cards[0].getAttribute('aria-label')).toBe('View England 1st, 302');
+    expect(cards[0].getAttribute('aria-pressed')).toBe('true');
+    expect(cards[1].getAttribute('aria-pressed')).toBe('false');
+    expect(fixture.nativeElement.querySelectorAll('.scoresheet-innings')).toHaveSize(1);
+    expect(fixture.nativeElement.querySelector('.scoresheet-innings')?.textContent).toContain('England batter');
+
+    cards[1].click();
+    fixture.detectChanges();
+
+    expect(cards[0].getAttribute('aria-pressed')).toBe('false');
+    expect(cards[1].getAttribute('aria-pressed')).toBe('true');
+    expect(fixture.nativeElement.querySelector('.scoresheet-innings')?.textContent).toContain('India batter');
+    expect(fixture.nativeElement.querySelector('.scoresheet-innings')?.textContent).not.toContain('England batter two');
+
+    const rightArrow = new KeyboardEvent('keydown', {bubbles: true, key: 'ArrowRight'});
+    cards[1].dispatchEvent(rightArrow);
+    fixture.detectChanges();
+
+    expect(cards[2].getAttribute('aria-pressed')).toBe('true');
+    expect(document.activeElement).toBe(cards[2]);
   });
 
   it('should display batters side-by-side with placeholders for the non-striker', async () => {
@@ -247,12 +282,25 @@ async function configure(
 }
 
 function scoresheet(...deliveries: ScoresheetDelivery[]): MatchScoresheetResponse {
+  return scoresheetWithInnings(innings(1, 'England', 'India', ...deliveries));
+}
+
+function scoresheetWithInnings(...inningsList: ScoresheetInnings[]): MatchScoresheetResponse {
   return {
     context: {matchKey: 101, sourceMatchId: 1001, fileName: 'match.json', team1: 'England', team2: 'India'},
-    completeness: deliveries.length > 0 ? 'COMPLETE' : 'EMPTY',
-    missingData: deliveries.length > 0 ? [] : ['deliveries'],
-    innings: deliveries.length > 0 ? [{inningsNumber: 1, battingTeam: 'England', bowlingTeam: 'India', deliveries}] : [],
+    completeness: inningsList.some((current) => current.deliveries.length > 0) ? 'COMPLETE' : 'EMPTY',
+    missingData: inningsList.some((current) => current.deliveries.length > 0) ? [] : ['deliveries'],
+    innings: inningsList
   };
+}
+
+function innings(
+  inningsNumber: number,
+  battingTeam: string,
+  bowlingTeam: string,
+  ...deliveries: ScoresheetDelivery[]
+): ScoresheetInnings {
+  return {inningsNumber, battingTeam, bowlingTeam, deliveries};
 }
 
 function delivery(overrides: Partial<ScoresheetDelivery>): ScoresheetDelivery {

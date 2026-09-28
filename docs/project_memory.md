@@ -1,5 +1,127 @@
 # Project Memory
 
+## Task: Use counted extra symbols in the scoresheet
+
+### Title
+
+Display wides, no-balls, leg-byes, and byes with counted delivery symbols
+
+### Date/time completed
+
+2026-09-27 21:39
+
+### What was shipped
+
+- Delivery notation now renders wides as `1wd`, no-balls as `4nb`, leg-byes as `2lb`, and byes as `3b`, using the corresponding extra count.
+- All four counted extra symbols use the scoresheet's extra styling, and the innings notation hint documents the new abbreviations.
+
+### Key decisions
+
+- Applied the change to per-delivery batter notation in the prepared scoresheet view model, where the old generic `+` and `Δ` markers were generated.
+- Kept the cumulative Extras ledger format unchanged because it represents running innings totals rather than individual delivery symbols.
+
+### Gotchas
+
+- Wicket notation still takes precedence if a delivery contains both a wicket and extra data; otherwise extra precedence follows wides, no-balls, leg-byes, and byes.
+
+### Test coverage areas
+
+- Presenter regression coverage verifies all four counted symbols and their extra CSS classification, alongside existing cumulative ledger behavior.
+- Focused Angular presenter tests passed: 7/7.
+
+## Task: Replace innings tabs with summary cards
+
+### Title
+
+Display match innings as selectable score summary cards
+
+### Date/time completed
+
+2026-09-27 21:32
+
+### What was shipped
+
+- Replaced the scoresheet innings tab strip with a responsive grid of up to four selectable summary cards.
+- Cards show the batting team and ordinal innings, score, overs, run rate, completion state, and a clear `VIEWING` state for the active innings.
+- Kept the delivery matrix focused on one selected innings and retained keyboard selection with arrow, Home, and End keys.
+
+### Key decisions
+
+- Derived overs from legal deliveries so wides do not advance the displayed over fraction or run-rate denominator.
+- Displayed only metrics present in the scoresheet contract; unavailable result states such as lead, trail, and declared are not inferred.
+- Used buttons with `aria-pressed` rather than tab roles because the cards are selectable summaries, not a tab interface.
+
+### Gotchas
+
+- Non-active cards use an `INNINGS N` badge because per-innings lead, trail, declared, and target values are not available in the response.
+- The card grid changes from four to two to one columns at narrower widths while preserving DOM and keyboard order.
+
+### Test coverage areas
+
+- Component coverage verifies four-column summary-card rendering, labels, active state, click selection, keyboard movement, and selected scorebook content.
+- Focused Angular tests passed: 16/16.
+
+## Task: Add innings tab labels and totals
+
+### Title
+
+Show batting team, innings ordinal, and total on full-width scoresheet tabs
+
+### Date/time completed
+
+2026-09-27 21:22
+
+### What was shipped
+
+- Updated scoresheet tabs to display labels such as `England 1st Innings` and the prepared innings run total.
+- Added the conventional `ao` suffix when the delivery ledger records ten or more wickets.
+- Made tabs share the available header width while retaining a minimum width and horizontal scrolling on narrow screens.
+
+### Key decisions
+
+- Derived all-out status from ten recorded wickets because the current scoresheet contract has no separate all-out flag.
+- Kept the total label in the prepared scoresheet view model so the template does not recalculate innings figures.
+
+### Gotchas
+
+- Innings with fewer than ten wickets show only their run total; the UI does not infer all-out status from a single dismissal or from the innings ending.
+
+### Test coverage areas
+
+- Component coverage verifies ordinal team labels, visible totals, accessible tab labels, active-panel switching, and keyboard focus movement.
+- Presenter coverage verifies the `302 ao` label for a ten-wicket innings.
+- Focused Angular tests passed: 16/16.
+
+## Task: Add innings tabs to the scoresheet
+
+### Title
+
+Display each match innings in a labelled, selectable scoresheet tab
+
+### Date/time completed
+
+2026-09-27 17:35
+
+### What was shipped
+
+- Added one visible tab for every returned innings, labelled with its innings number and batting team.
+- Rendered only the selected innings matrix instead of placing every innings linearly on the page.
+- Added mouse and keyboard tab switching, including arrow, Home, and End navigation.
+
+### Key decisions
+
+- Kept innings selection local to the selected-match component because it is presentation state and does not belong in the API contract or URL.
+- Used the first returned innings as the default and preserved the existing prepared scoresheet view model.
+
+### Gotchas
+
+- Inactive innings panels are removed from the DOM, so the page has one active delivery table at a time while tab labels remain available.
+
+### Test coverage areas
+
+- Component regression coverage verifies three labelled innings tabs, active-panel switching, ARIA state, and arrow-key focus movement.
+- Focused selected-match tests passed: 11/11.
+
 ## Task: Restore match type and result controls
 
 ### Title

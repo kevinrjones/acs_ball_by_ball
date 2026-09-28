@@ -60,6 +60,12 @@ export interface ScoresheetOverRow {
 export interface PresentedScoresheetInnings extends ScoresheetInnings {
   readonly rows: readonly ScoresheetOverRow[];
   readonly totalRuns: number;
+  readonly totalWickets: number;
+  readonly totalLabel: string;
+  readonly cardScoreLabel: string;
+  readonly oversLabel: string;
+  readonly runRateLabel: string;
+  readonly cardFooterLabel: string;
 }
 
 export interface PresentedScoresheet extends Omit<MatchScoresheetResponse, 'innings'> {
@@ -114,13 +120,42 @@ function presentInnings(innings: ScoresheetInnings): PresentedScoresheetInnings 
   const assignments = battingLaneAssignments(deliveries);
   const dismissalScores = battingScoresAtDismissal(deliveries);
   const rows = buildOverRows(deliveries, assignments, dismissalScores);
+  const totalRuns = deliveries.reduce((total, delivery) => total + delivery.totalRuns, 0);
+  const totalWickets = deliveries.reduce((total, delivery) => total + delivery.wicketCount, 0);
 
   return {
     ...innings,
     deliveries,
     rows,
-    totalRuns: deliveries.reduce((total, delivery) => total + delivery.totalRuns, 0)
+    totalRuns,
+    totalWickets,
+    totalLabel: formatInningsTotal(totalRuns, totalWickets),
+    cardScoreLabel: formatCardScore(totalRuns, totalWickets),
+    oversLabel: formatOvers(deliveries),
+    runRateLabel: formatRunRate(totalRuns, deliveries),
+    cardFooterLabel: totalWickets >= 10 ? 'All Out' : 'Innings complete'
   };
+}
+
+function formatInningsTotal(totalRuns: number, totalWickets: number): string {
+  return totalWickets >= 10 ? `${totalRuns} ao` : `${totalRuns}`;
+}
+
+function formatCardScore(totalRuns: number, totalWickets: number): string {
+  if (totalWickets >= 10) {
+    return `${totalRuns} ao`;
+  }
+  return totalWickets > 0 ? `${totalRuns}/${totalWickets}` : `${totalRuns}`;
+}
+
+function formatOvers(deliveries: readonly ScoresheetDelivery[]): string {
+  const legalBalls = deliveries.filter((delivery) => delivery.wides === 0).length;
+  return `${Math.floor(legalBalls / 6)}.${legalBalls % 6} ov`;
+}
+
+function formatRunRate(totalRuns: number, deliveries: readonly ScoresheetDelivery[]): string {
+  const legalBalls = deliveries.filter((delivery) => delivery.wides === 0).length;
+  return legalBalls === 0 ? '—' : (totalRuns * 6 / legalBalls).toFixed(2);
 }
 
 function orderDeliveries(deliveries: readonly ScoresheetDelivery[]): ScoresheetDelivery[] {
@@ -378,11 +413,17 @@ function deliverySymbol(delivery: ScoresheetDelivery): string {
   if (delivery.wicketCount > 0) {
     return 'W';
   }
-  if (delivery.wides > 0 || delivery.noBalls > 0) {
-    return '+';
+  if (delivery.wides > 0) {
+    return `${delivery.wides}wd`;
   }
-  if (delivery.byes > 0 || delivery.legByes > 0) {
-    return 'Δ';
+  if (delivery.noBalls > 0) {
+    return `${delivery.noBalls}nb`;
+  }
+  if (delivery.legByes > 0) {
+    return `${delivery.legByes}lb`;
+  }
+  if (delivery.byes > 0) {
+    return `${delivery.byes}b`;
   }
   if (delivery.totalRuns === 0) {
     return '•';
@@ -394,7 +435,7 @@ function deliverySymbolClass(delivery: ScoresheetDelivery): string {
   if (delivery.wicketCount > 0) {
     return 'matrix-symbol--wicket';
   }
-  if (delivery.wides > 0 || delivery.noBalls > 0) {
+  if (delivery.wides > 0 || delivery.noBalls > 0 || delivery.legByes > 0 || delivery.byes > 0) {
     return 'matrix-symbol--extra';
   }
   if (delivery.batterRuns === 4 || delivery.batterRuns === 6) {

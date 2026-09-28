@@ -1207,6 +1207,121 @@ a.search-tab {
   }
 }
 
+.scoresheet-innings-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-top: 1.15rem;
+}
+
+.scoresheet-innings-card {
+  display: grid;
+  min-width: 0;
+  gap: 0.85rem;
+  border: 1px solid #dbe4ec;
+  border-radius: 0.7rem;
+  background: #fff;
+  padding: 0.72rem 0.8rem 0.62rem;
+  color: #475569;
+  text-align: left;
+}
+
+.scoresheet-innings-card:focus-visible {
+  outline: 2px solid #059669;
+  outline-offset: 2px;
+}
+
+.scoresheet-innings-card--active {
+  border: 2px solid #059669;
+  padding: calc(0.72rem - 1px) calc(0.8rem - 1px) calc(0.62rem - 1px);
+  background: #effcf7;
+  color: #064e3b;
+}
+
+.scoresheet-innings-card__topline,
+.scoresheet-innings-card__summary,
+.scoresheet-innings-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.scoresheet-innings-card__identity {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.35rem;
+  overflow: hidden;
+  font: 700 0.72rem 'Inter', sans-serif;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.scoresheet-innings-card__marker {
+  width: 0.42rem;
+  height: 0.42rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #f59e0b;
+}
+
+.scoresheet-innings-card--active .scoresheet-innings-card__marker { background: #059669; }
+
+.scoresheet-innings-card__badge {
+  flex: 0 0 auto;
+  border-radius: 0.2rem;
+  background: #f1f5f9;
+  padding: 0.18rem 0.3rem;
+  color: #64748b;
+  font: 700 0.52rem 'JetBrains Mono', monospace;
+  letter-spacing: 0.03em;
+}
+
+.scoresheet-innings-card--active .scoresheet-innings-card__badge {
+  background: #059669;
+  color: #fff;
+}
+
+.scoresheet-innings-card__summary { align-items: flex-end; }
+
+.scoresheet-innings-card__summary strong {
+  color: #1e293b;
+  font: 700 1.2rem 'JetBrains Mono', monospace;
+}
+
+.scoresheet-innings-card__summary > span {
+  display: grid;
+  justify-items: end;
+  gap: 0.15rem;
+  color: #64748b;
+  font: 700 0.67rem 'JetBrains Mono', monospace;
+  white-space: nowrap;
+}
+
+.scoresheet-innings-card__summary small {
+  color: #94a3b8;
+  font-size: 0.52rem;
+  font-weight: 500;
+}
+
+.scoresheet-innings-card__footer {
+  border-top: 1px solid #dbe4ec;
+  padding-top: 0.48rem;
+  color: #64748b;
+  font: 500 0.59rem 'JetBrains Mono', monospace;
+}
+
+.scoresheet-innings-card__footer span:last-child { color: #b6c3d1; }
+
+@media (max-width: 900px) {
+  .scoresheet-innings-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 560px) {
+  .scoresheet-innings-cards { grid-template-columns: 1fr; }
+}
+
 .scoresheet-page {
   width: min(100%, 100rem);
   margin: 0 auto;

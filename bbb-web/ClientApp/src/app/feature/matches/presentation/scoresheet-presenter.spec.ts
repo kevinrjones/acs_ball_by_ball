@@ -54,10 +54,24 @@ describe('presentScoresheet', () => {
     const firstLane = rows[0].battingLanes[0][0];
     const secondLane = rows[0].battingLanes[1][0];
 
-    expect(firstLane.symbols.map((symbol) => symbol.value)).toEqual(['4', '+']);
+    expect(firstLane.symbols.map((symbol) => symbol.value)).toEqual(['4', '1wd']);
     expect(secondLane.symbols.every((symbol) => symbol.className === 'matrix-symbol--non-striker-placeholder')).toBeTrue();
     expect(rows[1].battingLanes[0][0].scoreLabel).toBe('(10r, 3b, 1x4, 1x6)');
     expect(rows[1].battingLanes[0][0].dismissed).toBeTrue();
+  });
+
+  it('should render counted extra symbols for each delivery', () => {
+    const rows = presentScoresheet(scoresheet(
+      delivery({deliveryKey: 1, inningsOrder: 1, wides: 1, totalRuns: 1}),
+      delivery({deliveryKey: 2, inningsOrder: 2, noBalls: 4, totalRuns: 4}),
+      delivery({deliveryKey: 3, inningsOrder: 3, legByes: 2, totalRuns: 2}),
+      delivery({deliveryKey: 4, inningsOrder: 4, byes: 3, totalRuns: 3})
+    )).innings[0].rows;
+
+    expect(rows[0].battingLanes[0][0].symbols.map((symbol) => symbol.value)).toEqual([
+      '1wd', '4nb', '2lb', '3b'
+    ]);
+    expect(rows[0].battingLanes[0][0].symbols.every((symbol) => symbol.className === 'matrix-symbol--extra')).toBeTrue();
   });
 
   it('should keep the delivery input immutable while ordering the prepared view', () => {
@@ -69,6 +83,33 @@ describe('presentScoresheet', () => {
 
     expect(response.innings[0].deliveries).toEqual([later, earlier]);
     expect(presented.innings[0].deliveries).toEqual([earlier, later]);
+  });
+
+  it('should mark an innings all out in its prepared total label after ten wickets', () => {
+    const deliveries = Array.from({length: 10}, (_, index) => delivery({
+      deliveryKey: index + 1,
+      inningsOrder: index + 1,
+      batterRuns: index === 0 ? 302 : 0,
+      totalRuns: index === 0 ? 302 : 0,
+      wicketCount: 1
+    }));
+
+    const presentedInnings = presentScoresheet(scoresheet(...deliveries)).innings[0];
+
+    expect(presentedInnings.totalWickets).toBe(10);
+    expect(presentedInnings.totalLabel).toBe('302 ao');
+  });
+
+  it('should prepare compact card metrics using legal deliveries', () => {
+    const presentedInnings = presentScoresheet(scoresheet(
+      delivery({deliveryKey: 1, wides: 1, totalRuns: 1}),
+      delivery({deliveryKey: 2, inningsOrder: 2, batterRuns: 5, totalRuns: 5, wicketCount: 1})
+    )).innings[0];
+
+    expect(presentedInnings.cardScoreLabel).toBe('6/1');
+    expect(presentedInnings.oversLabel).toBe('0.1 ov');
+    expect(presentedInnings.runRateLabel).toBe('36.00');
+    expect(presentedInnings.cardFooterLabel).toBe('Innings complete');
   });
 });
 
