@@ -56,8 +56,27 @@ describe('presentScoresheet', () => {
 
     expect(firstLane.symbols.map((symbol) => symbol.value)).toEqual(['4', '1wd']);
     expect(secondLane.symbols.every((symbol) => symbol.className === 'matrix-symbol--non-striker-placeholder')).toBeTrue();
+    expect(firstLane.showName).toBeTrue();
+    expect(secondLane.showName).toBeTrue();
     expect(rows[1].battingLanes[0][0].scoreLabel).toBe('(10r, 3b, 1x4, 1x6)');
+    expect(rows[1].battingLanes[0][0].showName).toBeFalse();
     expect(rows[1].battingLanes[0][0].dismissed).toBeTrue();
+  });
+
+  it('should show a replacement batter name when they enter a stable lane', () => {
+    const rows = presentScoresheet(scoresheet(
+      delivery({deliveryKey: 1, overNumber: 1, batter: 'Batter One', nonStriker: 'Batter Two'}),
+      delivery({deliveryKey: 2, inningsOrder: 2, overNumber: 2, batter: 'Batter Two', nonStriker: 'Batter One'}),
+      delivery({deliveryKey: 3, inningsOrder: 3, overNumber: 2, batter: 'Batter Two', nonStriker: 'Batter One', wicketCount: 1}),
+      delivery({deliveryKey: 4, inningsOrder: 4, overNumber: 3, batter: 'Batter One', nonStriker: 'Batter Three'})
+    )).innings[0].rows;
+
+    expect(rows[0].battingLanes[0][0].showName).toBeTrue();
+    expect(rows[0].battingLanes[1][0].showName).toBeTrue();
+    expect(rows[1].battingLanes[0][0].showName).toBeFalse();
+    expect(rows[1].battingLanes[1][0].showName).toBeFalse();
+    expect(rows[2].battingLanes[0][0].showName).toBeFalse();
+    expect(rows[2].battingLanes[1][0].showName).toBeTrue();
   });
 
   it('should render counted extra symbols for each delivery', () => {

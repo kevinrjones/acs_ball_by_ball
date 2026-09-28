@@ -27,6 +27,7 @@ export interface ScoresheetDeliverySymbol {
 
 export interface ScoresheetPlayerNotation {
   readonly player: string;
+  readonly showName: boolean;
   readonly symbols: readonly ScoresheetDeliverySymbol[];
   readonly runs: number;
   readonly balls: number;
@@ -170,6 +171,7 @@ function buildOverRows(
   dismissalScores: ReadonlyMap<string, BattingScore>
 ): ScoresheetOverRow[] {
   const overs = groupDeliveriesByOver(deliveries);
+  const displayedPlayers = new Set<string>();
   let ledger = emptyLedger();
 
   return overs.map(({overNumber, deliveries: overDeliveries}) => {
@@ -184,7 +186,7 @@ function buildOverRows(
       boundaryCount: over.boundaryCount,
       overExtras: formatOverExtras(overExtras),
       bowlerSummaries: bowlerSummaries(overDeliveries),
-      battingLanes: battingLanes(overDeliveries, assignments, dismissalScores),
+      battingLanes: battingLanes(overDeliveries, assignments, dismissalScores, displayedPlayers),
       notes: overNotes(overDeliveries, overExtras, over.boundaryCount),
       ledger
     };
@@ -218,7 +220,8 @@ function summarizeOver(deliveries: readonly ScoresheetDelivery[]): OverAccumulat
 function battingLanes(
   deliveries: readonly ScoresheetDelivery[],
   assignments: ReadonlyMap<number, readonly BattingLaneAssignment[]>,
-  dismissalScores: ReadonlyMap<string, BattingScore>
+  dismissalScores: ReadonlyMap<string, BattingScore>,
+  displayedPlayers: Set<string>
 ): readonly [readonly ScoresheetPlayerNotation[], readonly ScoresheetPlayerNotation[]] {
   const playersByLane: [string[], string[]] = [[], []];
   deliveries.forEach((delivery) => {
@@ -229,16 +232,32 @@ function battingLanes(
     });
   });
 
-  const firstLane = playersByLane[0].map((player) => playerNotation(player, deliveries, assignments, dismissalScores));
-  const secondLane = playersByLane[1].map((player) => playerNotation(player, deliveries, assignments, dismissalScores));
+  const firstLane = playerNotations(playersByLane[0], deliveries, assignments, dismissalScores, displayedPlayers);
+  const secondLane = playerNotations(playersByLane[1], deliveries, assignments, dismissalScores, displayedPlayers);
   return [firstLane, secondLane];
+}
+
+function playerNotations(
+  players: readonly string[],
+  deliveries: readonly ScoresheetDelivery[],
+  assignments: ReadonlyMap<number, readonly BattingLaneAssignment[]>,
+  dismissalScores: ReadonlyMap<string, BattingScore>,
+  displayedPlayers: Set<string>
+): ScoresheetPlayerNotation[] {
+  return players.map((player) => {
+    const showName = !displayedPlayers.has(player);
+    const notation = playerNotation(player, deliveries, assignments, dismissalScores, showName);
+    displayedPlayers.add(player);
+    return notation;
+  });
 }
 
 function playerNotation(
   player: string,
   deliveries: readonly ScoresheetDelivery[],
   assignments: ReadonlyMap<number, readonly BattingLaneAssignment[]>,
-  dismissalScores: ReadonlyMap<string, BattingScore>
+  dismissalScores: ReadonlyMap<string, BattingScore>,
+  showName: boolean
 ): ScoresheetPlayerNotation {
   const strikerDeliveries = deliveries.filter((delivery) =>
     isPlayerAssigned(delivery, player, assignments) && delivery.batter?.trim() === player
@@ -250,6 +269,7 @@ function playerNotation(
 
   return {
     player,
+    showName,
     symbols: deliveries.map((delivery) => deliverySymbolFor(player, delivery, strikerDeliveries)),
     runs,
     balls,

@@ -66,7 +66,7 @@
 
 ### 3.5 Refine scoresheet presentation architecture
 
-- [x] **Dependencies:** 3.4. **Areas:** `scoresheet-presenter.ts`, selected-match component/template, feature-scoped styles, scoresheet contract documentation. **Completion:** prepare the complete scoresheet view model once per response, keep batter lanes stable, use counted `wd`, `nb`, `lb`, and `b` delivery symbols, separate over and cumulative ledger formatting, document delivery-batter wicket attribution, and remove matrix presentation rules from the global stylesheet. **Testing:** presenter and component regression coverage verifies counted extra symbols, cumulative ledgers, wicket/dismissal details, placeholders, stable lanes, input immutability, and accessible rendering without positional selectors.
+- [x] **Dependencies:** 3.4. **Areas:** `scoresheet-presenter.ts`, selected-match component/template, feature-scoped styles, scoresheet contract documentation. **Completion:** prepare the complete scoresheet view model once per response, keep batter lanes stable, show each batter name only when entering a lane, use counted `wd`, `nb`, `lb`, and `b` delivery symbols, separate over and cumulative ledger formatting, document delivery-batter wicket attribution, and remove matrix presentation rules from the global stylesheet. **Testing:** presenter and component regression coverage verifies entry-only batter headers, counted extra symbols, cumulative ledgers, wicket/dismissal details, placeholders, stable lanes, input immutability, and accessible rendering without positional selectors.
 
 ## 4. End-to-end feature integration
 

@@ -123,11 +123,14 @@
                       @for (entries of row.battingLanes; track $index) {
                         <td class="linear-matrix__batter-cell">
                           @for (entry of entries; track entry.player) {
-                            <div class="matrix-player-line"><strong>{{ entry.player }}:</strong><span class="matrix-symbols" aria-label="Batter delivery notation">
+                            <div class="matrix-player-line">
+                              @if (entry.showName) { <div class="matrix-player-header">{{ entry.player }}</div> }
+                              <span class="matrix-symbols" aria-label="Batter delivery notation">
                               @for (symbol of entry.symbols; track symbol.deliveryKey) {
                                 <span class="matrix-symbol" [class]="symbol.className" [attr.aria-label]="symbol.ariaLabel">{{ symbol.value }}</span>
                               }
-                            </span>@if (entry.dismissed) { <small class="matrix-dismissed" aria-label="Dismissed batter score">{{ entry.scoreLabel }}</small><span class="matrix-dismissed matrix-dismissed-marker" aria-label="Out">[OUT]</span> } @else { <small>{{ entry.scoreLabel }}</small> }</div>
+                              </span>@if (entry.dismissed) { <small class="matrix-dismissed" aria-label="Dismissed batter score">{{ entry.scoreLabel }}</small><span class="matrix-dismissed matrix-dismissed-marker" aria-label="Out">[OUT]</span> } @else { <small>{{ entry.scoreLabel }}</small> }
+                            </div>
                           }
                         </td>
                       }

@@ -151,11 +151,18 @@
   padding-top: 0.35rem;
 }
 
-.matrix-player-line strong {
-  display: inline-block;
-  margin-right: 0.25rem;
-  color: #0f172a;
-  font-size: 0.66rem;
+.matrix-player-header {
+  display: block;
+  width: fit-content;
+  margin-bottom: 0.25rem;
+  border: 1px solid #c7ddd4;
+  border-radius: 0.2rem;
+  padding: 0.16rem 0.35rem;
+  background: #e8f3ef;
+  color: #164e3e;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.25;
 }
 
 .matrix-symbols {

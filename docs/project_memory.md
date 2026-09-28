@@ -1,5 +1,34 @@
 # Project Memory
 
+## Task: Show batter names only when they enter
+
+### Title
+
+Reduce repeated batter names in the scoresheet matrix
+
+### Date/time completed
+
+2026-09-28 09:14
+
+### What was shipped
+
+- Batter names now render as entry headers in their stable lane instead of repeating in every over row.
+- Replacement batters receive a new header when they take over a released lane; delivery symbols and score details remain available on every row.
+
+### Key decisions
+
+- Prepared a `showName` flag in the scoresheet presenter so the Angular template remains a render-only view of the precomputed model.
+- Tracked displayed players across each innings and rendered names on the first row where each player appears, including lane replacements.
+
+### Gotchas
+
+- A player can have multiple notation entries in one over when a wicket and replacement occur within that over; each newly entering player gets a header in the same lane.
+
+### Test coverage areas
+
+- Presenter coverage verifies initial names, omitted repeated names, and replacement-batter headers.
+- Component coverage verifies entry headers in the DOM while preserving side-by-side lane rendering.
+
 ## Task: Use counted extra symbols in the scoresheet
 
 ### Title

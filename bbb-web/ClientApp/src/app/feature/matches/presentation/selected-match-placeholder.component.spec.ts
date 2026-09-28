@@ -253,10 +253,13 @@ describe('SelectedMatchPlaceholderComponent', () => {
 
     expect(batterCells(rows[0])[0].textContent).toContain('BM Duckett');
     expect(batterCells(rows[0])[1].textContent).toContain('JG Bethell');
-    expect(batterCells(rows[1])[0].textContent).toContain('BM Duckett');
-    expect(batterCells(rows[1])[1].textContent).toContain('JG Bethell');
-    expect(batterCells(rows[2])[0].textContent).toContain('BM Duckett');
+    expect(batterCells(rows[1])[0].textContent).not.toContain('BM Duckett');
+    expect(batterCells(rows[1])[1].textContent).not.toContain('JG Bethell');
+    expect(batterCells(rows[2])[0].textContent).not.toContain('BM Duckett');
     expect(batterCells(rows[2])[1].textContent).toContain('H Brook');
+    expect(rows[0].querySelectorAll('.matrix-player-header')).toHaveSize(2);
+    expect(rows[1].querySelectorAll('.matrix-player-header')).toHaveSize(0);
+    expect(rows[2].querySelectorAll('.matrix-player-header')).toHaveSize(1);
   });
 });
 
