@@ -1,5 +1,65 @@
 # Project Memory
 
+## Task: Add Cricsheet data retrieval project
+
+### Title
+
+Add the `bbb-get-cricsheet-data` Kotlin command-line project
+
+### Date/time completed
+
+2026-09-28 16:07
+
+### What was shipped
+
+- Registered a standalone Gradle application for future Cricsheet data retrieval.
+- Added Commons CLI support for help, version, and output-directory arguments.
+- Added shared logging support with console and rolling-file Logback appenders.
+
+### Key decisions
+
+- Kept retrieval behavior out of this initial skeleton so source and network requirements can be defined separately.
+- Reused the existing `bbb-update-database` CLI conventions and `bbb-shared` logging delegate, with a module-local runtime configuration.
+
+### Gotchas
+
+- Running the application with a non-help command currently logs the selected output directory but does not retrieve data yet.
+
+### Test coverage areas
+
+- Command-line parsing covers help, version, default/custom output directories, and unknown options.
+- The new module is included in the repository-wide Gradle verification.
+
+## Task: Distinguish female team names
+
+### Title
+
+Append `Women` to female team names during database updates
+
+### Date/time completed
+
+2026-09-28 14:44
+
+### What was shipped
+
+- Female team names now receive a ` Women` suffix when written by `bbb-update-database`.
+- Team names remain unchanged for Women's Cricket Super League and Women's T20 Challenge matches.
+- The normalized names are used consistently for team, innings, toss, and result references.
+
+### Key decisions
+
+- Competition exceptions are recognized from both the configured card directory and the JSON event name.
+- Existing names ending in ` Women` are not suffixed again.
+
+### Gotchas
+
+- The JSON team names are also used in later lookup paths, so changing only the `dim_team` insert would break female match processing.
+
+### Test coverage areas
+
+- Regression tests cover ordinary female matches and both excluded competitions.
+- The full Gradle `clean check` suite passed across all modules.
+
 ## Task: Show batter names only when they enter
 
 ### Title

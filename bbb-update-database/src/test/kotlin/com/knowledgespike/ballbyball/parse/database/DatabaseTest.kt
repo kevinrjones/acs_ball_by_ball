@@ -6,6 +6,7 @@ import com.knowledgespike.ballbyball.parse.parser.structure.PowerPlays
 import com.knowledgespike.ballbyball.parse.parser.structure.By
 import com.knowledgespike.ballbyball.parse.parser.structure.CricSheet
 import com.knowledgespike.ballbyball.parse.parser.structure.Delivery
+import com.knowledgespike.ballbyball.parse.parser.structure.Event
 import com.knowledgespike.ballbyball.parse.parser.structure.Info
 import com.knowledgespike.ballbyball.parse.parser.structure.Innings
 import com.knowledgespike.ballbyball.parse.parser.structure.Meta
@@ -29,6 +30,44 @@ import strikt.assertions.isEqualTo
 import java.nio.file.Files
 
 class DatabaseTest {
+    @Test
+    fun `given female match outside excluded competitions when match is written then Women is appended to team names`() {
+        val base = cricSheetWithFielder()
+        val sql = writeMatchAndReadSql(
+            base.copy(
+                info = base.info.copy(gender = "female", event = Event("County Championship"))
+            )
+        )
+
+        expectThat(sql).contains("'Home Women'")
+        expectThat(sql).contains("'Away Women'")
+    }
+
+    @Test
+    fun `given female match in Women's Cricket Super League when match is written then team names remain unchanged`() {
+        val base = cricSheetWithFielder()
+        val sql = writeMatchAndReadSql(
+            base.copy(info = base.info.copy(gender = "female", event = Event("Women's Cricket Super League"))),
+            competitionName = "Women's Cricket Super League"
+        )
+
+        expectThat(sql).contains("'Home'")
+        expectThat(sql).contains("'Away'")
+        expectThat(sql.contains("'Home Women'")).isEqualTo(false)
+    }
+
+    @Test
+    fun `given female match in Women's T20 Challenge when match is written then team names remain unchanged`() {
+        val base = cricSheetWithFielder()
+        val sql = writeMatchAndReadSql(
+            base.copy(info = base.info.copy(gender = "female", event = Event("Women's T20 Challenge"))),
+            competitionName = "Women's T20 Challenge"
+        )
+
+        expectThat(sql).contains("'Home'")
+        expectThat(sql).contains("'Away'")
+        expectThat(sql.contains("'Home Women'")).isEqualTo(false)
+    }
     @Test
     fun `given wicket fielder when match is written then fielder bridge row is emitted`() {
         val output = Files.createTempFile("warehouse", ".sql")
@@ -171,6 +210,18 @@ class DatabaseTest {
             cricSheet
         )
         expectThat(officials.firstOrNull()?.id).isEqualTo("non-striker-id")
+    }
+
+    private fun writeMatchAndReadSql(cricSheet: CricSheet, competitionName: String = "match"): String {
+        val output = Files.createTempFile("warehouse", ".sql")
+        SqlScriptOutputAdapter(output).use { adapter ->
+            Database(adapter).writeMatch(
+                fileName = "match.json",
+                cricSheet = cricSheet,
+                cardDirectoryData = CardDirectoryData("matches", competitionName, "t20")
+            )
+        }
+        return Files.readString(output)
     }
 
     private fun cricSheetWithPowerplays(): CricSheet {
