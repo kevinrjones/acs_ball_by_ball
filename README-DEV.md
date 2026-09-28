@@ -55,6 +55,19 @@ Display the parser command-line help:
 ./gradlew :bbb-update-database:run --no-daemon --args="-h"
 ```
 
+Display the Cricsheet retrieval application's command-line help:
+
+```bash
+./gradlew :bbb-get-cricsheet-data:run --no-daemon --args="--help"
+```
+
+Run its initial command-line skeleton with an output directory:
+
+```bash
+./gradlew :bbb-get-cricsheet-data:run --no-daemon \
+  --args="--run --output-directory data/cricsheet"
+```
+
 Check dependency updates and refresh the version catalog when required:
 
 ```bash

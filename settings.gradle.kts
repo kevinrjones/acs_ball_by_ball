@@ -43,6 +43,7 @@ dependencyResolutionManagement {
 rootProject.name = "BallByBall"
 
 listOf(
+    "bbb-get-cricsheet-data",
     "bbb-update-database",
     "bbb-shared",
     "bbb-api",

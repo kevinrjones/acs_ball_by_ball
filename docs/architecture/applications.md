@@ -2,17 +2,24 @@
 
 ## Scope
 
-The repository contains two Ktor applications alongside the existing data
-loader:
+The repository contains two Ktor applications and two command-line
+applications alongside the shared contracts module:
 
-| Module    | Responsibility                                                                | Default port |
-|-----------|-------------------------------------------------------------------------------|--------------|
-| `bbb-api` | Read warehouse data through JOOQ, verify JWT bearer tokens, expose REST API   | `8081`       |
-| `bbb-web` | Host Angular SPA, handle OIDC BFF login/logout sessions, proxy secure requests| `9999`       |
+| Module                  | Responsibility                                                                  | Default port |
+|-------------------------|---------------------------------------------------------------------------------|--------------|
+| `bbb-api`               | Read warehouse data through JOOQ, verify JWT bearer tokens, expose REST API     | `8081`       |
+| `bbb-web`               | Host Angular SPA, handle OIDC BFF login/logout sessions, proxy secure requests | `9999`       |
+| `bbb-update-database`   | Parse local Cricsheet scorecards and write warehouse output                     | —            |
+| `bbb-get-cricsheet-data`| Command-line entry point for retrieving Cricsheet data                          | —            |
 
 Both applications use the shared `bbb-shared` module for serialized HTTP
 contracts. Gradle module registration is kept in `settings.gradle.kts`, and all
 versions are declared in `gradle/libs.versions.toml`.
+
+`bbb-get-cricsheet-data` is intentionally a standalone command-line application.
+Its initial skeleton owns command-line parsing, logging, and the future
+retrieval workflow; it does not make network requests until the retrieval
+requirements are defined.
 
 ## Runtime flow & Authentication Architecture
 
