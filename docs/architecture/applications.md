@@ -17,9 +17,30 @@ contracts. Gradle module registration is kept in `settings.gradle.kts`, and all
 versions are declared in `gradle/libs.versions.toml`.
 
 `bbb-get-cricsheet-data` is intentionally a standalone command-line application.
-Its initial skeleton owns command-line parsing, logging, and the future
-retrieval workflow; it does not make network requests until the retrieval
-requirements are defined.
+It discovers JSON archive links from the Cricsheet matches page, downloads the
+archives and the register CSV files, validates the downloaded artifacts, and
+extracts the match JSON into a configured local directory. It does not share
+the API or web runtime and uses the JDK HTTP client with an injectable transport
+seam for deterministic tests.
+
+### Cricsheet retrieval workflow
+
+The application requires an absolute base directory and relative data and
+names directories. It rejects existing target directories unless `--force` is
+provided, then creates missing directories and processes the sources
+sequentially:
+
+1. Fetch the matches page and select HTTPS Cricsheet links ending in
+   `_json.zip`, excluding `all_json.zip`.
+2. Download each archive to `data/zips` using retries and atomic replacement.
+3. Validate and stage each ZIP before safely committing its extracted files to
+   the data directory.
+4. Download and validate `people.csv` and `names.csv` from the Cricsheet
+   register into the names directory.
+
+Failures are logged per artifact while independent downloads continue. The
+process returns `0` only when all artifacts succeed, `1` for operational or
+partial failures, and `2` for invalid command-line arguments.
 
 ## Runtime flow & Authentication Architecture
 

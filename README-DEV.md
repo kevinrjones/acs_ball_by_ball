@@ -61,12 +61,31 @@ Display the Cricsheet retrieval application's command-line help:
 ./gradlew :bbb-get-cricsheet-data:run --no-daemon --args="--help"
 ```
 
-Run its initial command-line skeleton with an output directory:
+Download the Cricsheet JSON archives and register CSV files:
 
 ```bash
 ./gradlew :bbb-get-cricsheet-data:run --no-daemon \
-  --args="--run --output-directory data/cricsheet"
+  --args="--base-directory /path/to/data --data-directory cricsheet --names-directory register"
 ```
+
+The command creates `/path/to/data/cricsheet/zips`, extracts each JSON archive
+into `/path/to/data/cricsheet/<archive-name-without-.zip>`, and stores
+`people.csv` and `names.csv` in `/path/to/data/register`. For example,
+`bbl_json.zip` is extracted into `/path/to/data/cricsheet/bbl_json`.
+`--names-directory` defaults to the data directory; use `--force` when either
+target directory already exists. The base directory must be absolute, while
+the data and names directories must be relative to it.
+
+The retrieval options are:
+
+| Option | Required | Description |
+|---|---|---|
+| `-h`, `--help` | No | Print command-line help. |
+| `--version` | No | Print the application version. |
+| `-bd`, `--base-directory` | Yes | Absolute root directory for the download. |
+| `-dd`, `--data-directory` | Yes | Relative directory for JSON match data and downloaded ZIPs. |
+| `-nd`, `--names-directory` | No | Relative directory for `people.csv` and `names.csv`; defaults to `dd`. |
+| `-f`, `--force` | No | Reuse existing target directories and overwrite managed files without deleting unrelated files. |
 
 Check dependency updates and refresh the version catalog when required:
 

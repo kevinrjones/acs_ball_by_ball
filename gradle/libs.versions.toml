@@ -41,6 +41,7 @@ flyway = { module = "org.flywaydb:flyway-mysql", version.ref = "flyway-version" 
 flyway-postgres = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway-version" }
 hikari-cp = { module = "com.zaxxer:HikariCP", version.ref = "hikari-version" }
 jooq = { module = "org.jooq:jooq", version.ref = "jooq-version" }
+jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup-version" }
 jwks-rsa = { module = "com.auth0:jwks-rsa", version.ref = "auth0-jwks-rsa-version" }
 junit-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit-version" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit-version" }

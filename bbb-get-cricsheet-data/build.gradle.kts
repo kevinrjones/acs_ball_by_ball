@@ -11,6 +11,7 @@ version = "1.0"
 dependencies {
     implementation(project(":bbb-shared"))
     implementation(libs.commons.cli)
+    implementation(libs.jsoup)
     implementation(libs.logback.classic)
     implementation(libs.logback.core)
 

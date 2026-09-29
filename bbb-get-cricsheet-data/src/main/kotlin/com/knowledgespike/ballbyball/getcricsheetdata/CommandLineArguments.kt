@@ -3,6 +3,7 @@ package com.knowledgespike.ballbyball.getcricsheetdata
 import org.apache.commons.cli.DefaultParser
 import org.apache.commons.cli.Option
 import org.apache.commons.cli.Options
+import org.apache.commons.cli.ParseException
 import java.nio.file.Path
 
 sealed interface ApplicationCommand {
@@ -10,12 +11,15 @@ sealed interface ApplicationCommand {
 
     data object Version : ApplicationCommand
 
-    data class Run(val outputDirectory: Path) : ApplicationCommand
+    data class Run(
+        val baseDirectory: Path,
+        val dataDirectory: Path,
+        val namesDirectory: Path,
+        val force: Boolean
+    ) : ApplicationCommand
 }
 
 object CommandLineArguments {
-    const val DEFAULT_OUTPUT_DIRECTORY = "data/cricsheet"
-
     fun parse(args: Array<String>): ApplicationCommand {
         if (args.isEmpty() || args.any { it == "-h" || it == "--help" }) {
             return ApplicationCommand.Help
@@ -25,30 +29,91 @@ object CommandLineArguments {
         if (commandLine.hasOption("version")) {
             return ApplicationCommand.Version
         }
-        if (!commandLine.hasOption("run") && !commandLine.hasOption("output-directory")) {
-            return ApplicationCommand.Help
-        }
 
-        val outputDirectory = commandLine.getOptionValue(
-            "output-directory",
-            DEFAULT_OUTPUT_DIRECTORY
+        val baseDirectory = absoluteBaseDirectory(commandLine.requiredValue("base-directory"))
+        val dataDirectoryName = commandLine.requiredValue("data-directory")
+        val dataDirectory = childDirectory(baseDirectory, dataDirectoryName, "--data-directory")
+        val namesDirectory = childDirectory(
+            baseDirectory,
+            commandLine.getOptionValue("names-directory", dataDirectoryName),
+            "--names-directory"
         )
-        require(outputDirectory.isNotBlank()) { "--output-directory must not be blank" }
 
-        return ApplicationCommand.Run(Path.of(outputDirectory))
+        return ApplicationCommand.Run(
+            baseDirectory = baseDirectory,
+            dataDirectory = dataDirectory,
+            namesDirectory = namesDirectory,
+            force = commandLine.hasOption("force")
+        )
     }
 
     fun options(): Options = Options().apply {
         addOption("h", "help", false, "print this message")
         addOption(Option.builder().longOpt("version").desc("print the application version").get())
-        addOption(Option.builder().longOpt("run").desc("start the retrieval workflow").get())
         addOption(
-            Option.builder("o")
-                .longOpt("output-directory")
+            Option.builder("bd")
+                .longOpt("base-directory")
                 .hasArg()
                 .argName("directory")
-                .desc("directory where Cricsheet data will be stored (default: $DEFAULT_OUTPUT_DIRECTORY)")
+                .desc("absolute root directory for the download")
+                .get()
+        )
+        addOption(
+            Option.builder("dd")
+                .longOpt("data-directory")
+                .hasArg()
+                .argName("directory")
+                .desc("relative directory for match data")
+                .get()
+        )
+        addOption(
+            Option.builder("nd")
+                .longOpt("names-directory")
+                .hasArg()
+                .argName("directory")
+                .desc("relative directory for people.csv and names.csv (default: data directory)")
+                .get()
+        )
+        addOption(
+            Option.builder("f")
+                .longOpt("force")
+                .desc("allow existing data and names directories")
                 .get()
         )
     }
+
+    private fun absoluteBaseDirectory(value: String): Path {
+        val path = pathValue(value, "--base-directory")
+        if (!path.isAbsolute) {
+            throw ParseException("--base-directory must be an absolute path")
+        }
+        return path.normalize()
+    }
+
+    private fun childDirectory(baseDirectory: Path, value: String, option: String): Path {
+        val path = pathValue(value, option)
+        if (path.isAbsolute) {
+            throw ParseException("$option must be relative to --base-directory")
+        }
+
+        val resolved = baseDirectory.resolve(path).normalize()
+        if (!resolved.startsWith(baseDirectory)) {
+            throw ParseException("$option must resolve within --base-directory")
+        }
+        return resolved
+    }
+
+    private fun pathValue(value: String?, option: String): Path {
+        if (value.isNullOrBlank()) {
+            throw ParseException("$option must not be blank")
+        }
+        return try {
+            Path.of(value)
+        } catch (exception: RuntimeException) {
+            throw ParseException("$option is not a valid path: ${exception.message}")
+        }
+    }
+
+    private fun org.apache.commons.cli.CommandLine.requiredValue(option: String): String =
+        getOptionValue(option) ?: throw ParseException("--$option is required")
 }

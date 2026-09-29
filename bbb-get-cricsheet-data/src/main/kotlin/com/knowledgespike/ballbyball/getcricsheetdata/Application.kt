@@ -31,9 +31,23 @@ object Application {
             }
 
             is ApplicationCommand.Run -> {
-                log.info("Starting {} with output directory {}", APPLICATION_NAME, command.outputDirectory)
-                log.info("Cricsheet data retrieval is not implemented yet")
-                0
+                log.info(
+                    "Starting {} with base directory {}, data directory {}, names directory {}, force {}",
+                    APPLICATION_NAME,
+                    command.baseDirectory,
+                    command.dataDirectory,
+                    command.namesDirectory,
+                    command.force
+                )
+                val result = CricsheetDataRetriever().retrieve(
+                    RetrievalConfiguration(
+                        baseDirectory = command.baseDirectory,
+                        dataDirectory = command.dataDirectory,
+                        namesDirectory = command.namesDirectory,
+                        force = command.force
+                    )
+                )
+                if (result.succeeded) 0 else 1
             }
         }
     } catch (exception: ParseException) {
@@ -48,7 +62,7 @@ object Application {
     private fun printHelp() {
         HelpFormatter.builder().get().printHelp(
             APPLICATION_NAME,
-            "Prepare to retrieve Cricsheet data",
+            "Download Cricsheet JSON match data and register CSV files",
             CommandLineArguments.options(),
             "",
             true

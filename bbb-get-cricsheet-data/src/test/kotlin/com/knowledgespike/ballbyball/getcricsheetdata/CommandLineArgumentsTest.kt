@@ -24,15 +24,78 @@ class CommandLineArgumentsTest {
     }
 
     @Test
-    fun `given output directory when parsed then run command contains the directory`() {
-        expectThat(CommandLineArguments.parse(arrayOf("--output-directory", "/tmp/cricsheet")))
-            .isEqualTo(ApplicationCommand.Run(Path.of("/tmp/cricsheet")))
+    fun `given required directories when parsed then run command contains resolved directories`() {
+        expectThat(
+            CommandLineArguments.parse(
+                arrayOf(
+                    "--base-directory", "/tmp/cricsheet-root",
+                    "--data-directory", "matches",
+                    "--names-directory", "register"
+                )
+            )
+        ).isEqualTo(
+            ApplicationCommand.Run(
+                baseDirectory = Path.of("/tmp/cricsheet-root"),
+                dataDirectory = Path.of("/tmp/cricsheet-root/matches"),
+                namesDirectory = Path.of("/tmp/cricsheet-root/register"),
+                force = false
+            )
+        )
     }
 
     @Test
-    fun `given run without output directory when parsed then default directory is used`() {
-        expectThat(CommandLineArguments.parse(arrayOf("--run")))
-            .isEqualTo(ApplicationCommand.Run(Path.of(CommandLineArguments.DEFAULT_OUTPUT_DIRECTORY)))
+    fun `given names directory omitted when parsed then data directory is used`() {
+        expectThat(
+            CommandLineArguments.parse(
+                arrayOf("-bd", "/tmp/cricsheet-root", "-dd", "matches")
+            )
+        ).isEqualTo(
+            ApplicationCommand.Run(
+                baseDirectory = Path.of("/tmp/cricsheet-root"),
+                dataDirectory = Path.of("/tmp/cricsheet-root/matches"),
+                namesDirectory = Path.of("/tmp/cricsheet-root/matches"),
+                force = false
+            )
+        )
+    }
+
+    @Test
+    fun `given force flag when parsed then force is enabled`() {
+        expectThat(
+            CommandLineArguments.parse(
+                arrayOf("-bd", "/tmp/cricsheet-root", "-dd", "matches", "-f")
+            )
+        ).isEqualTo(
+            ApplicationCommand.Run(
+                baseDirectory = Path.of("/tmp/cricsheet-root"),
+                dataDirectory = Path.of("/tmp/cricsheet-root/matches"),
+                namesDirectory = Path.of("/tmp/cricsheet-root/matches"),
+                force = true
+            )
+        )
+    }
+
+    @Test
+    fun `given traversal directory when parsed then parsing fails`() {
+        assertThrows<ParseException> {
+            CommandLineArguments.parse(
+                arrayOf("-bd", "/tmp/cricsheet-root", "-dd", "../outside")
+            )
+        }
+    }
+
+    @Test
+    fun `given relative base directory when parsed then parsing fails`() {
+        assertThrows<ParseException> {
+            CommandLineArguments.parse(arrayOf("-bd", "cricsheet-root", "-dd", "matches"))
+        }
+    }
+
+    @Test
+    fun `given missing required directory when parsed then parsing fails`() {
+        assertThrows<ParseException> {
+            CommandLineArguments.parse(arrayOf("-bd", "/tmp/cricsheet-root"))
+        }
     }
 
     @Test

@@ -1,5 +1,67 @@
 # Project Memory
 
+## Task: Group extracted Cricsheet archives by archive name
+
+### Title
+
+Extract each Cricsheet archive into its own named directory
+
+### Date/time completed
+
+2026-09-29 21:24
+
+### What was shipped
+
+- JSON archive contents are now extracted beneath a data-directory child named after the archive without its `.zip` suffix.
+- Added regression coverage for the archive-specific extraction layout.
+- Updated the developer runbook with the resulting directory structure.
+
+### Key decisions
+
+- `bbl_json.zip` is extracted into `bbl_json`, preserving separation between archive datasets.
+- Existing staged extraction, ZIP safety validation, and replacement behavior remain unchanged.
+
+### Gotchas
+
+- Consumers must look below the archive-named directories rather than directly below the configured data directory.
+
+### Test coverage areas
+
+- Successful retrieval verifies both archive-named directories and their extracted files.
+
+## Task: Implement Cricsheet bulk retrieval
+
+### Title
+
+Download Cricsheet JSON archives and register CSV files
+
+### Date/time completed
+
+2026-09-29 20:52
+
+### What was shipped
+
+- Added required `bd` and `dd` CLI options, optional `nd`, and `--force` with safe relative-path validation.
+- Implemented sequential discovery and download of Cricsheet `_json.zip` archives, excluding `all_json.zip`.
+- Implemented atomic ZIP/CSV writes, staged safe extraction, register-header validation, retries, per-file logging, and partial-failure reporting.
+- Added deterministic parser, workflow, ZIP-safety, and HTTP-retry tests.
+
+### Key decisions
+
+- `bd` must be absolute; `dd` and `nd` resolve beneath it, with `nd` defaulting to `dd`.
+- Existing target directories require `--force`; force overwrites managed files but does not delete unrelated content.
+- Register files are fetched from `/register/people.csv` and `/register/names.csv`; network tests use local fixtures and an injectable transport.
+
+### Gotchas
+
+- A successful run requires every discovered archive and both register CSVs to pass validation; partial runs return exit status `1`.
+- The command is option-driven and no longer accepts the old `--run`/`--output-directory` skeleton options.
+
+### Test coverage areas
+
+- CLI requirements, aliases, defaults, absolute/relative path validation, and traversal rejection.
+- Archive filtering, deterministic order, atomic outputs, staged extraction, ZIP-slip rejection, CSV validation, force behavior, failure continuation, and transient HTTP retries.
+
 ## Task: Add Cricsheet data retrieval project
 
 ### Title
