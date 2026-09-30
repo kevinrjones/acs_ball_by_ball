@@ -171,3 +171,73 @@ Contributor and architecture documentation explain how retrieval and database up
 - Reuse the validated relative-path resolver for CSV output.
 - Reject absolute and traversal-escaping CSV output paths.
 - Add parser/configuration regression coverage and update contributor documentation.
+
+# Follow-on Requirements: Shared Match Schema
+
+### Overview & Goals
+Introduce a source-neutral shared JVM schema and a Cricsheet parser so database updates consume normalized match documents rather than raw Cricsheet JSON.
+
+### Functional Requirements
+- Add a `bbb-cli-shared` JVM library containing the source-neutral `BbbMatchData` document model, including `match`, `innings`, and nested types, but excluding Cricsheet-specific `meta`.
+- Use Kotlin-compatible property names throughout `BbbMatchData`; do not use `@SerialName` annotations in the shared schema. Serialized output uses the Kotlin camelCase property names.
+- Add a `bbb-parse-cricsheet` JVM CLI that owns raw Cricsheet input models and converts every input JSON document to one shared-schema JSON document.
+- The parser accepts required absolute `-bd`/`--base-directory`, required relative `-i`/`--input`, and required relative `-o`/`--output` paths resolved beneath `bd`.
+- The parser recursively processes `.json` files and mirrors their relative paths below the output directory.
+- Preserve every source field except Cricsheet `meta`; expose the source `info` object as shared-schema `match`, with `match.matchType` using the existing warehouse mapping and adding the female `w` prefix.
+- Reject unsupported Cricsheet match types, continue processing other files, report failures, and return a non-zero result for any failed input.
+- Replace managed parser outputs atomically while preserving stale and unrelated output files.
+- Update `bbb-update-database` to consume only `BbbMatchData` JSON and depend on `bbb-cli-shared`; retain its `--nightly` flag for command compatibility.
+
+### Key Decisions
+- Keep raw Cricsheet models in `bbb-parse-cricsheet`; keep the shared module source-neutral.
+- Keep `bbb-update-database` responsible for database output only; move Cricsheet-to-warehouse match-type conversion into the parser.
+- Use one JSON output per input document so full archive directories and flat nightly directories remain supported without directory metadata.
+
+### Testing
+- Add shared serialization tests proving Kotlin property names and complete-document round trips.
+- Add parser tests for recursive mirroring, match-type conversion, unsupported types, atomic replacement, stale-file preservation, path validation, and continue-and-report behavior.
+- Add updater tests proving shared-schema input is decoded and raw Cricsheet field names are no longer accepted as the updater contract.
+- Run module tests, `./gradlew clean check --no-daemon`, and `git diff --check`.
+
+### ✓ Step 10: Add the shared BbbMatchData schema
+Create the JVM `bbb-cli-shared` library and define the complete Kotlin-compatible shared match document.
+
+- Register `bbb-cli-shared` in `settings.gradle.kts` and configure Kotlin serialization/JVM 21 conventions.
+- Add `BbbMatchData` and its nested immutable serializable types without `@SerialName` annotations.
+- Add focused serialization and round-trip tests.
+
+### ✓ Step 11: Add the Cricsheet parser CLI
+Create `bbb-parse-cricsheet` with raw Cricsheet models, path-safe CLI parsing, recursive conversion, and atomic output.
+
+- Copy the raw Cricsheet model graph into the parser, retaining source-key annotations needed for decoding.
+- Convert raw documents to `BbbMatchData`, including the existing warehouse match-type mapping and strict unknown-type rejection.
+- Implement recursive input discovery, relative output mirroring, continue-and-report failures, and atomic replacement.
+- Add parser CLI, conversion, filesystem, and failure-path tests.
+
+### ✓ Step 12: Migrate bbb-update-database to the shared schema
+The updater reads normalized parser output and no longer owns or decodes the raw Cricsheet schema.
+
+- Replace updater model imports with `bbb-cli-shared` types.
+- Remove the updater’s Cricsheet-specific serialization model and match-type mapping.
+- Preserve database output behavior, source-path recording, recursive file discovery, and `--nightly` compatibility.
+- Add tests for shared-schema decoding and full/nightly path compatibility.
+
+### ✓ Step 13: Document the normalized data pipeline
+Document the parser and shared-schema workflow for contributors and scheduled jobs.
+
+- Update `README-DEV.md`, `docs/architecture/applications.md`, and `docs/architecture/database.md` with the retrieval → parser → updater flow.
+- Record the schema ownership, field naming, mapping, and failure decisions in `docs/project_memory.md`.
+- Add the new modules and command examples to contributor navigation.
+
+### ✓ Step 14: Validate the schema migration
+All new modules and existing applications build and test successfully.
+
+- Run `./gradlew :bbb-cli-shared:test :bbb-parse-cricsheet:test :bbb-update-database:test --no-daemon`.
+- Run `./gradlew clean check --no-daemon` and `git diff --check`.
+
+### ✓ Step 15: Make the shared schema source-neutral
+Remove Cricsheet-only `meta` from normalized JSON and expose normalized match details under `match`.
+
+- Update `BbbMatchData`, parser conversion, updater decoding, tests, and documentation for the revised contract.
+- Preserve raw Cricsheet `meta`/`info` decoding only inside `bbb-parse-cricsheet`.
+- Run the shared, parser, and updater tests plus repository checks.

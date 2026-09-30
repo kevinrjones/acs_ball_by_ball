@@ -46,6 +46,8 @@ listOf(
     "bbb-get-cricsheet-data",
     "bbb-update-database",
     "bbb-shared",
+    "bbb-cli-shared",
+    "bbb-parse-cricsheet",
     "bbb-api",
     "bbb-web",
 ).forEach { projectName ->

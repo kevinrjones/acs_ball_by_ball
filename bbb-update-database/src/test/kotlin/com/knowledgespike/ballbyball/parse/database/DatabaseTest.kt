@@ -1,23 +1,20 @@
 package com.knowledgespike.ballbyball.parse.database
 
 import com.knowledgespike.ballbyball.parse.database.adapter.sqlite.SqlScriptOutputAdapter
-import com.knowledgespike.ballbyball.parse.models.CardDirectoryData
-import com.knowledgespike.ballbyball.parse.models.cardDirectoryDataForMatch
-import com.knowledgespike.ballbyball.parse.parser.structure.PowerPlays
-import com.knowledgespike.ballbyball.parse.parser.structure.By
-import com.knowledgespike.ballbyball.parse.parser.structure.CricSheet
-import com.knowledgespike.ballbyball.parse.parser.structure.Delivery
-import com.knowledgespike.ballbyball.parse.parser.structure.Event
-import com.knowledgespike.ballbyball.parse.parser.structure.Info
-import com.knowledgespike.ballbyball.parse.parser.structure.Innings
-import com.knowledgespike.ballbyball.parse.parser.structure.Meta
-import com.knowledgespike.ballbyball.parse.parser.structure.Over
-import com.knowledgespike.ballbyball.parse.parser.structure.Outcome
-import com.knowledgespike.ballbyball.parse.parser.structure.PlayersRegistry
-import com.knowledgespike.ballbyball.parse.parser.structure.Runs
-import com.knowledgespike.ballbyball.parse.parser.structure.Toss
-import com.knowledgespike.ballbyball.parse.parser.structure.Wickets
-import com.knowledgespike.ballbyball.parse.parser.structure.Player
+import com.knowledgespike.ballbyball.clishared.schema.BbbMatchData
+import com.knowledgespike.ballbyball.clishared.schema.By
+import com.knowledgespike.ballbyball.clishared.schema.Delivery
+import com.knowledgespike.ballbyball.clishared.schema.Event
+import com.knowledgespike.ballbyball.clishared.schema.Info
+import com.knowledgespike.ballbyball.clishared.schema.Innings
+import com.knowledgespike.ballbyball.clishared.schema.Outcome
+import com.knowledgespike.ballbyball.clishared.schema.Over
+import com.knowledgespike.ballbyball.clishared.schema.Player
+import com.knowledgespike.ballbyball.clishared.schema.PlayersRegistry
+import com.knowledgespike.ballbyball.clishared.schema.PowerPlays
+import com.knowledgespike.ballbyball.clishared.schema.Runs
+import com.knowledgespike.ballbyball.clishared.schema.Toss
+import com.knowledgespike.ballbyball.clishared.schema.Wickets
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -35,10 +32,10 @@ class DatabaseTest {
     fun `given female t20 match when written then warehouse match type is wtt`() {
         val base = cricSheetWithFielder()
         val cricSheet = base.copy(
-            info = base.info.copy(
+            match = base.match.copy(
                 event = Event("Women's T20 Challenge"),
                 gender = "female",
-                matchType = "T20"
+                matchType = "wtt"
             )
         )
         val output = Files.createTempFile("warehouse", ".sql")
@@ -46,8 +43,7 @@ class DatabaseTest {
         SqlScriptOutputAdapter(output).use { adapter ->
             Database(adapter).writeMatch(
                 fileName = "match.json",
-                cricSheet = cricSheet,
-                cardDirectoryData = cardDirectoryDataForMatch(cricSheet)
+                cricSheet = cricSheet
             )
         }
 
@@ -59,7 +55,7 @@ class DatabaseTest {
         val base = cricSheetWithFielder()
         val sql = writeMatchAndReadSql(
             base.copy(
-                info = base.info.copy(gender = "female", event = Event("County Championship"))
+                match = base.match.copy(gender = "female", event = Event("County Championship"))
             )
         )
 
@@ -71,7 +67,7 @@ class DatabaseTest {
     fun `given female match in Women's Cricket Super League when match is written then team names remain unchanged`() {
         val base = cricSheetWithFielder()
         val sql = writeMatchAndReadSql(
-            base.copy(info = base.info.copy(gender = "female", event = Event("Women's Cricket Super League"))),
+            base.copy(match = base.match.copy(gender = "female", event = Event("Women's Cricket Super League"))),
             competitionName = "Women's Cricket Super League"
         )
 
@@ -84,7 +80,7 @@ class DatabaseTest {
     fun `given female match in Women's T20 Challenge when match is written then team names remain unchanged`() {
         val base = cricSheetWithFielder()
         val sql = writeMatchAndReadSql(
-            base.copy(info = base.info.copy(gender = "female", event = Event("Women's T20 Challenge"))),
+            base.copy(match = base.match.copy(gender = "female", event = Event("Women's T20 Challenge"))),
             competitionName = "Women's T20 Challenge"
         )
 
@@ -99,8 +95,7 @@ class DatabaseTest {
         SqlScriptOutputAdapter(output).use { adapter ->
             Database(adapter).writeMatch(
                 fileName = "match.json",
-                cricSheet = cricSheetWithFielder(Player(name = "Fielder")),
-                cardDirectoryData = CardDirectoryData("matches", "match", "t20")
+                cricSheet = cricSheetWithFielder(Player(name = "Fielder"))
             )
         }
 
@@ -122,8 +117,7 @@ class DatabaseTest {
         SqlScriptOutputAdapter(output).use { adapter ->
             Database(adapter).writeMatch(
                 fileName = "match.json",
-                cricSheet = cricSheetWithFielders(listOf(Player(name = "Fielder"), Player(name = "Fielder"))),
-                cardDirectoryData = CardDirectoryData("matches", "match", "t20")
+                cricSheet = cricSheetWithFielders(listOf(Player(name = "Fielder"), Player(name = "Fielder")))
             )
         }
 
@@ -138,8 +132,7 @@ class DatabaseTest {
         SqlScriptOutputAdapter(output).use { adapter ->
             Database(adapter).writeMatch(
                 fileName = "match.json",
-                cricSheet = cricSheetWithFielder(Player(name = null, substitute = true)),
-                cardDirectoryData = CardDirectoryData("matches", "match", "t20")
+                cricSheet = cricSheetWithFielder(Player(name = null, substitute = true))
             )
         }
 
@@ -161,8 +154,7 @@ class DatabaseTest {
             SqlScriptOutputAdapter(output).use { adapter ->
                 Database(adapter).writeMatch(
                     fileName = "match.json",
-                    cricSheet = cricSheetWithFielder(Player(name = null, substitute = null)),
-                    cardDirectoryData = CardDirectoryData("matches", "match", "t20")
+                    cricSheet = cricSheetWithFielder(Player(name = null, substitute = null))
                 )
             }
         }
@@ -194,8 +186,7 @@ class DatabaseTest {
         SqlScriptOutputAdapter(output).use { adapter ->
             Database(adapter).writeMatch(
                 fileName = "match.json",
-                cricSheet = cricSheetWithPowerplays(),
-                cardDirectoryData = CardDirectoryData("matches", "match", "t20")
+                cricSheet = cricSheetWithPowerplays()
             )
         }
 
@@ -223,7 +214,7 @@ class DatabaseTest {
     fun `given valid officials and players when Translate is called then registry lookups map correctly`() {
         val cricSheet = cricSheetWithFielder()
         val players = com.knowledgespike.ballbyball.parse.parser.structure.Translate.getPlayers(
-            cricSheet.info.players,
+            cricSheet.match.players,
             cricSheet
         )
         expectThat(players["Home"]?.firstOrNull()?.id).isEqualTo("batter-id")
@@ -236,19 +227,19 @@ class DatabaseTest {
         expectThat(officials.firstOrNull()?.id).isEqualTo("non-striker-id")
     }
 
-    private fun writeMatchAndReadSql(cricSheet: CricSheet, competitionName: String = "match"): String {
+    private fun writeMatchAndReadSql(cricSheet: BbbMatchData, competitionName: String = "match"): String {
         val output = Files.createTempFile("warehouse", ".sql")
+        val matchData = cricSheet.copy(match = cricSheet.match.copy(event = Event(competitionName)))
         SqlScriptOutputAdapter(output).use { adapter ->
             Database(adapter).writeMatch(
                 fileName = "match.json",
-                cricSheet = cricSheet,
-                cardDirectoryData = CardDirectoryData("matches", competitionName, "t20")
+                cricSheet = matchData
             )
         }
         return Files.readString(output)
     }
 
-    private fun cricSheetWithPowerplays(): CricSheet {
+    private fun cricSheetWithPowerplays(): BbbMatchData {
         val base = cricSheetWithFielder()
         val inningsWithPowerplay = base.innings.map { innings ->
             innings.copy(
@@ -258,12 +249,11 @@ class DatabaseTest {
         return base.copy(innings = inningsWithPowerplay)
     }
 
-    private fun cricSheetWithFielder(fielder: Player = Player(name = "Fielder")): CricSheet =
+    private fun cricSheetWithFielder(fielder: Player = Player(name = "Fielder")): BbbMatchData =
         cricSheetWithFielders(listOf(fielder))
 
-    private fun cricSheetWithFielders(fielders: List<Player>): CricSheet = CricSheet(
-        meta = Meta("1.0", "2024-01-01", 1),
-        info = Info(
+    private fun cricSheetWithFielders(fielders: List<Player>): BbbMatchData = BbbMatchData(
+        match = Info(
             ballsPerOver = 6,
             dates = listOf("2024-01-01"),
             gender = "male",

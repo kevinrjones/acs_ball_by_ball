@@ -2,9 +2,15 @@ package com.knowledgespike.ballbyball.parse.database
 
 import com.knowledgespike.cricketarchive.InvalidStateException
 import com.knowledgespike.cricketarchive.LoggerDelegate
-import com.knowledgespike.ballbyball.parse.models.CardDirectoryData
-import com.knowledgespike.ballbyball.parse.parser.structure.*
+import com.knowledgespike.ballbyball.clishared.schema.BbbMatchData
+import com.knowledgespike.ballbyball.clishared.schema.By
+import com.knowledgespike.ballbyball.clishared.schema.Delivery
+import com.knowledgespike.ballbyball.clishared.schema.Outcome
+import com.knowledgespike.ballbyball.clishared.schema.PowerPlays
 import com.knowledgespike.ballbyball.parse.database.adapter.*
+import com.knowledgespike.ballbyball.parse.parser.structure.Person
+import com.knowledgespike.ballbyball.parse.parser.structure.Translate
+import com.knowledgespike.ballbyball.clishared.schema.Wickets
 import java.time.LocalDate
 import java.util.*
 import java.util.stream.Stream
@@ -22,7 +28,7 @@ class Database(private val outputAdapter: OutputAdapter) {
     }
 
 
-    fun writeMatch(fileName: String, cricSheet: CricSheet, cardDirectoryData: CardDirectoryData) {
+    fun writeMatch(fileName: String, cricSheet: BbbMatchData) {
         log.debug("Parsing match: {}", fileName)
         if (!shouldParse(fileName)) {
             log.info("Match already exists: {}", fileName)
@@ -30,26 +36,26 @@ class Database(private val outputAdapter: OutputAdapter) {
         }
 
         val teams = upsertTeams(
-            cricSheet.info.teams.map { teamNameForMatch(it, cricSheet, cardDirectoryData) }
+            cricSheet.match.teams.map { teamNameForMatch(it, cricSheet) }
         )
         Translate.getPeople(cricSheet).forEach { person ->
             upsertPerson(person.id, person.name, 0)
         }
 
-        val players = Translate.getPlayers(cricSheet.info.players, cricSheet)
-        val umpires = Translate.getOfficials(cricSheet.info.officials?.umpires, cricSheet)
-        val tvUmpires = Translate.getOfficials(cricSheet.info.officials?.tvUmpires, cricSheet)
-        val reserveUmpires = Translate.getOfficials(cricSheet.info.officials?.reserveUmpires, cricSheet)
-        val matchReferees = Translate.getOfficials(cricSheet.info.officials?.matchReferees, cricSheet)
-        val ground = upsertGround(cricSheet.info.venue ?: "")
-        val match = addMatchToDatabase(fileName, teams, ground, cricSheet, cardDirectoryData)
+        val players = Translate.getPlayers(cricSheet.match.players, cricSheet)
+        val umpires = Translate.getOfficials(cricSheet.match.officials?.umpires, cricSheet)
+        val tvUmpires = Translate.getOfficials(cricSheet.match.officials?.tvUmpires, cricSheet)
+        val reserveUmpires = Translate.getOfficials(cricSheet.match.officials?.reserveUmpires, cricSheet)
+        val matchReferees = Translate.getOfficials(cricSheet.match.officials?.matchReferees, cricSheet)
+        val ground = upsertGround(cricSheet.match.venue ?: "")
+        val match = addMatchToDatabase(fileName, teams, ground, cricSheet)
 
         addMatchPeople(match, players.values.flatten(), "PLAYER")
         addMatchPeople(match, umpires, "UMPIRE")
         addMatchPeople(match, tvUmpires, "TV_UMPIRE")
         addMatchPeople(match, reserveUmpires, "RESERVE_UMPIRE")
         addMatchPeople(match, matchReferees, "MATCH_REFEREE")
-        addBallByBall(fileName, match, teams, cricSheet, cardDirectoryData)
+        addBallByBall(fileName, match, teams, cricSheet)
 
         outputAdapter.commit()
     }
@@ -58,21 +64,20 @@ class Database(private val outputAdapter: OutputAdapter) {
         fileName: String,
         match: WarehouseMatch,
         teams: List<Team>,
-        cricSheet: CricSheet,
-        cardDirectoryData: CardDirectoryData
+        cricSheet: BbbMatchData
     ) {
-        val players = cricSheet.info.registry.people
-        val matchDateKey = cricSheet.info.dates.firstOrNull()?.let(::parseDate)?.let(::upsertDate)
+        val players = cricSheet.match.registry.people
+        val matchDateKey = cricSheet.match.dates.firstOrNull()?.let(::parseDate)?.let(::upsertDate)
         var inningsOrder = 0
 
         cricSheet.innings.forEachIndexed { inningsIndex, inning ->
             log.debug("Parsing innings: {}, {}", inning.team, inningsIndex)
-            val battingTeam = teams.find { it.name == teamNameForMatch(inning.team, cricSheet, cardDirectoryData) }
+            val battingTeam = teams.find { it.name == teamNameForMatch(inning.team, cricSheet) }
                 ?: throw InvalidStateException("Unknown batting team: ${inning.team}")
             val bowlingTeam = teams.firstOrNull { it.id != battingTeam.id }
                 ?: throw InvalidStateException("Could not determine bowling team for ${inning.team}")
             val innings = upsertInnings(match.key, inningsIndex + 1, battingTeam.id, bowlingTeam.id)
-            val powerplays = calculatePowerplays(inning.powerplays, cricSheet.info.ballsPerOver)
+            val powerplays = calculatePowerplays(inning.powerplays, cricSheet.match.ballsPerOver)
             var deliveryNumber = 0
 
             inning.overs.orEmpty().forEach { over ->
@@ -152,8 +157,8 @@ class Database(private val outputAdapter: OutputAdapter) {
             outputAdapter.insertDeliveryWicket(deliveryKey, wicketKey)
             val fielderKeys = mutableSetOf<Long>()
             wicket.fielders.orEmpty().forEach { fielder ->
-                val fielderKey = if (fielder.name != null) {
-                    val fielderName = fielder.name
+                val fielderName = fielder.name
+                val fielderKey = if (fielderName != null) {
                     requirePersonKey(people[fielderName], fielderName)
                 } else if (fielder.substitute == true) {
                     upsertPerson(UNKNOWN_PLAYER_ID, SUBSTITUTE_PLAYER_NAME, 0)
@@ -204,31 +209,30 @@ class Database(private val outputAdapter: OutputAdapter) {
         fileName: String,
         teamsWithId: List<Team>,
         location: Location,
-        cricSheet: CricSheet,
-        cardDirectoryData: CardDirectoryData
+        cricSheet: BbbMatchData
     ): WarehouseMatch {
-        val eventName = cricSheet.info.event?.name ?: ""
-        val eventMatch = cricSheet.info.event?.matchNumber ?: 0
-        val matchType = cardDirectoryData.matchType
-        val teams = cricSheet.info.teams.map { teamNameForMatch(it, cricSheet, cardDirectoryData) }
+        val eventName = cricSheet.match.event?.name ?: ""
+        val eventMatch = cricSheet.match.event?.matchNumber ?: 0
+        val matchType = cricSheet.match.matchType
+        val teams = cricSheet.match.teams.map { teamNameForMatch(it, cricSheet) }
         val homeTeam = teamsWithId.find { it.name == teams[0] }
             ?: throw InvalidStateException("Unknown home team: ${teams[0]}")
         val awayTeam = teamsWithId.find { it.name == teams[1] }
             ?: throw InvalidStateException("Unknown away team: ${teams[1]}")
-        val matchDate = cricSheet.info.dates.joinToString(separator = ";")
-        val matchStartDate = cricSheet.info.dates.firstOrNull()?.let(::parseDate)
+        val matchDate = cricSheet.match.dates.joinToString(separator = ";")
+        val matchStartDate = cricSheet.match.dates.firstOrNull()?.let(::parseDate)
         val matchStartDateKey = matchStartDate?.let(::upsertDate)
-        val duration = cricSheet.info.dates.size
-        val ballsPerOver = cricSheet.info.ballsPerOver
+        val duration = cricSheet.match.dates.size
+        val ballsPerOver = cricSheet.match.ballsPerOver
         val toss = teamsWithId.find {
-            it.name == teamNameForMatch(cricSheet.info.toss.winner, cricSheet, cardDirectoryData)
+            it.name == teamNameForMatch(cricSheet.match.toss.winner, cricSheet)
         }
-            ?: throw InvalidStateException("Unknown toss winner: ${cricSheet.info.toss.winner}")
-        val tossDecision = cricSheet.info.toss.decision
-        val victoryType = getVictoryType(cricSheet.info.outcome)
-        val margin = getMargin(cricSheet.info.outcome)
-        val winner = cricSheet.info.outcome.winner?.let { winnerName ->
-            teamsWithId.find { it.name == teamNameForMatch(winnerName, cricSheet, cardDirectoryData) }
+            ?: throw InvalidStateException("Unknown toss winner: ${cricSheet.match.toss.winner}")
+        val tossDecision = cricSheet.match.toss.decision
+        val victoryType = getVictoryType(cricSheet.match.outcome)
+        val margin = getMargin(cricSheet.match.outcome)
+        val winner = cricSheet.match.outcome.winner?.let { winnerName ->
+            teamsWithId.find { it.name == teamNameForMatch(winnerName, cricSheet) }
         }
         val loser = winner?.let { winningTeam -> teamsWithId.firstOrNull { it.id != winningTeam.id } }
 
@@ -239,7 +243,7 @@ class Database(private val outputAdapter: OutputAdapter) {
                 matchType = matchType,
                 eventName = eventName,
                 matchDateText = matchDate,
-                season = cricSheet.info.season,
+                season = cricSheet.match.season,
                 matchStartYear = matchStartDate?.year?.toString() ?: "",
                 matchStartDateKey = matchStartDateKey,
                 ballsPerOver = ballsPerOver,
@@ -267,7 +271,8 @@ class Database(private val outputAdapter: OutputAdapter) {
     private fun getVictoryType(outcome: Outcome): String {
         val by = outcome.by
 
-        if (outcome.result != null) return outcome.result
+        val result = outcome.result
+        if (result != null) return result
 
         return if (by == null) "unknown"
         else if (by.innings != null) "innings"
@@ -291,17 +296,15 @@ class Database(private val outputAdapter: OutputAdapter) {
 
     private fun teamNameForMatch(
         teamName: String,
-        cricSheet: CricSheet,
-        cardDirectoryData: CardDirectoryData
+        cricSheet: BbbMatchData
     ): String {
-        if (!shouldAppendWomenToTeamName(cricSheet, cardDirectoryData) || teamName.endsWith(" Women")) return teamName
+        if (!shouldAppendWomenToTeamName(cricSheet) || teamName.endsWith(" Women")) return teamName
         return "$teamName Women"
     }
 
-    private fun shouldAppendWomenToTeamName(cricSheet: CricSheet, cardDirectoryData: CardDirectoryData): Boolean {
-        return cricSheet.info.gender.equals("female", ignoreCase = true) &&
-                cardDirectoryData.name !in WOMEN_TEAM_NAME_EXCEPTIONS &&
-                cricSheet.info.event?.name !in WOMEN_TEAM_NAME_EXCEPTIONS
+    private fun shouldAppendWomenToTeamName(cricSheet: BbbMatchData): Boolean {
+        return cricSheet.match.gender.equals("female", ignoreCase = true) &&
+                cricSheet.match.event?.name !in WOMEN_TEAM_NAME_EXCEPTIONS
     }
 
     fun writeAllPeople(people: Stream<PersonRegistryEntity>) {

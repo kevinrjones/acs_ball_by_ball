@@ -14,7 +14,6 @@ import com.knowledgespike.ballbyball.parse.database.adapter.postgres.SqlOutputAd
 import com.knowledgespike.ballbyball.parse.database.adapter.postgres.SqlScriptOutputAdapter as PostgresSqlScriptOutputAdapter
 import com.knowledgespike.ballbyball.parse.database.adapter.sqlite.SqlOutputAdapter as SqliteSqlOutputAdapter
 import com.knowledgespike.ballbyball.parse.database.adapter.sqlite.SqlScriptOutputAdapter as SqliteSqlScriptOutputAdapter
-import com.knowledgespike.ballbyball.parse.models.cardDirectoryDataForMatch
 import org.apache.commons.cli.*
 import java.nio.file.Path
 
@@ -194,15 +193,14 @@ class Application {
             matchFiles(dataDirectory).forEach { file ->
                 val sourceFile = file.toAbsolutePath().normalize()
                 if (!exceptions.contains(file.fileName.toString()) && database.shouldParse(sourceFile.toString())) {
-                    val cricSheet = parser.parse(file.toFile())
-                    val cardDirectoryData = cardDirectoryDataForMatch(cricSheet)
+                    val matchData = parser.parse(file.toFile())
                     log.debug(
                         "Parsing match: {}, {}, {}",
                         file.fileName,
-                        cardDirectoryData.name,
-                        cardDirectoryData.matchType
+                        matchData.match.event?.name ?: "Unknown",
+                        matchData.match.matchType
                     )
-                    database.writeMatch(sourceFile.toString(), cricSheet, cardDirectoryData)
+                    database.writeMatch(sourceFile.toString(), matchData)
                 }
             }
         }

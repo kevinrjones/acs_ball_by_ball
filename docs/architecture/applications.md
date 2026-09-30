@@ -2,19 +2,49 @@
 
 ## Scope
 
-The repository contains two Ktor applications and two command-line
-applications alongside the shared contracts module:
+The repository contains two Ktor applications and four command-line/shared
+modules alongside the shared contracts module:
 
 | Module                  | Responsibility                                                                  | Default port |
 |-------------------------|---------------------------------------------------------------------------------|--------------|
 | `bbb-api`               | Read warehouse data through JOOQ, verify JWT bearer tokens, expose REST API     | `8081`       |
 | `bbb-web`               | Host Angular SPA, handle OIDC BFF login/logout sessions, proxy secure requests | `9999`       |
-| `bbb-update-database`   | Parse local Cricsheet scorecards and write warehouse output                     | —            |
-| `bbb-get-cricsheet-data`| Command-line entry point for retrieving Cricsheet data                          | —            |
+| `bbb-update-database`   | Read normalized match data and write warehouse output                            | —            |
+| `bbb-get-cricsheet-data`| Command-line entry point for retrieving raw Cricsheet data                       | —            |
+| `bbb-cli-shared`        | Source-neutral `BbbMatchData` schema shared by CLI applications                 | —            |
+| `bbb-parse-cricsheet`   | Convert raw Cricsheet JSON into shared-schema JSON                               | —            |
 
-Both applications use the shared `bbb-shared` module for serialized HTTP
-contracts. Gradle module registration is kept in `settings.gradle.kts`, and all
+The API and web applications use `bbb-shared` for serialized HTTP contracts.
+The CLI parser and updater use `bbb-cli-shared` for the source-neutral match
+schema. Gradle module registration is kept in `settings.gradle.kts`, and all
 versions are declared in `gradle/libs.versions.toml`.
+
+### Normalized match-data workflow
+
+The CLI data path is intentionally split into source retrieval, source
+adaptation, and warehouse loading:
+
+```mermaid
+flowchart LR
+    RETRIEVE[bbb-get-cricsheet-data] --> RAW[Raw Cricsheet JSON]
+    RAW --> PARSE[bbb-parse-cricsheet]
+    PARSE --> SHARED[bbb-cli-shared: BbbMatchData]
+    SHARED --> UPDATE[bbb-update-database]
+    UPDATE --> WAREHOUSE[SQL, CSV, or database]
+```
+
+`bbb-parse-cricsheet` owns the annotated Cricsheet input model and maps source
+format/gender values to warehouse match types. `bbb-cli-shared` contains the
+normalized document with Kotlin-compatible camelCase property names, exposes
+match details under `match`, and omits Cricsheet-only `meta`; it has no
+Cricsheet-specific `@SerialName` annotations. The updater consumes only this
+normalized schema, so archive directory names and source-specific field names
+are not part of its contract.
+
+The parser requires an absolute `--base-directory` plus safe relative
+`--input` and `--output` directories. It recursively mirrors JSON files,
+atomically replaces managed outputs, preserves unrelated files, and continues
+after individual failures before returning a non-zero result.
 
 `bbb-get-cricsheet-data` is intentionally a standalone command-line application.
 It supports a full retrieval mode that discovers JSON archive links from the
@@ -71,8 +101,8 @@ register:
 - Full mode reads the player registry from `[base]/[names]/[player-registry]`.
   Nightly mode reads it from `[base]/[data]/[player-registry]`, where the
   downloader colocates the register CSVs.
-- Every JSON document supplies its competition and format metadata through its
-  `info` object. `Test`, `T20`, `IT20`, `ODI`, `ODM`, and `MDM` map to `t`,
+- Every normalized JSON document supplies its competition and format metadata
+  through its `match` object. `Test`, `T20`, `IT20`, `ODI`, `ODM`, and `MDM` map to `t`,
   `tt`, `itt`, `a`, `a`, and `f`; female documents receive the `w` prefix,
   producing values such as `wtt` and `wa`. Missing event names use `Unknown`.
 

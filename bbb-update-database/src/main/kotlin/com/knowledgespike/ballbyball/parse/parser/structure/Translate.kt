@@ -1,5 +1,6 @@
 package com.knowledgespike.ballbyball.parse.parser.structure
 
+import com.knowledgespike.ballbyball.clishared.schema.BbbMatchData
 import com.knowledgespike.cricketarchive.InvalidStateException
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonArray
@@ -17,9 +18,9 @@ object Translate {
      * @param cricSheet The CricSheet object containing registry information.
      * @return A list of Person objects constructed from the registry data in the CricSheet.
      */
-    fun getPeople(cricSheet: CricSheet): List<Person> {
+    fun getPeople(cricSheet: BbbMatchData): List<Person> {
 
-        return cricSheet.info.registry.people.map { (name, id) ->
+        return cricSheet.match.registry.people.map { (name, id) ->
             Person(id, name)
         }
 
@@ -37,8 +38,8 @@ object Translate {
      * @return A map where the key is the team name as a string, and the value is a list of `Person` objects representing the players in that team.
      * @throws InvalidStateException If a player's name in the JSON object does not correspond to exactly one person in the CricSheet registry.
      */
-    fun getPlayers(people: JsonObject, cricSheet: CricSheet): Map<String, List<Person>> {
-        val peopleInRegistry = cricSheet.info.registry.people
+    fun getPlayers(people: JsonObject, cricSheet: BbbMatchData): Map<String, List<Person>> {
+        val peopleInRegistry = cricSheet.match.registry.people
         return people.mapValues { (_, players) ->
             players.jsonArray.map { person ->
                 val name = person.jsonPrimitive.content
@@ -57,8 +58,8 @@ object Translate {
      * @return A list of `Person` objects that match the official names provided. Throws an `InvalidStateException` if the registry
      * contains zero or more than one match for a given official name.
      */
-    fun getOfficials(officials: List<String>?, cricSheet: CricSheet): List<Person> {
-        val peopleInRegistry = cricSheet.info.registry.people
+    fun getOfficials(officials: List<String>?, cricSheet: BbbMatchData): List<Person> {
+        val peopleInRegistry = cricSheet.match.registry.people
         return officials?.map { name ->
             val id = peopleInRegistry[name]
                 ?: throw InvalidStateException("Should be one matching person in the registry, actually 0")

@@ -9,7 +9,25 @@ The MySQL and PostgreSQL migrations create the dimensional warehouse in the
 `cricsheet` database/schema. SQLite stores the same tables in its `main`
 database. Each migration defines the schema only; source parsing, dimension
 population, surrogate-key allocation, and role-code standardisation are
-responsibilities of the loading application.
+responsibilities of the loading application. The loading pipeline first
+normalizes source documents through `bbb-parse-cricsheet`; the database updater
+consumes the source-neutral `BbbMatchData` schema from `bbb-cli-shared` rather
+than decoding raw Cricsheet field names.
+
+### Normalized input contract
+
+`bbb-cli-shared` defines the source-neutral `BbbMatchData` document using
+Kotlin camelCase property names. Match details are exposed under `match`, and
+Cricsheet-only `meta` is omitted. `bbb-parse-cricsheet` owns the raw Cricsheet
+model and converts supported `match_type`/`gender` combinations to warehouse
+values such as `t`, `tt`, `f`, `wtt`, and `wa`. Unsupported source match types
+are reported by the parser; the updater does not repeat source-specific
+mapping.
+
+The updater recursively loads normalized JSON from the configured data
+directory, regardless of whether retrieval produced archive-named subfolders
+or a flat nightly directory. This keeps `dim_match.match_type` and the source
+path provenance independent of retrieval layout.
 
 The model is designed for analytical queries over cricket matches and
 deliveries:

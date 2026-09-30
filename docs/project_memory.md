@@ -1,5 +1,109 @@
 # Project Memory
 
+## Task: Add parser application logging
+
+### Title
+
+Make `bbb-parse-cricsheet` progress and failures observable
+
+### Date/time completed
+
+2026-09-30 14:55
+
+### What was shipped
+
+- Added parser lifecycle, file discovery, per-file progress, failure, and completion logging.
+- Added a CLI completion summary while preserving the existing non-zero result for failed files.
+
+### Key decisions
+
+- Kept logging in the parser service as well as the CLI entry point so library-level parser runs are observable.
+- Used debug-level messages for individual successful files and warning-level messages for parse exceptions to avoid noisy normal CLI output.
+
+### Gotchas
+
+- Empty input directories remain valid and now emit a warning rather than changing parser behavior.
+
+### Test coverage areas
+
+- Existing parser normalization, recursive output, and continue-and-report tests pass with logging enabled.
+
+## Task: Make the shared schema source-neutral
+
+### Title
+
+Remove Cricsheet metadata and rename normalized match details
+
+### Date/time completed
+
+2026-09-30 14:44
+
+### What was shipped
+
+- Removed the Cricsheet-specific `meta` field from shared `BbbMatchData` JSON.
+- Renamed the shared document's `info` property to `match`.
+- Updated the parser conversion, updater consumers, tests, and contributor architecture documentation.
+
+### Key decisions
+
+- Raw Cricsheet `meta` and `info` remain owned by `bbb-parse-cricsheet` only; normalized output exposes source-neutral `match` data.
+- The parser continues to decode source snake-case fields and maps them into the shared schema before writing output.
+
+### Gotchas
+
+- Raw parser fixtures still contain `meta` and `info` because they test Cricsheet input decoding; normalized output must not contain either property name.
+
+### Test coverage areas
+
+- Shared-schema serialization asserts `match` is present and `meta`/`info` are absent.
+- Parser output and updater decoding tests cover the revised normalized contract.
+
+## Task: Normalize Cricsheet data through a shared CLI schema
+
+### Title
+
+Add `bbb-cli-shared` and `bbb-parse-cricsheet`, then migrate the updater to `BbbMatchData`
+
+### Date/time completed
+
+2026-09-30 14:21
+
+### What was shipped
+
+- Added the JVM `bbb-cli-shared` module with the complete serializable
+  `BbbMatchData` document graph and Kotlin-compatible camelCase property names.
+- Added `bbb-parse-cricsheet`, which owns the annotated raw Cricsheet model,
+  recursively converts JSON files, maps source format and gender to warehouse
+  match types, and writes normalized documents atomically.
+- Migrated `bbb-update-database` to decode only shared-schema JSON and removed
+  its raw Cricsheet model and archive-directory metadata mapping.
+
+### Key decisions
+
+- The parser is the source adapter; the shared module is source-neutral and
+  contains no `@SerialName` annotations.
+- Parser input and output use required absolute `--base-directory` plus safe
+  relative `--input` and `--output` directories, with relative-tree mirroring.
+- Supported mappings include `Test` → `t`, `T20` → `tt`, `IT20` → `itt`,
+  `ODI` → `o`, `ODM` → `a`, and `MDM` → `f`; female matches receive the `w`
+  prefix. Unknown match types fail the individual file while other files run.
+
+### Gotchas
+
+- Normalized JSON uses camelCase names under `match` such as `matchType`,
+  `nonStriker`, and `cameIn`; Cricsheet-only `meta` is omitted and raw
+  snake-case JSON is no longer an updater input contract.
+- The updater retains `--nightly` compatibility, but both full and nightly
+  modes recursively read the configured normalized data directory.
+
+### Test coverage areas
+
+- Shared-schema serialization and round-trip coverage.
+- Parser path validation, recursive mirroring, nested key conversion, source
+  field preservation, match-type mapping, atomic output, and continue/report
+  behavior.
+- Updater database output and direct normalized-schema decoding.
+
 ## Task: Derive updater metadata from JSON
 
 ### Title

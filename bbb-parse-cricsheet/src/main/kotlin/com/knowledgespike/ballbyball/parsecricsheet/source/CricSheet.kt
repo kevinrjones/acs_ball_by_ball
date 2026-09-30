@@ -1,4 +1,4 @@
-package com.knowledgespike.ballbyball.parse.parser.structure
+package com.knowledgespike.ballbyball.parsecricsheet.source
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -9,63 +9,11 @@ import kotlinx.serialization.json.JsonObject
 data class CricSheet(val meta: Meta, val info: Info, val innings: List<Innings>)
 
 @Serializable
-data class Meta(@SerialName("data_version") val dataVersion: String, val created: String, val revision: Int)
-
-/*
-missing: List<String> | List<JsonObject>
-    JsonObject ->
-        "missing": [
-      {
-        "powerplays": {
-          "1": [
-            "batting"
-          ],
-          "2": [
-            "batting"
-          ]
-        }
-      }
-    ],
-
-maybe others as well
-
-
-players:   "players": {
-    "St Lucia Zouks": [
-      "J Charles",
-      "ADS Fletcher",
-      "SR Watson",
-      "MEK Hussey",
-      "GD Elliott",
-      "DJG Sammy",
-      "KR Mayers",
-      "DE Johnson",
-      "S Shillingford",
-      "K Lesporis",
-      "JE Taylor"
-    ],
-    "Trinbago Knight Riders": [
-      "WKD Perkins",
-      "BB McCullum",
-      "C Munro",
-      "D Ramdin",
-      "Umar Akmal",
-      "DJ Bravo",
-      "AP Devcich",
-      "SP Narine",
-      "KK Cooper",
-      "NO Miller",
-      "RR Beaton"
-    ]
-  },
-
-  supersubs -> "supersubs": {
-  "Adelaide Strikers": "MW Short",
-  "Hobart Hurricanes": "M Wright"
-}
-
-
- */
+data class Meta(
+    @SerialName("data_version") val dataVersion: String,
+    val created: String,
+    val revision: Int
+)
 
 @Serializable
 data class Info(
@@ -85,7 +33,7 @@ data class Info(
     val players: JsonObject,
     val registry: PlayersRegistry,
     val season: String,
-    val superSubs: JsonObject? = null,
+    @SerialName("supersubs") val superSubs: JsonObject? = null,
     @SerialName("team_type") val teamType: String,
     val teams: List<String>,
     val toss: Toss,
@@ -102,10 +50,6 @@ data class Event(
     val group: String? = null,
     val stage: String? = null
 )
-
-// todo
-@Serializable
-data class Missing(val foo: String)
 
 @Serializable
 data class Officials(
@@ -125,29 +69,23 @@ data class Outcome(
     val winner: String? = null
 )
 
-
 @Serializable
-data class By(val innings: Int? = null, val runs: Int? = null, val wickets: Int? = null)
-
+data class By(
+    val innings: Int? = null,
+    val runs: Int? = null,
+    val wickets: Int? = null
+)
 
 @Serializable
 data class PlayersRegistry(val people: Map<String, String>)
 
 @Serializable
-data class Toss(val uncontested: Boolean? = null, val decision: String, val winner: String)
+data class Toss(
+    val uncontested: Boolean? = null,
+    val decision: String,
+    val winner: String
+)
 
-/*
-miscounted_overs -> "miscounted_overs": {
-  "35": {
-    "balls": 7,
-    "umpire": "Asad Rauf"
-  },
-  "39": {
-    "balls": 5,
-    "umpire": "Asad Rauf"
-  }
-}
- */
 @Serializable
 data class Innings(
     val team: String,
@@ -161,7 +99,6 @@ data class Innings(
     val target: Target? = null,
     @SerialName("super_over") val superOver: Boolean? = null
 )
-
 
 @Serializable
 data class Over(val over: Int, val deliveries: List<Delivery>)
@@ -185,9 +122,6 @@ data class Delivery(
 data class PowerPlays(val from: String, val to: String, val type: String)
 
 @Serializable
-data class MiscountedOvers(val balls: Int, val umpire: String? = null)
-
-@Serializable
 data class Target(val overs: String? = null, val runs: Int? = null)
 
 @Serializable
@@ -200,7 +134,10 @@ data class Extras(
 )
 
 @Serializable
-data class Replacements(val match: List<Match>? = null, val role: List<Role>? = null)
+data class Replacements(
+    val match: List<Match>? = null,
+    val role: List<Role>? = null
+)
 
 @Serializable
 data class Match(

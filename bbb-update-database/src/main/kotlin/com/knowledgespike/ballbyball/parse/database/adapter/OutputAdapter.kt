@@ -5,7 +5,7 @@ import com.knowledgespike.ballbyball.parse.database.Team
 import com.knowledgespike.ballbyball.parse.database.Location
 import com.knowledgespike.ballbyball.parse.database.WarehouseInnings
 import com.knowledgespike.ballbyball.parse.database.WarehouseMatch
-import com.knowledgespike.ballbyball.parse.parser.structure.Delivery
+import com.knowledgespike.ballbyball.clishared.schema.Delivery
 
 /**
  * Persists warehouse rows without coupling the parser to a particular output.

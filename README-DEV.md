@@ -10,16 +10,17 @@ database-loading workflow is added or changed.
 - MariaDB client tools (`mariadb`) when loading data into MariaDB.
 - Docker and the reproducible dual-database setup in `docs/setup/SETUP-DB.md`
   when running the MariaDB and PostgreSQL test environments.
-- A Cricsheet base directory containing a configured match-data directory and
-  the player registry CSV. JSON files may be flat or inside archive-named
-  subdirectories; the updater derives match metadata from each JSON document.
+- A Cricsheet base directory containing raw retrieval data, normalized shared-
+  schema data, and the player registry CSV. The updater consumes normalized
+  JSON produced by `bbb-parse-cricsheet`.
 
 The commands below assume the shell variables have been set. Use paths without
 spaces when passing them through Gradle's `--args` option.
 
 ```bash
 export CRICSHEET_ROOT=/path/to/cricsheet
-export CRICSHEET_DATA=cricsheet
+export CRICSHEET_RAW=cricsheet
+export CRICSHEET_DATA=normalized
 export CRICSHEET_NAMES=register
 export PLAYER_REGISTRY=people.csv
 export CSV_DIR=generated-warehouse-csv
@@ -108,6 +109,27 @@ The retrieval options are:
 | `-f`, `--force` | No | Reuse existing target directories and overwrite managed files without deleting unrelated files. |
 | `-n`, `--nightly` | No | Download the two fixed recent archives directly into the configured data directory and place the CSVs alongside them. |
 
+## Normalize Cricsheet data
+
+`bbb-parse-cricsheet` is the Cricsheet source adapter. It reads raw Cricsheet
+JSON and writes one `BbbMatchData` JSON document per input file. The shared
+schema uses Kotlin-compatible camelCase names, exposes match details under
+`match`, and omits Cricsheet-only `meta`; the parser maps supported Cricsheet
+formats to warehouse values such as `tt`, `wtt`, `a`, and `wa`.
+
+```bash
+./gradlew :bbb-parse-cricsheet:run --no-daemon \
+  --args="--base-directory /path/to/data --input cricsheet --output normalized"
+```
+
+The base directory must be absolute, while `--input` and `--output` are safe
+relative child directories. Every `.json` file below the input directory is
+processed recursively and its relative path is mirrored below the output
+directory. Existing managed output files are atomically replaced; stale and
+unrelated output files remain. Invalid files are reported after the remaining
+files are attempted, and the command returns a non-zero status if any file
+failed.
+
 Check dependency updates and refresh the version catalog when required:
 
 ```bash
@@ -163,7 +185,7 @@ mariadb --host="$DB_HOST" --port="$DB_PORT" \
   --execute="CREATE DATABASE IF NOT EXISTS $DB_NAME"
 ```
 
-## Parser command-line options
+## Database updater command-line options
 
 All parser runs use the Gradle application task:
 
@@ -188,10 +210,12 @@ All parser runs use the Gradle application task:
 | `-sf`, `--sqlFile`         | For SQL files       | Alias for `--outputFile`; the path is relative to `baseDirectory`.            |
 | `-cd`, `--csvDir`          | For CSV output      | CSV directory relative to `baseDirectory`.                                   |
 
-The updater uses the same root layout as `bbb-get-cricsheet-data`. Both full and
-nightly mode scan JSON files recursively below `[base]/[data]`, so archive-named
-full directories and flat nightly files use the same importer. The player
-registry is read from `[base]/[names]/[player-registry]` in full mode and from
+The updater consumes only normalized `BbbMatchData` JSON from
+`bbb-parse-cricsheet`; it does not decode raw Cricsheet snake-case fields.
+Both full and nightly modes scan normalized JSON files recursively below
+`[base]/[data]`, so archive-named full directories and flat nightly files use
+the same importer. The player registry is read from
+`[base]/[names]/[player-registry]` in full mode and from
 `[base]/[data]/[player-registry]` in nightly mode, matching the downloader's
 colocated nightly register files:
 
@@ -225,12 +249,10 @@ A nightly run might look like this:
   --args="--base-directory /path/to/data --data-directory cricsheet --player-registry people.csv --nightly"
 ```
 
-Every imported JSON derives the competition from `info.event.name` (using
-`Unknown` when absent) and maps its `info.match_type` and `info.gender` to
-warehouse codes. The mappings include `Test` → `t`, `T20` → `tt`, `IT20` →
-`itt`, `ODI`/`ODM` → `a`, and `MDM` → `f`; female matches receive the `w`
-prefix, such as `wtt` and `wa`. The existing database, SQL-file, and CSV output
-options are unchanged.
+Every normalized JSON supplies the competition from `info.event.name` and the
+warehouse match type from `info.matchType`; missing event names remain empty in
+the warehouse. The existing database, SQL-file, and CSV output options are
+unchanged.
 
 ## Produce CSV output
 

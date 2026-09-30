@@ -37,6 +37,7 @@ dependencies {
     implementation(libs.postgres)
     implementation(libs.sqlite)
     implementation(project(":bbb-shared"))
+    implementation(project(":bbb-cli-shared"))
 }
 
 tasks.withType<Test>().configureEach {
