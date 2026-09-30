@@ -14,7 +14,8 @@ data class RetrievalConfiguration(
     val baseDirectory: Path,
     val dataDirectory: Path,
     val namesDirectory: Path,
-    val force: Boolean
+    val force: Boolean,
+    val nightly: Boolean = false
 ) {
     val zipDirectory: Path
         get() = dataDirectory.resolve("zips")
@@ -23,7 +24,11 @@ data class RetrievalConfiguration(
 data class CricsheetSources(
     val matchesPage: URI = URI("https://cricsheet.org/matches/"),
     val peopleCsv: URI = URI("https://cricsheet.org/register/people.csv"),
-    val namesCsv: URI = URI("https://cricsheet.org/register/names.csv")
+    val namesCsv: URI = URI("https://cricsheet.org/register/names.csv"),
+    val nightlyArchives: List<URI> = listOf(
+        URI("https://cricsheet.org/downloads/recently_added_7_json.zip"),
+        URI("https://cricsheet.org/downloads/recently_added_2_json.zip")
+    )
 )
 
 data class RetrievalFailure(
@@ -48,8 +53,12 @@ class CricsheetDataRetriever(
         prepareDirectories(configuration)
 
         val failures = mutableListOf<RetrievalFailure>()
-        val archiveLinks = discoverArchiveLinks(failures)
-        if (archiveLinks.isEmpty() && failures.none { it.artifact == "archive discovery" }) {
+        val archiveLinks = if (configuration.nightly) {
+            sources.nightlyArchives
+        } else {
+            discoverArchiveLinks(failures)
+        }
+        if (!configuration.nightly && archiveLinks.isEmpty() && failures.none { it.artifact == "archive discovery" }) {
             failures += RetrievalFailure("archive discovery", "No qualifying JSON archives were found")
             log.error("No qualifying JSON archives were found at {}", sources.matchesPage)
         }
@@ -122,9 +131,12 @@ class CricsheetDataRetriever(
                 ".${name.removeSuffix(".zip")}-${UUID.randomUUID()}-"
             )
             try {
-                val archiveDirectory = stagingDirectory.resolve(name.removeSuffix(".zip"))
-                Files.createDirectories(archiveDirectory)
-                extractSafely(zipFile, archiveDirectory)
+                val extractionDirectory = if (configuration.nightly) {
+                    stagingDirectory
+                } else {
+                    stagingDirectory.resolve(name.removeSuffix(".zip")).also(Files::createDirectories)
+                }
+                extractSafely(zipFile, extractionDirectory)
                 commitExtraction(stagingDirectory, configuration.dataDirectory)
             } finally {
                 deleteRecursively(stagingDirectory)
@@ -232,7 +244,7 @@ class CricsheetDataRetriever(
             require(Files.isDirectory(destination)) {
                 "Destination is not a directory: $destination"
             }
-            require(configuration.force) {
+            require(configuration.nightly || configuration.force) {
                 "Destination already exists; use --force to continue: $destination"
             }
         }

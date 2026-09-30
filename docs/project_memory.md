@@ -1,5 +1,47 @@
 # Project Memory
 
+## Task: Add nightly Cricsheet retrieval
+
+### Title
+
+Add fixed-source nightly Cricsheet refreshes
+
+### Date/time completed
+
+2026-09-30 07:57
+
+### What was shipped
+
+- Added `--nightly`/`-n` mode with fixed, ordered downloads of
+  `recently_added_7_json.zip` and `recently_added_2_json.zip`.
+- Nightly ZIPs are stored below `[base]/nightly/[data]/zips` and safely merged
+  directly into `[base]/nightly/[data]`; register CSVs continue to refresh in
+  `[base]/[names]`.
+- Added deterministic coverage for CLI parsing, source order, independent
+  failure continuation, directory reuse, stale-file preservation, flat layout,
+  and collision precedence.
+
+### Key decisions
+
+- Nightly bypasses matches-page discovery and processes archive `7` before
+  archive `2`, making the second archive the winner for duplicate paths.
+- Nightly reuses existing directories and overwrites managed artifacts without
+  requiring `--force`; `--force` remains accepted for script compatibility.
+- Full retrieval retains archive-named extraction directories and its existing
+  preflight behavior.
+
+### Gotchas
+
+- Nightly does not delete stale or unrelated files from the nightly data tree.
+- `people.csv` and `names.csv` are shared register outputs rather than a
+  nightly-specific copy.
+
+### Test coverage areas
+
+- Nightly aliases and path resolution, fixed request order, no page discovery,
+  retry/atomic validation reuse, failure aggregation, ZIP safety, flat staged
+  extraction, overwrite ordering, and full-mode regression behavior.
+
 ## Task: Group extracted Cricsheet archives by archive name
 
 ### Title

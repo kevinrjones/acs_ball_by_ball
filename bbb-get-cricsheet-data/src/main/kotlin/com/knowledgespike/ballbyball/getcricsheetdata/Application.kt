@@ -32,19 +32,21 @@ object Application {
 
             is ApplicationCommand.Run -> {
                 log.info(
-                    "Starting {} with base directory {}, data directory {}, names directory {}, force {}",
+                    "Starting {} with base directory {}, data directory {}, names directory {}, force {}, nightly {}",
                     APPLICATION_NAME,
                     command.baseDirectory,
                     command.dataDirectory,
                     command.namesDirectory,
-                    command.force
+                    command.force,
+                    command.nightly
                 )
                 val result = CricsheetDataRetriever().retrieve(
                     RetrievalConfiguration(
                         baseDirectory = command.baseDirectory,
                         dataDirectory = command.dataDirectory,
                         namesDirectory = command.namesDirectory,
-                        force = command.force
+                        force = command.force,
+                        nightly = command.nightly
                     )
                 )
                 if (result.succeeded) 0 else 1

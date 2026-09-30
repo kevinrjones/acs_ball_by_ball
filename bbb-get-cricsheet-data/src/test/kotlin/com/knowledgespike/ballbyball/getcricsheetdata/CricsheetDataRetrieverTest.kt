@@ -138,24 +138,176 @@ class CricsheetDataRetrieverTest {
         expectThat(Files.readString(existingPeople)).isEqualTo(PEOPLE_CSV)
     }
 
-    private fun configuration(force: Boolean = false): RetrievalConfiguration = RetrievalConfiguration(
+    @Test
+    fun `given nightly configuration when retrieved then fixed archives precede register CSVs`() {
+        val sources = testSources()
+        val httpClient = FakeHttpClient(
+            page = "unexpected page request",
+            files = mapOf(
+                sources.nightlyArchives[0] to zipBytes("recent.json"),
+                sources.nightlyArchives[1] to zipBytes("recent.json"),
+                sources.peopleCsv to PEOPLE_CSV.toByteArray(),
+                sources.namesCsv to NAMES_CSV.toByteArray()
+            )
+        )
+        val configuration = configuration(nightly = true)
+
+        val result = CricsheetDataRetriever(httpClient, sources).retrieve(configuration)
+
+        expectThat(result.succeeded).isTrue()
+        expectThat(httpClient.pageRequests).isEmpty()
+        expectThat(httpClient.downloads.toList()).isEqualTo(
+            listOf(
+                sources.nightlyArchives[0],
+                sources.nightlyArchives[1],
+                sources.peopleCsv,
+                sources.namesCsv
+            )
+        )
+        expectThat(Files.exists(configuration.zipDirectory.resolve("recently_added_7_json.zip"))).isTrue()
+        expectThat(Files.exists(configuration.zipDirectory.resolve("recently_added_2_json.zip"))).isTrue()
+    }
+
+    @Test
+    fun `given failed first nightly archive when retrieved then remaining artifacts are attempted`() {
+        val sources = testSources()
+        val httpClient = FakeHttpClient(
+            page = "unexpected page request",
+            files = mapOf(
+                sources.nightlyArchives[1] to zipBytes("recent.json"),
+                sources.peopleCsv to PEOPLE_CSV.toByteArray(),
+                sources.namesCsv to NAMES_CSV.toByteArray()
+            ),
+            failedDownloads = setOf(sources.nightlyArchives[0])
+        )
+
+        val result = CricsheetDataRetriever(httpClient, sources).retrieve(configuration(nightly = true))
+
+        expectThat(result.succeeded).isFalse()
+        expectThat(httpClient.downloads.toList()).isEqualTo(
+            listOf(
+                sources.nightlyArchives[0],
+                sources.nightlyArchives[1],
+                sources.peopleCsv,
+                sources.namesCsv
+            )
+        )
+        expectThat(result.failures.map { it.artifact }).contains("recently_added_7_json.zip")
+    }
+
+    @Test
+    fun `given existing nightly directories when retrieved then directories are reused`() {
+        val sources = testSources()
+        val configuration = configuration(nightly = true)
+        Files.createDirectories(configuration.dataDirectory)
+        Files.createDirectories(configuration.namesDirectory)
+        val staleFile = configuration.dataDirectory.resolve("stale.json")
+        Files.writeString(staleFile, "stale")
+        Files.writeString(configuration.dataDirectory.resolve("recent.json"), "old")
+        Files.writeString(configuration.namesDirectory.resolve("people.csv"), "old")
+        Files.writeString(configuration.namesDirectory.resolve("names.csv"), "old")
+        val httpClient = FakeHttpClient(
+            page = "unexpected page request",
+            files = mapOf(
+                sources.nightlyArchives[0] to zipBytes("recent.json"),
+                sources.nightlyArchives[1] to zipBytes("recent.json"),
+                sources.peopleCsv to PEOPLE_CSV.toByteArray(),
+                sources.namesCsv to NAMES_CSV.toByteArray()
+            )
+        )
+
+        val result = CricsheetDataRetriever(httpClient, sources).retrieve(configuration)
+
+        expectThat(result.succeeded).isTrue()
+        expectThat(Files.readString(staleFile)).isEqualTo("stale")
+        expectThat(Files.readString(configuration.dataDirectory.resolve("recent.json"))).isEqualTo("recent.json")
+        expectThat(Files.readString(configuration.namesDirectory.resolve("people.csv"))).isEqualTo(PEOPLE_CSV)
+        expectThat(Files.readString(configuration.namesDirectory.resolve("names.csv"))).isEqualTo(NAMES_CSV)
+    }
+
+    @Test
+    fun `given nightly data destination is a file when retrieved then no network request is made`() {
+        val configuration = configuration(nightly = true)
+        Files.createDirectories(requireNotNull(configuration.dataDirectory.parent))
+        Files.createFile(configuration.dataDirectory)
+        val httpClient = FakeHttpClient(page = "unexpected page request")
+
+        assertFailsWith<IllegalArgumentException> {
+            CricsheetDataRetriever(httpClient, testSources()).retrieve(configuration)
+        }
+
+        expectThat(httpClient.downloads).isEmpty()
+        expectThat(httpClient.pageRequests).isEmpty()
+    }
+
+    @Test
+    fun `given overlapping nightly archives when retrieved then second archive wins in flat layout`() {
+        val sources = testSources()
+        val configuration = configuration(nightly = true)
+        val httpClient = FakeHttpClient(
+            page = "unexpected page request",
+            files = mapOf(
+                sources.nightlyArchives[0] to zipBytes(
+                    mapOf(
+                        "shared.json" to "from seven",
+                        "only-seven.json" to "seven"
+                    )
+                ),
+                sources.nightlyArchives[1] to zipBytes(
+                    mapOf(
+                        "shared.json" to "from two",
+                        "only-two.json" to "two"
+                    )
+                ),
+                sources.peopleCsv to PEOPLE_CSV.toByteArray(),
+                sources.namesCsv to NAMES_CSV.toByteArray()
+            )
+        )
+
+        val result = CricsheetDataRetriever(httpClient, sources).retrieve(configuration)
+
+        expectThat(result.succeeded).isTrue()
+        expectThat(Files.readString(configuration.dataDirectory.resolve("shared.json"))).isEqualTo("from two")
+        expectThat(Files.readString(configuration.dataDirectory.resolve("only-seven.json"))).isEqualTo("seven")
+        expectThat(Files.readString(configuration.dataDirectory.resolve("only-two.json"))).isEqualTo("two")
+        expectThat(Files.exists(configuration.dataDirectory.resolve("recently_added_7_json"))).isFalse()
+        expectThat(Files.exists(configuration.dataDirectory.resolve("recently_added_2_json"))).isFalse()
+    }
+
+    private fun configuration(
+        force: Boolean = false,
+        nightly: Boolean = false
+    ): RetrievalConfiguration = RetrievalConfiguration(
         baseDirectory = temporaryDirectory,
-        dataDirectory = temporaryDirectory.resolve("data"),
+        dataDirectory = if (nightly) {
+            temporaryDirectory.resolve("nightly/data")
+        } else {
+            temporaryDirectory.resolve("data")
+        },
         namesDirectory = temporaryDirectory.resolve("names"),
-        force = force
+        force = force,
+        nightly = nightly
     )
 
     private fun testSources(): CricsheetSources = CricsheetSources(
         matchesPage = URI("https://cricsheet.org/matches/"),
         peopleCsv = URI("https://cricsheet.org/register/people.csv"),
-        namesCsv = URI("https://cricsheet.org/register/names.csv")
+        namesCsv = URI("https://cricsheet.org/register/names.csv"),
+        nightlyArchives = listOf(
+            URI("https://cricsheet.org/downloads/recently_added_7_json.zip"),
+            URI("https://cricsheet.org/downloads/recently_added_2_json.zip")
+        )
     )
 
-    private fun zipBytes(fileName: String): ByteArray = ByteArrayOutputStream().use { output ->
+    private fun zipBytes(fileName: String): ByteArray = zipBytes(mapOf(fileName to fileName))
+
+    private fun zipBytes(files: Map<String, String>): ByteArray = ByteArrayOutputStream().use { output ->
         ZipOutputStream(output).use { zip ->
-            zip.putNextEntry(ZipEntry(fileName))
-            zip.write(fileName.toByteArray())
-            zip.closeEntry()
+            files.forEach { (fileName, content) ->
+                zip.putNextEntry(ZipEntry(fileName))
+                zip.write(content.toByteArray())
+                zip.closeEntry()
+            }
         }
         output.toByteArray()
     }

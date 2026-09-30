@@ -15,7 +15,8 @@ sealed interface ApplicationCommand {
         val baseDirectory: Path,
         val dataDirectory: Path,
         val namesDirectory: Path,
-        val force: Boolean
+        val force: Boolean,
+        val nightly: Boolean = false
     ) : ApplicationCommand
 }
 
@@ -32,7 +33,9 @@ object CommandLineArguments {
 
         val baseDirectory = absoluteBaseDirectory(commandLine.requiredValue("base-directory"))
         val dataDirectoryName = commandLine.requiredValue("data-directory")
-        val dataDirectory = childDirectory(baseDirectory, dataDirectoryName, "--data-directory")
+        val nightly = commandLine.hasOption("nightly")
+        val dataRoot = if (nightly) baseDirectory.resolve("nightly") else baseDirectory
+        val dataDirectory = childDirectory(dataRoot, dataDirectoryName, "--data-directory")
         val namesDirectory = childDirectory(
             baseDirectory,
             commandLine.getOptionValue("names-directory", dataDirectoryName),
@@ -43,7 +46,8 @@ object CommandLineArguments {
             baseDirectory = baseDirectory,
             dataDirectory = dataDirectory,
             namesDirectory = namesDirectory,
-            force = commandLine.hasOption("force")
+            force = commandLine.hasOption("force"),
+            nightly = nightly
         )
     }
 
@@ -78,6 +82,12 @@ object CommandLineArguments {
             Option.builder("f")
                 .longOpt("force")
                 .desc("allow existing data and names directories")
+                .get()
+        )
+        addOption(
+            Option.builder("n")
+                .longOpt("nightly")
+                .desc("retrieve the fixed nightly archive set")
                 .get()
         )
     }

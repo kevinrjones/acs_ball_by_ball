@@ -76,6 +76,53 @@ class CommandLineArgumentsTest {
     }
 
     @Test
+    fun `given short nightly flag when parsed then nightly data directory is below nightly`() {
+        expectThat(
+            CommandLineArguments.parse(
+                arrayOf("-bd", "/tmp/cricsheet-root", "-dd", "matches", "-n", "-f")
+            )
+        ).isEqualTo(
+            ApplicationCommand.Run(
+                baseDirectory = Path.of("/tmp/cricsheet-root"),
+                dataDirectory = Path.of("/tmp/cricsheet-root/nightly/matches"),
+                namesDirectory = Path.of("/tmp/cricsheet-root/matches"),
+                force = true,
+                nightly = true
+            )
+        )
+    }
+
+    @Test
+    fun `given long nightly flag when parsed then nightly mode is enabled`() {
+        val command = CommandLineArguments.parse(
+            arrayOf(
+                "--base-directory", "/tmp/cricsheet-root",
+                "--data-directory", "nested/matches",
+                "--nightly"
+            )
+        )
+
+        expectThat(command).isEqualTo(
+            ApplicationCommand.Run(
+                baseDirectory = Path.of("/tmp/cricsheet-root"),
+                dataDirectory = Path.of("/tmp/cricsheet-root/nightly/nested/matches"),
+                namesDirectory = Path.of("/tmp/cricsheet-root/nested/matches"),
+                force = false,
+                nightly = true
+            )
+        )
+    }
+
+    @Test
+    fun `given absolute nightly data directory when parsed then parsing fails`() {
+        assertThrows<ParseException> {
+            CommandLineArguments.parse(
+                arrayOf("-bd", "/tmp/cricsheet-root", "-dd", "/tmp/matches", "-n")
+            )
+        }
+    }
+
+    @Test
     fun `given traversal directory when parsed then parsing fails`() {
         assertThrows<ParseException> {
             CommandLineArguments.parse(

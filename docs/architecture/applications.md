@@ -17,18 +17,19 @@ contracts. Gradle module registration is kept in `settings.gradle.kts`, and all
 versions are declared in `gradle/libs.versions.toml`.
 
 `bbb-get-cricsheet-data` is intentionally a standalone command-line application.
-It discovers JSON archive links from the Cricsheet matches page, downloads the
-archives and the register CSV files, validates the downloaded artifacts, and
-extracts the match JSON into a configured local directory. It does not share
-the API or web runtime and uses the JDK HTTP client with an injectable transport
-seam for deterministic tests.
+It supports a full retrieval mode that discovers JSON archive links from the
+Cricsheet matches page and a nightly mode that downloads two fixed recent
+archives. Both modes download and validate the register CSV files, validate
+the downloaded artifacts, and extract match JSON into local directories. It
+does not share the API or web runtime and uses the JDK HTTP client with an
+injectable transport seam for deterministic tests.
 
 ### Cricsheet retrieval workflow
 
 The application requires an absolute base directory and relative data and
-names directories. It rejects existing target directories unless `--force` is
-provided, then creates missing directories and processes the sources
-sequentially:
+names directories, then creates missing directories and processes sources
+sequentially. Full mode rejects existing target directories unless `--force`
+is provided:
 
 1. Fetch the matches page and select HTTPS Cricsheet links ending in
    `_json.zip`, excluding `all_json.zip`.
@@ -37,6 +38,21 @@ sequentially:
    the data directory.
 4. Download and validate `people.csv` and `names.csv` from the Cricsheet
    register into the names directory.
+
+Nightly mode (`--nightly`/`-n`) bypasses page discovery and processes exactly
+these sources in order:
+
+1. `https://cricsheet.org/downloads/recently_added_7_json.zip`
+2. `https://cricsheet.org/downloads/recently_added_2_json.zip`
+
+The ZIPs are stored under `[base]/nightly/[data]/zips` and their validated
+contents are staged and merged directly into `[base]/nightly/[data]`, without
+archive-named child directories. The second archive overwrites collisions from
+the first. Nightly mode reuses existing data and names directories, replaces
+managed ZIP, extracted, and CSV files, preserves stale or unrelated files, and
+rejects regular-file destination conflicts; `--force` is accepted but has no
+additional effect. Register CSVs remain at `[base]/[names]`, with names
+defaulting to the configured data directory.
 
 Failures are logged per artifact while independent downloads continue. The
 process returns `0` only when all artifacts succeed, `1` for operational or

@@ -76,6 +76,23 @@ into `/path/to/data/cricsheet/<archive-name-without-.zip>`, and stores
 target directory already exists. The base directory must be absolute, while
 the data and names directories must be relative to it.
 
+For a scheduled partial refresh, add `--nightly` (or `-n`):
+
+```bash
+./gradlew :bbb-get-cricsheet-data:run --no-daemon \
+  --args="--base-directory /path/to/data --data-directory cricsheet --names-directory register --nightly"
+```
+
+Nightly mode downloads only `recently_added_7_json.zip` followed by
+`recently_added_2_json.zip`. It stores the ZIPs in
+`/path/to/data/nightly/cricsheet/zips` and merges their contents directly into
+`/path/to/data/nightly/cricsheet`; when both archives contain a file, the
+second archive wins. It always refreshes `people.csv` and `names.csv` in
+`/path/to/data/register` (or the configured names directory), reuses existing
+directories without requiring `--force`, overwrites managed files, and keeps
+stale or unrelated files. `--force` remains accepted as a harmless no-op in
+nightly mode.
+
 The retrieval options are:
 
 | Option | Required | Description |
@@ -86,6 +103,7 @@ The retrieval options are:
 | `-dd`, `--data-directory` | Yes | Relative directory for JSON match data and downloaded ZIPs. |
 | `-nd`, `--names-directory` | No | Relative directory for `people.csv` and `names.csv`; defaults to `dd`. |
 | `-f`, `--force` | No | Reuse existing target directories and overwrite managed files without deleting unrelated files. |
+| `-n`, `--nightly` | No | Download the two fixed recent archives into the `nightly` data tree; CSVs remain in the names directory. |
 
 Check dependency updates and refresh the version catalog when required:
 
