@@ -10,18 +10,20 @@ database-loading workflow is added or changed.
 - MariaDB client tools (`mariadb`) when loading data into MariaDB.
 - Docker and the reproducible dual-database setup in `docs/setup/SETUP-DB.md`
   when running the MariaDB and PostgreSQL test environments.
-- A Cricsheet data directory containing the scorecard directories and the
-  player registry CSV. The directory must contain the subdirectories expected
-  by `Application.kt`, such as `tests_json`, `odis_json`, and `t20s_json`.
+- A Cricsheet base directory containing a configured match-data directory and
+  the player registry CSV. JSON files may be flat or inside archive-named
+  subdirectories; the updater derives match metadata from each JSON document.
 
 The commands below assume the shell variables have been set. Use paths without
 spaces when passing them through Gradle's `--args` option.
 
 ```bash
-export CRICSHEET_DIR=/path/to/cricsheet
+export CRICSHEET_ROOT=/path/to/cricsheet
+export CRICSHEET_DATA=cricsheet
+export CRICSHEET_NAMES=register
 export PLAYER_REGISTRY=people.csv
-export CSV_DIR=/path/to/generated-warehouse-csv
-export SQL_FILE=/path/to/generated-warehouse.sql
+export CSV_DIR=generated-warehouse-csv
+export SQL_FILE=generated-warehouse.sql
 export DB_HOST=localhost
 export DB_PORT=3306
 export DB_NAME=cricsheet
@@ -85,13 +87,14 @@ For a scheduled partial refresh, add `--nightly` (or `-n`):
 
 Nightly mode downloads only `recently_added_7_json.zip` followed by
 `recently_added_2_json.zip`. It stores the ZIPs in
-`/path/to/data/nightly/cricsheet/zips` and merges their contents directly into
-`/path/to/data/nightly/cricsheet`; when both archives contain a file, the
-second archive wins. It always refreshes `people.csv` and `names.csv` in
-`/path/to/data/register` (or the configured names directory), reuses existing
+`/path/to/data/cricsheet/zips` and merges their contents directly into
+`/path/to/data/cricsheet`; when both archives contain a file, the second
+archive wins. It always refreshes `people.csv` and `names.csv` in
+`/path/to/data/cricsheet`, alongside the extracted JSON, reuses existing
 directories without requiring `--force`, overwrites managed files, and keeps
-stale or unrelated files. `--force` remains accepted as a harmless no-op in
-nightly mode.
+stale or unrelated files. `--names-directory` is validated but does not change
+the nightly register destination. `--force` remains accepted as a harmless
+no-op in nightly mode.
 
 The retrieval options are:
 
@@ -101,9 +104,9 @@ The retrieval options are:
 | `--version` | No | Print the application version. |
 | `-bd`, `--base-directory` | Yes | Absolute root directory for the download. |
 | `-dd`, `--data-directory` | Yes | Relative directory for JSON match data and downloaded ZIPs. |
-| `-nd`, `--names-directory` | No | Relative directory for `people.csv` and `names.csv`; defaults to `dd`. |
+| `-nd`, `--names-directory` | No | Relative directory for `people.csv` and `names.csv` in full mode; defaults to `dd` and is ignored for nightly output. |
 | `-f`, `--force` | No | Reuse existing target directories and overwrite managed files without deleting unrelated files. |
-| `-n`, `--nightly` | No | Download the two fixed recent archives into the `nightly` data tree; CSVs remain in the names directory. |
+| `-n`, `--nightly` | No | Download the two fixed recent archives directly into the configured data directory and place the CSVs alongside them. |
 
 Check dependency updates and refresh the version catalog when required:
 
@@ -171,16 +174,63 @@ All parser runs use the Gradle application task:
 | Option                     | Required            | Description                                                                   |
 |----------------------------|---------------------|-------------------------------------------------------------------------------|
 | `-h`, `--help`             | No                  | Print the command-line help.                                                  |
-| `-bd`, `--baseDirectory`   | Yes                 | Root directory containing scorecards and the player registry.                 |
-| `-pr`, `--playerRegistry`  | Yes                 | Player-registry filename relative to `baseDirectory`.                         |
+| `-bd`, `--base-directory`  | Yes                 | Absolute root directory containing scorecards and register data.              |
+| `-dd`, `--data-directory`  | Yes                 | Relative match-data directory below `baseDirectory`.                          |
+| `-nd`, `--names-directory` | No                  | Relative register directory below `baseDirectory`; defaults to `dd`.          |
+| `-pr`, `--player-registry` | Yes                 | Player-registry filename relative to the names directory.                     |
+| `-n`, `--nightly`          | No                  | Read JSON files from the configured data directory using the same discovery and metadata rules as full mode. |
 | `-ot`, `--outputType`      | No                  | `SQL` (default), `DATABASE`, `SQL_FILE`, or `CSV`.                            |
 | `-c`, `--connectionString` | For database output | JDBC connection string.                                                       |
 | `-u`, `--userName`         | For database output | Database username.                                                            |
 | `-p`, `--password`         | No                  | Database password. Prefer an environment variable or protected shell history. |
 | `--database`               | For SQL files       | SQL dialect: `mariadb`, `postgres`, or `sqlite` (default: `mariadb`).         |
-| `-o`, `--outputFile`       | For SQL files       | SQL script path. With `SQL`, specifying this option selects file output.      |
-| `-sf`, `--sqlFile`         | For SQL files       | Alias for `--outputFile`.                                                     |
-| `-cd`, `--csvDir`          | For CSV output      | Directory in which warehouse CSV files are written.                           |
+| `-o`, `--outputFile`       | For SQL files       | SQL script path relative to `baseDirectory`; with `SQL`, selects file output. |
+| `-sf`, `--sqlFile`         | For SQL files       | Alias for `--outputFile`; the path is relative to `baseDirectory`.            |
+| `-cd`, `--csvDir`          | For CSV output      | CSV directory relative to `baseDirectory`.                                   |
+
+The updater uses the same root layout as `bbb-get-cricsheet-data`. Both full and
+nightly mode scan JSON files recursively below `[base]/[data]`, so archive-named
+full directories and flat nightly files use the same importer. The player
+registry is read from `[base]/[names]/[player-registry]` in full mode and from
+`[base]/[data]/[player-registry]` in nightly mode, matching the downloader's
+colocated nightly register files:
+
+SQL output file paths supplied with `-o`/`--outputFile` or `-sf`/`--sqlFile`
+must be relative to `baseDirectory`; for example, `sql/update.sql` is written
+to `[base]/sql/update.sql`. Absolute paths and paths that escape `baseDirectory`
+are rejected.
+
+CSV output directories supplied with `-cd`/`--csvDir` follow the same rule; for
+example, `csv/warehouse` is written to `[base]/csv/warehouse`. Absolute paths
+and paths that escape `baseDirectory` are rejected.
+
+To ouput the data in SQL format:
+
+```bash
+./gradlew :bbb-update-database:run --no-daemon \
+  --args="--base-directory /path/to/data --data-directory cricsheet --player-registry people.csv --database mariadb -o sql/update.sql"
+```
+
+To ouput the data in CSV format:
+
+```bash
+./gradlew :bbb-update-database:run --no-daemon \
+  --args="--base-directory /path/to/data --data-directory cricsheet --player-registry people.csv -ot csv -cd csv"
+```
+
+A nightly run might look like this:
+
+```bash
+./gradlew :bbb-update-database:run --no-daemon \
+  --args="--base-directory /path/to/data --data-directory cricsheet --player-registry people.csv --nightly"
+```
+
+Every imported JSON derives the competition from `info.event.name` (using
+`Unknown` when absent) and maps its `info.match_type` and `info.gender` to
+warehouse codes. The mappings include `Test` → `t`, `T20` → `tt`, `IT20` →
+`itt`, `ODI`/`ODM` → `a`, and `MDM` → `f`; female matches receive the `w`
+prefix, such as `wtt` and `wa`. The existing database, SQL-file, and CSV output
+options are unchanged.
 
 ## Produce CSV output
 
@@ -188,10 +238,10 @@ Run the parser with `CSV` output and a destination directory:
 
 ```bash
 ./gradlew :bbb-update-database:run --no-daemon \
-  --args="--outputType CSV --baseDirectory $CRICSHEET_DIR --playerRegistry $PLAYER_REGISTRY --csvDir $CSV_DIR"
+  --args="--outputType CSV --base-directory $CRICSHEET_ROOT --data-directory cricsheet --names-directory register --player-registry people.csv --csvDir $CSV_DIR"
 ```
 
-The adapter clears `CSV_DIR` before writing. It emits one file per warehouse
+The adapter clears `[base]/$CSV_DIR` before writing. It emits one file per warehouse
 table, with headers matching the generated warehouse schema, including files such
 as `dim_person.csv`, `dim_match.csv`, `fact_delivery.csv`,
 `bridge_delivery_wicket.csv`, and `bridge_delivery_fielder.csv`. Nullable
@@ -201,6 +251,17 @@ marker.
 The `dim_match.csv` file includes the source JSON filename in its `file_name`
 column. The `fact_match.csv` file contains only match-level measures and keys.
 
+
+
+## Load SQL output into MariaDB
+
+If you load the SQL into the database it will create or replace the generated
+warehouse rows according to the selected SQL dialect.
+
+```bash
+cd [SQL Directory]
+mysql -u root -p acs_ball_by_ball < update.sql
+```
 ## Load CSV output into MariaDB
 
 The database must have the warehouse tables before loading CSV data. The
@@ -216,6 +277,13 @@ DB_PORT=3306
 DB_NAME=acs_ball_by_ball
 DB_USER=ballbyball
 
+csv_path="$CSV_DIR"
+if [ ! -d "$csv_path" ]; then
+  printf 'CSV directory does not exist: %s\n' "$csv_path" >&2
+fi
+
+loaded=0
+
 for table in \
   dim_date \
   dim_team \
@@ -230,25 +298,119 @@ for table in \
   bridge_delivery_wicket \
   bridge_delivery_fielder
 do
-  file="$CSV_DIR/$table.csv"
-  if [ -f "$file" ]; then
-    mariadb --verbose --local-infile=1 \
-      --host="$DB_HOST" --port="$DB_PORT" \
-      --user="$DB_USER" --password="$DB_PASSWORD" "$DB_NAME" <<SQL
+  file="$csv_path/$table.csv"
+  if [ ! -f "$file" ]; then
+    printf 'Skipping missing CSV: %s\n' "$file" >&2
+    continue
+  fi
+
+  printf 'Loading %s into %s...\n' "$file" "$table"
+  mariadb --verbose --local-infile=1 \
+    --host="$DB_HOST" --port="$DB_PORT" \
+    --user="$DB_USER" --password="$DB_PASSWORD" "$DB_NAME" <<SQL
 LOAD DATA LOCAL INFILE '$file'
 INTO TABLE $table
 FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"' ESCAPED BY '"'
 LINES TERMINATED BY '\n'
 IGNORE 1 LINES;
 SQL
+  loaded=1
+done
+
+if [ "$loaded" -eq 0 ]; then
+  printf 'No CSV files were found in: %s\n' "$csv_path" >&2
+  exit 1
+fi
+```
+
+Set `CRICSHEET_ROOT` to the same base directory used when generating the CSVs,
+and set `CSV_DIR` to the same `--csvDir` value. The example intentionally stops
+with an error when that directory is missing and reports every file it skips or
+loads; this avoids silently doing nothing because the path is wrong. The loader
+must use `--local-infile=1`. The MariaDB server may also need
+`local_infile=ON`. The CSV adapter allocates warehouse keys in the files, so
+load CSV output into an empty warehouse (or coordinate key and duplicate
+handling explicitly before loading it into an existing warehouse).
+
+## Load CSV output into PostgreSQL
+
+PostgreSQL can import the generated CSV files with `\copy`. This is a client-side
+operation, so the files are read from the machine running `psql`. The
+`cricsheet` schema must already have been migrated, and the tables must be
+loaded in foreign-key dependency order:
+
+```bash
+PG_HOST=localhost
+PG_PORT=5432
+PG_NAME=cricsheet
+PG_USER=cricsheet
+
+for table in \
+  dim_date \
+  dim_team \
+  dim_person \
+  dim_ground \
+  dim_match \
+  dim_innings \
+  dim_wicket \
+  fact_match \
+  fact_delivery \
+  bridge_match_person \
+  bridge_delivery_wicket \
+  bridge_delivery_fielder
+do
+  file="$CRICSHEET_ROOT/$CSV_DIR/$table.csv"
+  if [ -f "$file" ]; then
+    PGPASSWORD="$DB_PASSWORD" psql --host="$PG_HOST" --port="$PG_PORT" \
+      --username="$PG_USER" --dbname="$PG_NAME" <<SQL
+SET search_path TO cricsheet;
+\copy $table FROM '$file' WITH (FORMAT csv, HEADER true, NULL '\N')
+SQL
   fi
 done
 ```
 
-The loader must use `--local-infile=1`. The MariaDB server may also need
-`local_infile=ON`. The CSV adapter allocates warehouse keys in the files, so
-load CSV output into an empty warehouse (or coordinate key and duplicate
-handling explicitly before loading it into an existing warehouse).
+The `NULL '\N'` option converts the CSV adapter's nullable-value marker into
+PostgreSQL `NULL`. As with MariaDB, load the files into an empty warehouse or
+coordinate key and duplicate handling explicitly before loading them into an
+existing warehouse.
+
+## Load CSV output into SQLite
+
+SQLite's command-line importer can load the generated files when the data does
+not contain nullable `\N` values:
+
+```bash
+SQLITE_DB=/path/to/cricsheet.db
+
+for table in \
+  dim_date \
+  dim_team \
+  dim_person \
+  dim_ground \
+  dim_match \
+  dim_innings \
+  dim_wicket \
+  fact_match \
+  fact_delivery \
+  bridge_match_person \
+  bridge_delivery_wicket \
+  bridge_delivery_fielder
+do
+  file="$CRICSHEET_ROOT/$CSV_DIR/$table.csv"
+  if [ -f "$file" ]; then
+    sqlite3 "$SQLITE_DB" <<SQL
+.mode csv
+.import --skip 1 '$file' $table
+SQL
+  fi
+done
+```
+
+The SQLite shell does not provide a direct equivalent of PostgreSQL's
+`NULL '\N'` import option, so `\N` values are not converted to SQL `NULL` by
+this command. For complete nullable-value handling, generate a SQLite
+`SQL_FILE` script instead and load it with `sqlite3` as shown below.
 
 ## Alternative output modes
 
@@ -256,14 +418,14 @@ Write an executable MariaDB SQL script instead of CSV:
 
 ```bash
 ./gradlew :bbb-update-database:run --no-daemon \
-  --args="--outputType SQL_FILE --baseDirectory $CRICSHEET_DIR --playerRegistry $PLAYER_REGISTRY --outputFile $SQL_FILE"
+  --args="--outputType SQL_FILE --base-directory $CRICSHEET_ROOT --data-directory cricsheet --names-directory register --player-registry people.csv --outputFile $SQL_FILE"
 ```
 
 Load that script into MariaDB:
 
 ```bash
 mariadb --host="$DB_HOST" --port="$DB_PORT" \
-  --user="$DB_USER" --password="$DB_PASSWORD" "$DB_NAME" < "$SQL_FILE"
+  --user="$DB_USER" --password="$DB_PASSWORD" "$DB_NAME" < "$CRICSHEET_ROOT/$SQL_FILE"
 ```
 
 The generated SQL file is self-contained for the warehouse schema: it drops
@@ -290,7 +452,7 @@ target database:
 
 ```bash
 psql --host=localhost --port=5432 --username="$DB_USER" --dbname=cricsheet \
-  --file="$SQL_FILE"
+  --file="$CRICSHEET_ROOT/$SQL_FILE"
 ```
 
 Generate and load a SQLite script:
@@ -298,7 +460,7 @@ Generate and load a SQLite script:
 ```bash
 ./gradlew :bbb-update-database:run --no-daemon \
   --args="--outputType SQL_FILE --database sqlite --baseDirectory $CRICSHEET_DIR --playerRegistry $PLAYER_REGISTRY --outputFile $SQL_FILE"
-sqlite3 /path/to/cricsheet.db < "$SQL_FILE"
+sqlite3 /path/to/cricsheet.db < "$CRICSHEET_ROOT/$SQL_FILE"
 ```
 
 SQLite scripts enable foreign keys, use `INTEGER PRIMARY KEY AUTOINCREMENT`,

@@ -279,12 +279,8 @@ class CricsheetDataRetrieverTest {
         nightly: Boolean = false
     ): RetrievalConfiguration = RetrievalConfiguration(
         baseDirectory = temporaryDirectory,
-        dataDirectory = if (nightly) {
-            temporaryDirectory.resolve("nightly/data")
-        } else {
-            temporaryDirectory.resolve("data")
-        },
-        namesDirectory = temporaryDirectory.resolve("names"),
+        dataDirectory = temporaryDirectory.resolve("data"),
+        namesDirectory = if (nightly) temporaryDirectory.resolve("data") else temporaryDirectory.resolve("names"),
         force = force,
         nightly = nightly
     )

@@ -209,12 +209,7 @@ class Database(private val outputAdapter: OutputAdapter) {
     ): WarehouseMatch {
         val eventName = cricSheet.info.event?.name ?: ""
         val eventMatch = cricSheet.info.event?.matchNumber ?: 0
-        val matchType = if (!cardDirectoryData.mixedGender) {
-            cardDirectoryData.matchType
-        } else {
-            if (cricSheet.info.gender.lowercase() == "female") "w${cardDirectoryData.matchType}"
-            else cardDirectoryData.matchType
-        }
+        val matchType = cardDirectoryData.matchType
         val teams = cricSheet.info.teams.map { teamNameForMatch(it, cricSheet, cardDirectoryData) }
         val homeTeam = teamsWithId.find { it.name == teams[0] }
             ?: throw InvalidStateException("Unknown home team: ${teams[0]}")

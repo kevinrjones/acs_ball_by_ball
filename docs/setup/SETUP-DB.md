@@ -246,7 +246,7 @@ FLYWAY_PASSWORD="$POSTGRES_PASSWORD" \
 ```
 
 Each target receives `1__initial_tables.sql` and the complete
-`2__initial_warehouse.sql`. The source JSON filename is stored in
+`2__initial_warehouse.sql`. The fully qualified source JSON path is stored in
 `dim_match.file_name`; `fact_match` stores only match-level keys and measures.
 The PostgreSQL migrations create and use the `cricsheet` schema; the MariaDB
 migrations use the `cricsheet` database.

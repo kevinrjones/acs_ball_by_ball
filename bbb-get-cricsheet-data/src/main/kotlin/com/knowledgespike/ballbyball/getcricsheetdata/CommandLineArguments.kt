@@ -34,13 +34,13 @@ object CommandLineArguments {
         val baseDirectory = absoluteBaseDirectory(commandLine.requiredValue("base-directory"))
         val dataDirectoryName = commandLine.requiredValue("data-directory")
         val nightly = commandLine.hasOption("nightly")
-        val dataRoot = if (nightly) baseDirectory.resolve("nightly") else baseDirectory
-        val dataDirectory = childDirectory(dataRoot, dataDirectoryName, "--data-directory")
-        val namesDirectory = childDirectory(
+        val dataDirectory = childDirectory(baseDirectory, dataDirectoryName, "--data-directory")
+        val configuredNamesDirectory = childDirectory(
             baseDirectory,
             commandLine.getOptionValue("names-directory", dataDirectoryName),
             "--names-directory"
         )
+        val namesDirectory = if (nightly) dataDirectory else configuredNamesDirectory
 
         return ApplicationCommand.Run(
             baseDirectory = baseDirectory,
@@ -75,7 +75,7 @@ object CommandLineArguments {
                 .longOpt("names-directory")
                 .hasArg()
                 .argName("directory")
-                .desc("relative directory for people.csv and names.csv (default: data directory)")
+                .desc("relative directory for people.csv and names.csv in full mode (default: data directory)")
                 .get()
         )
         addOption(

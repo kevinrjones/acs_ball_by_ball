@@ -2,6 +2,7 @@ package com.knowledgespike.ballbyball.parse.database
 
 import com.knowledgespike.ballbyball.parse.database.adapter.sqlite.SqlScriptOutputAdapter
 import com.knowledgespike.ballbyball.parse.models.CardDirectoryData
+import com.knowledgespike.ballbyball.parse.models.cardDirectoryDataForMatch
 import com.knowledgespike.ballbyball.parse.parser.structure.PowerPlays
 import com.knowledgespike.ballbyball.parse.parser.structure.By
 import com.knowledgespike.ballbyball.parse.parser.structure.CricSheet
@@ -30,6 +31,29 @@ import strikt.assertions.isEqualTo
 import java.nio.file.Files
 
 class DatabaseTest {
+    @Test
+    fun `given female t20 match when written then warehouse match type is wtt`() {
+        val base = cricSheetWithFielder()
+        val cricSheet = base.copy(
+            info = base.info.copy(
+                event = Event("Women's T20 Challenge"),
+                gender = "female",
+                matchType = "T20"
+            )
+        )
+        val output = Files.createTempFile("warehouse", ".sql")
+
+        SqlScriptOutputAdapter(output).use { adapter ->
+            Database(adapter).writeMatch(
+                fileName = "match.json",
+                cricSheet = cricSheet,
+                cardDirectoryData = cardDirectoryDataForMatch(cricSheet)
+            )
+        }
+
+        expectThat(Files.readString(output)).contains("'wtt'")
+    }
+
     @Test
     fun `given female match outside excluded competitions when match is written then Women is appended to team names`() {
         val base = cricSheetWithFielder()

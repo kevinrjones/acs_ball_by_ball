@@ -1,5 +1,269 @@
 # Project Memory
 
+## Task: Derive updater metadata from JSON
+
+### Title
+
+Remove archive-directory metadata dependency from `bbb-update-database`
+
+### Date/time completed
+
+2026-09-30 13:35
+
+### What was shipped
+
+- Full and nightly imports now recursively discover JSON files below the
+  configured data directory, without using an archive-directory catalog.
+- Competition names come from `info.event.name`, with `Unknown` as the missing
+  event fallback.
+- Cricsheet `info.match_type` and `info.gender` values are converted to
+  warehouse codes such as `t`, `tt`, `f`, `wtt`, and `wa` before database
+  output is written.
+- Nightly updater data and register paths now match the downloader's direct
+  `[base]/[data]` layout.
+
+### Key decisions
+
+- Recursive JSON discovery is shared by full and nightly modes; directory names
+  are no longer a source of match type or competition metadata.
+- Female matches receive a `w` prefix after source-format mapping, while the
+  existing team-name exception rules remain in the database layer.
+
+### Gotchas
+
+- Full downloads may still retain archive-named extraction directories, but
+  those names are now operational layout only and are not interpreted.
+- Nightly `people.csv` and `names.csv` are read beside nightly JSON, so a
+  nightly updater invocation does not use a separate names directory.
+
+### Test coverage areas
+
+- Parser tests cover direct full/nightly paths and recursive flat/nested JSON
+  discovery.
+- Metadata tests cover missing events, male and female T20/one-day formats,
+  Test and international T20 mappings.
+- Database tests verify that the derived `wtt` value is emitted in SQL; the
+  complete `bbb-update-database` test suite passes.
+
+## Task: Remove the implicit nightly retrieval directory
+
+### Title
+
+Place nightly archives, JSON, and register CSVs under the configured data path
+
+### Date/time completed
+
+2026-09-30 12:50
+
+### What was shipped
+
+- Nightly retrieval now resolves ZIPs and flat extracted JSON directly under
+  `[base]/[data]`, with ZIPs in the `zips` child.
+- Nightly `people.csv` and `names.csv` are written beside the JSON files,
+  without an implicit `[base]/nightly` directory.
+- Full retrieval continues to use its separate configured names directory and
+  archive-named extraction directories.
+
+### Key decisions
+
+- The `--nightly` flag selects sources and merge behavior only; it no longer
+  changes the configured data path.
+- `--names-directory` remains syntactically validated for compatibility but
+  nightly output is intentionally colocated with the configured data directory.
+
+### Gotchas
+
+- Existing updater nightly path handling must consume the same direct data
+  layout when that planned workflow is updated.
+- Existing files outside the managed nightly artifacts remain untouched.
+
+### Test coverage areas
+
+- Parser tests cover short and long nightly flags, direct data-path resolution,
+  safe nested paths, and compatibility with an explicit names directory.
+- Retrieval tests cover fixed request ordering, flat extraction, overwrite
+  precedence, directory reuse, stale-file preservation, and CSV colocation.
+
+## Task: Include fully qualified JSON paths in generated output
+
+### Title
+
+Emit absolute source JSON paths in SQL and CSV output
+
+### Date/time completed
+
+2026-09-30 11:40
+
+### What was shipped
+
+- Match imports now pass each normalized absolute JSON path into the warehouse
+  output contract.
+- Generated SQL scripts and CSV files therefore retain the fully qualified
+  source path in `dim_match.file_name`.
+
+### Key decisions
+
+- The path is normalized and made absolute at the application file-discovery
+  boundary, so all output adapters receive the same provenance value.
+- Match duplicate detection uses that same fully qualified value to remain
+  consistent with the emitted source path.
+
+### Gotchas
+
+- Existing exception matching continues to use the discovered basename because
+  the current exception list is defined in terms of source filenames.
+
+### Test coverage areas
+
+- SQL-script and CSV adapter regression tests assert that absolute JSON paths
+  are emitted in `dim_match.file_name`.
+- The complete `bbb-update-database` test suite passes.
+
+## Task: Document database imports for generated output
+
+### Title
+
+Add database loading commands to `README-DEV.md`
+
+### Date/time completed
+
+2026-09-30 11:33
+
+### What was shipped
+
+- Documented CSV loading commands for MariaDB, PostgreSQL, and SQLite.
+- Documented PostgreSQL `NULL '\N'` handling and the SQLite limitation with
+  the generated CSV null marker.
+- Kept SQL-file import commands for all supported database types and aligned
+  CSV paths with the base-directory-relative output contract.
+
+### Key decisions
+
+- PostgreSQL uses client-side `\copy` with `NULL '\N'` and the existing
+  foreign-key load order.
+- SQLite CSV import is documented as limited; the generated SQLite SQL file is
+  the recommended path when nullable values must be preserved.
+
+### Gotchas
+
+- Generated CSV files contain warehouse keys and should be loaded into an
+  empty or explicitly coordinated warehouse.
+- CSV output paths are resolved beneath `CRICSHEET_ROOT`/`baseDirectory`.
+
+### Test coverage areas
+
+- Reviewed all documented MariaDB, PostgreSQL, and SQLite SQL/CSV import
+  commands and passed `git diff --check`.
+
+## Task: Resolve updater CSV output beneath the base directory
+
+### Title
+
+Make `-cd` output paths relative to `bd`
+
+### Date/time completed
+
+2026-09-30 11:20
+
+### What was shipped
+
+- CSV output directories supplied through `-cd`/`--csvDir` are now resolved
+  beneath the validated base directory.
+- Nested relative CSV output paths are supported, and the existing adapter
+  continues to clear the resolved directory before writing warehouse files.
+
+### Key decisions
+
+- CSV output uses the same safe relative-path contract as SQL output; absolute
+  paths and traversal outside `bd` are rejected.
+- `-ot` remains the output-type selector and is not treated as a filesystem
+  path.
+
+### Gotchas
+
+- The value passed to `-cd` is relative to `bd`, not the process working
+  directory.
+
+### Test coverage areas
+
+- Nested CSV output resolution and traversal rejection, alongside existing SQL
+  output path coverage.
+
+## Task: Resolve updater SQL output beneath the base directory
+
+### Title
+
+Make `-o` and `-sf` output paths relative to `bd`
+
+### Date/time completed
+
+2026-09-30 11:08
+
+### What was shipped
+
+- SQL script paths supplied through `-o`/`--outputFile` and `-sf`/`--sqlFile`
+  are now resolved beneath the validated base directory.
+- Nested relative output paths are supported, and SQL output parent directories
+  are still created by the existing output adapter.
+
+### Key decisions
+
+- Output paths use the same safe relative-path contract as the updater’s input
+  directories; absolute paths and traversal outside `bd` are rejected.
+- The `-sf` alias follows the same resolution behavior as `-o`.
+
+### Gotchas
+
+- The value passed to either SQL output option is a path relative to `bd`, not
+  the process working directory.
+
+### Test coverage areas
+
+- Relative nested SQL output resolution for both option names and rejection of
+  traversal-escaping paths.
+- Full `bbb-update-database` test suite and repository-wide Gradle checks.
+
+## Task: Add nightly database imports
+
+### Title
+
+Make `bbb-update-database` consume full and nightly Cricsheet layouts
+
+### Date/time completed
+
+2026-09-30 09:23
+
+### What was shipped
+
+- Added validated base, data, names, and player-registry input paths to the
+  database updater, plus `--nightly`/`-n` selection.
+- Full imports continue reading archive-named directories, while nightly
+  imports scan only flat JSON files under `[base]/nightly/[data]`.
+- Nightly match metadata is derived from each JSON document and register files
+  remain at `[base]/[names]`.
+
+### Key decisions
+
+- The updater shares the downloader’s path contract so scheduled retrieval and
+  import commands use the same base/data/names arguments.
+- Nightly metadata uses `info.event.name`, an `Unknown` fallback, and warehouse
+  mappings for Cricsheet match types; `mixedGender` remains enabled for female
+  records.
+- Full-mode archive metadata and output adapters remain unchanged.
+
+### Gotchas
+
+- Nightly mode expects extracted JSON files directly below the nightly data
+  directory and does not recurse into archive-named child directories.
+- The player registry is resolved independently of nightly JSON input, so a
+  default names directory is `[base]/[data]`, not `[base]/nightly/[data]`.
+
+### Test coverage areas
+
+- CLI path resolution and traversal rejection, flat nightly file selection,
+  format mapping, missing-event fallback, women’s metadata handling, and all
+  existing database/output adapter tests.
+
 ## Task: Add nightly Cricsheet retrieval
 
 ### Title

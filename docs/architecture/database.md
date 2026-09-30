@@ -213,7 +213,7 @@ the dimension keys shared by match-level and delivery-level analysis.
 | `match_key` | `BIGINT UNSIGNED` | No | Auto-incrementing warehouse key and primary key. |
 | `source_match_id` | `INT` | No | Source match identifier; unique. |
 | `source_ca_id` | `VARCHAR(10)` | Yes | Optional source/Cricket Archive identifier. |
-| `file_name` | `VARCHAR(120)` | No | Source file name. |
+| `file_name` | `VARCHAR(120)` | No | Fully qualified source JSON path. |
 | `match_in_series` | `INT` | No | Match position within a series. |
 | `match_type` | `VARCHAR(15)` | No | Match format/type. |
 | `event_name` | `VARCHAR(200)` | No | Competition or event name. |
@@ -288,8 +288,8 @@ Indexes and constraints:
 
 `fact_match` has one row per source match. Its primary key is also a foreign
 key to `dim_match`, so it stores match-level measures without copying the
-match descriptor columns into the fact. The source JSON filename is retained
-as the directly queryable provenance attribute `dim_match.file_name`.
+match descriptor columns into the fact. The fully qualified source JSON path is
+retained as the directly queryable provenance attribute `dim_match.file_name`.
 
 | Column | Type | Null | Description |
 | --- | --- | --- | --- |
@@ -301,8 +301,8 @@ as the directly queryable provenance attribute `dim_match.file_name`.
 | `match_count` | `TINYINT UNSIGNED` | No | Additive count measure; defaults to `1`. |
 
 The fact also indexes `match_date_key` and `ground_key` for common analytical
-filters. Join `fact_match` to `dim_match` on `match_key` when the source JSON
-filename is needed.
+filters. Join `fact_match` to `dim_match` on `match_key` when the fully
+qualified source JSON path is needed.
 
 ### `fact_delivery`
 
@@ -521,7 +521,7 @@ and a transaction around generated rows.
 
 - Run Flyway migrations `1__initial_tables.sql` and
   `2__initial_warehouse.sql` for the selected dialect before loading warehouse
-  data. The source JSON filename is stored in `dim_match.file_name`.
+  data. The fully qualified source JSON path is stored in `dim_match.file_name`.
 - The migration creates tables but does not insert dimension or fact data.
 - The database schema is named `cricsheet` by the migration.
 - MySQL warehouse tables use `ENGINE = InnoDB`; PostgreSQL and SQLite use their

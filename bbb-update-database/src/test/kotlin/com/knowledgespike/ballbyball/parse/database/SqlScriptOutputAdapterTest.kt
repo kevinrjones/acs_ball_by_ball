@@ -67,6 +67,7 @@ class SqlScriptOutputAdapterTest {
     @Test
     fun `given warehouse entities when written then generated script preserves foreign keys`() {
         val output = Files.createTempFile("warehouse", ".sql")
+        val sourceFile = Files.createTempFile("match", ".json").toAbsolutePath().normalize()
         val adapter = SqlScriptOutputAdapter(output)
         val team1 = adapter.upsertTeam("Home")
         val team2 = adapter.upsertTeam("Away")
@@ -74,7 +75,7 @@ class SqlScriptOutputAdapterTest {
         val dateKey = adapter.upsertDate(LocalDate.parse("2024-01-02"))
         val match = adapter.insertMatch(
             MatchRecord(
-                fileName = "match.json",
+                fileName = sourceFile.toString(),
                 matchInSeries = 1,
                 matchType = "tt",
                 eventName = "Series",
@@ -98,7 +99,7 @@ class SqlScriptOutputAdapterTest {
 
         val sql = Files.readString(output)
         expectThat(sql).contains("INSERT INTO dim_match (match_key, source_match_id")
-        expectThat(sql).contains("VALUES (1, 1, NULL, 'match.json'")
+        expectThat(sql).contains("VALUES (1, 1, NULL, '${sourceFile.toString().replace("'", "''")}'")
         expectThat(sql).contains("INSERT INTO fact_match (match_key, match_date_key")
             .and { contains("VALUES (1, 20240102, 1, 1, 10, 1)") }
     }

@@ -14,13 +14,9 @@ import com.knowledgespike.ballbyball.parse.database.adapter.postgres.SqlOutputAd
 import com.knowledgespike.ballbyball.parse.database.adapter.postgres.SqlScriptOutputAdapter as PostgresSqlScriptOutputAdapter
 import com.knowledgespike.ballbyball.parse.database.adapter.sqlite.SqlOutputAdapter as SqliteSqlOutputAdapter
 import com.knowledgespike.ballbyball.parse.database.adapter.sqlite.SqlScriptOutputAdapter as SqliteSqlScriptOutputAdapter
-import com.knowledgespike.ballbyball.parse.models.CardDirectoryData
+import com.knowledgespike.ballbyball.parse.models.cardDirectoryDataForMatch
 import org.apache.commons.cli.*
-import java.io.File
-import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.Paths
-import kotlin.io.path.name
 
 
 class Application {
@@ -32,58 +28,6 @@ class Application {
         fun main(args: Array<String>) {
             try {
 
-                // run --args="-bd /Users/kevinjones/Dropbox/projects/cricket/ballbyball/Archive/cricsheet
-                // -pr people.csv -c jdbc:mysql://localhost:3306/acs_ball_by_ball?useSSL=true&requireSSL=true
-                // -u cricsheet -p p4ssw0rd"
-                val cardDirectories = listOf(
-                    CardDirectoryData("apl_json", "Afghanistan Premier League", "tt"),
-                    CardDirectoryData("bbl_json", "Big Bash", "tt"),
-                    CardDirectoryData("blz_json", "Blaze", "wtt"),
-                    CardDirectoryData("bpl_json", "Bangladesh Premier League", "tt"),
-                    CardDirectoryData("bwt_json", "Bob Willis Trophy", "f"),
-                    CardDirectoryData("cch_json", "County Championship", "f"),
-                    CardDirectoryData("cec_json", "Charlotte Edwards Cup", "wtt"),
-                    CardDirectoryData("cpl_json", "Caribbean Premier League", "tt"),
-                    CardDirectoryData("ctc_json", "CSA T20 Challenge", "tt"),
-                    CardDirectoryData("hnd_json", "The Hundred", "tt", true),
-                    CardDirectoryData("frb_json", "Fairbreak", "wmisc"),
-                    CardDirectoryData("ilt_json", "International League T20", "mmisc"),
-                    CardDirectoryData("ipl_json", "Indian Premier League", "tt"),
-                    CardDirectoryData("ipo_json", "Cricket Ireland Inter-Provincial Limited Over Cup", "a"),
-                    CardDirectoryData("ipt_json", "Cricket Ireland Inter-Provincial Twenty20 Trophy", "tt"),
-                    CardDirectoryData("it20s_json", "International T20", "itt", true),
-                    CardDirectoryData("lpl_json", "Lanka Premier League", "tt"),
-                    CardDirectoryData("mcl_json", "Major Clubs Limited Over Tournament", "tt"),
-                    CardDirectoryData("mct_json", "Major Clubs T20 Tournament", "tt"),
-                    CardDirectoryData("mdms_json", "Multiday Matches", "f"), // duplicates of ccg, ssh, bwt
-                    CardDirectoryData("mlc_json", "Major League Cricket", "tt"),
-                    CardDirectoryData("mlt_json", "Major League Tournament", "f"),
-                    CardDirectoryData("msl_json", "Mzansi Super League", "tt"),
-                    CardDirectoryData("npl_json", "Nepal Premier League", "tt"),
-                    CardDirectoryData("ntb_json", "T20 Blast matches", "tt"),
-                    CardDirectoryData("odis_json", "One-Day Internationals", "a", true),
-                    CardDirectoryData("odms_json", "ICC World Cricket League Americas Region Division One", "a"),
-                    CardDirectoryData("pks_json", "Plunket Shield", "f"),
-                    CardDirectoryData("psl_json", "Pakistan Super League", "tt"),
-                    CardDirectoryData("rhf_json", "Rachael Heyhoe-Flint Trophy", "wa"),
-                    CardDirectoryData("rlc_json", "Royal London Cup", "a"),
-                    CardDirectoryData("sat_json", "SA T20", "tt"),
-                    CardDirectoryData("ssh_json", "Sheffield Shield", "f"), // add sheffied shield before mdm
-                    CardDirectoryData("sft_json", "West Indies Super 50", "wa"),
-                    CardDirectoryData("sma_json", "Syed Mushtaq Ali Trophy", "tt"),
-                    CardDirectoryData("ssm_json", "Super Smash", "tt", true),
-                    CardDirectoryData("t20s_json", "International T20s", "itt", true),
-                    CardDirectoryData("tests_json", "Test Matches", "t", true),
-                    CardDirectoryData("wbb_json", "Women's Big Bash", "wtt"),
-                    CardDirectoryData("wcl_json", "Women's Caribbean Premier League", "wtt"),
-                    CardDirectoryData("wod_json", "ECB Women's One-Day Cup", "wa"),
-                    CardDirectoryData("wpl_json", "Women's Premier League", "wtt"),
-                    CardDirectoryData("wsl_json", "Women's Cricket Super League", "wtt"),
-                    CardDirectoryData("wtb_json", "Women's Blast", "wtt"),
-                    CardDirectoryData("wtc_json", "Women's T20 Challenge", "wtt"),
-                )
-
-//                val exceptions = listOf("804779.json", "1146789.json", "1002157.json")
                 val exceptions = emptyList<String>()
 
                 val options = createCommandLineOptions()
@@ -118,19 +62,20 @@ class Application {
                     return
                 }
 
-                var baseDirectory = cmd.getOptionValue("bd")
-                val playerRegistry = cmd.getOptionValue("pr")
                 val outputType = cmd.getOptionValue("ot", "SQL").uppercase()
                 val outputFile = cmd.getOptionValue("o") ?: cmd.getOptionValue("sf")
                 val csvDirectory = cmd.getOptionValue("cd")
                 val databaseType = cmd.getOptionValue("db", "mariadb").lowercase()
-
-
-                if (!baseDirectory.endsWith('/'))
-                    baseDirectory += "/"
+                val input = UpdateDatabaseArguments.from(cmd)
+                val outputPath = outputFile?.let {
+                    UpdateDatabaseArguments.resolveOutputPath(input.baseDirectory, it, "--outputFile")
+                }
+                val csvPath = csvDirectory?.let {
+                    UpdateDatabaseArguments.resolveOutputPath(input.baseDirectory, it, "--csvDir")
+                }
 
                 val playerRegistryParser = PlayerRegistryParser()
-                val players = playerRegistryParser.parse(File(baseDirectory + playerRegistry))
+                val players = playerRegistryParser.parse(input.playerRegistry.toFile())
                 val people = players.map {
                     PersonRegistryEntity(it.id, it.name, it.caId.toIntOrNull() ?: 0)
                 }.toList()
@@ -138,15 +83,15 @@ class Application {
                 when (outputType) {
                     "SQL_FILE" -> {
                         require(!outputFile.isNullOrBlank()) { "--outputFile is required when --outputType SQL_FILE is selected" }
-                        createScriptOutputAdapter(databaseType, Path.of(outputFile)).use { adapter ->
-                            runImport(adapter, baseDirectory, people, cardDirectories, exceptions)
+                        createScriptOutputAdapter(databaseType, requireNotNull(outputPath)).use { adapter ->
+                            runImport(adapter, input, people, exceptions)
                         }
                     }
 
                     "SQL", "DATABASE" -> {
                         if (outputType == "SQL" && !outputFile.isNullOrBlank()) {
-                            createScriptOutputAdapter(databaseType, Path.of(outputFile)).use { adapter ->
-                                runImport(adapter, baseDirectory, people, cardDirectories, exceptions)
+                            createScriptOutputAdapter(databaseType, requireNotNull(outputPath)).use { adapter ->
+                                runImport(adapter, input, people, exceptions)
                             }
                             return
                         }
@@ -159,7 +104,7 @@ class Application {
                         )
                         dbConnection.connect.use { db ->
                             createSqlOutputAdapter(connectionString, db.connection).use { adapter ->
-                                runImport(adapter, baseDirectory, people, cardDirectories, exceptions)
+                                runImport(adapter, input, people, exceptions)
                             }
                         }
                     }
@@ -168,8 +113,8 @@ class Application {
                         require(!csvDirectory.isNullOrBlank()) {
                             "--csvDir is required when --outputType CSV is selected"
                         }
-                        CsvOutputAdapter(Path.of(csvDirectory)).use { adapter ->
-                            runImport(adapter, baseDirectory, people, cardDirectories, exceptions)
+                        CsvOutputAdapter(requireNotNull(csvPath)).use { adapter ->
+                            runImport(adapter, input, people, exceptions)
                         }
                     }
 
@@ -223,57 +168,44 @@ class Application {
             )
             options.addOption("sf", "sqlFile", true, "alias for outputFile")
             options.addOption("cd", "csvDir", true, "CSV output directory; required for CSV output")
-            options.addOption(
-                Option
-                    .builder("bd")
-                    .longOpt("baseDirectory")
-                    .argName("baseDirectory")
-                    .hasArg()
-                    .required()
-                    .desc("the base directory for scorecards and data")
-                    .get()
-            )
-            options.addOption(
-                Option
-                    .builder("pr")
-                    .longOpt("playerRegistry")
-                    .argName("playerRegistry")
-                    .hasArg()
-                    .required()
-                    .desc("the name of the file containing the player registry")
-                    .get()
-            )
+            UpdateDatabaseArguments.options().options.forEach(options::addOption)
             return options
         }
 
         private fun runImport(
             adapter: OutputAdapter,
-            baseDirectory: String,
+            input: UpdateDatabaseInput,
             people: List<PersonRegistryEntity>,
-            cardDirectories: List<CardDirectoryData>,
             exceptions: List<String>
         ) {
             val database = Database(adapter)
             database.writeAllPeople(people.stream())
             val ballByBallParser = BallByBallParser()
+            importMatches(database, ballByBallParser, input.dataDirectory, exceptions)
+        }
 
-            cardDirectories.forEach { cardDirectoryData ->
-                log.info("Inserting {} {}", cardDirectoryData.name, cardDirectoryData.matchType)
-                val directory = Paths.get("${baseDirectory}${cardDirectoryData.directoryName}/")
-                Files.list(directory).use { files ->
-                    files.filter { it.name.endsWith("json") }.forEach { file ->
-                        if (!exceptions.contains(file.fileName.toString()) && database.shouldParse(file.fileName.name)) {
-                            log.debug(
-                                "Parsing : {}, {}, {}",
-                                file.fileName,
-                                cardDirectoryData.name,
-                                cardDirectoryData.matchType
-                            )
-                            database.writeMatch(file.fileName.name, ballByBallParser.parse(file.toFile()), cardDirectoryData)
-                        }
-                    }
+        private fun importMatches(
+            database: Database,
+            parser: BallByBallParser,
+            dataDirectory: Path,
+            exceptions: List<String>
+        ) {
+            log.info("Inserting matches from {}", dataDirectory)
+            matchFiles(dataDirectory).forEach { file ->
+                val sourceFile = file.toAbsolutePath().normalize()
+                if (!exceptions.contains(file.fileName.toString()) && database.shouldParse(sourceFile.toString())) {
+                    val cricSheet = parser.parse(file.toFile())
+                    val cardDirectoryData = cardDirectoryDataForMatch(cricSheet)
+                    log.debug(
+                        "Parsing match: {}, {}, {}",
+                        file.fileName,
+                        cardDirectoryData.name,
+                        cardDirectoryData.matchType
+                    )
+                    database.writeMatch(sourceFile.toString(), cricSheet, cardDirectoryData)
                 }
             }
         }
+
     }
 }

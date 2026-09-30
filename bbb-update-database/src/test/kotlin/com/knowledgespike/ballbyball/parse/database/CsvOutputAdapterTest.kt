@@ -31,6 +31,7 @@ class CsvOutputAdapterTest {
     @Test
     fun `given warehouse rows when written then csv preserves nulls and foreign keys`() {
         val output = Files.createTempDirectory("warehouse-csv")
+        val sourceFile = Files.createTempFile("match", ".json").toAbsolutePath().normalize()
         val adapter = CsvOutputAdapter(output)
         val home = adapter.upsertTeam("Home")
         val away = adapter.upsertTeam("Away")
@@ -38,7 +39,7 @@ class CsvOutputAdapterTest {
         val dateKey = adapter.upsertDate(LocalDate.parse("2024-01-02"))
         val match = adapter.insertMatch(
             MatchRecord(
-                fileName = "match.json",
+                fileName = sourceFile.toString(),
                 matchInSeries = 1,
                 matchType = "tt",
                 eventName = "Series",
@@ -62,7 +63,7 @@ class CsvOutputAdapterTest {
 
         val matchCsv = Files.readString(output.resolve("dim_match.csv"))
         expectThat(matchCsv).contains("match_key,source_match_id,source_ca_id,file_name")
-        expectThat(matchCsv).contains("1,1,\\N,match.json")
+        expectThat(matchCsv).contains("1,1,\\N,${sourceFile.toString()}")
         expectThat(Files.readString(output.resolve("fact_match.csv")))
             .contains("match_key,match_date_key,ground_key,duration_days,margin,match_count\n1,20240102,1,1,10,1")
     }

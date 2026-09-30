@@ -45,18 +45,43 @@ these sources in order:
 1. `https://cricsheet.org/downloads/recently_added_7_json.zip`
 2. `https://cricsheet.org/downloads/recently_added_2_json.zip`
 
-The ZIPs are stored under `[base]/nightly/[data]/zips` and their validated
-contents are staged and merged directly into `[base]/nightly/[data]`, without
-archive-named child directories. The second archive overwrites collisions from
-the first. Nightly mode reuses existing data and names directories, replaces
+The ZIPs are stored under `[base]/[data]/zips` and their validated contents are
+staged and merged directly into `[base]/[data]`, without an implicit `nightly`
+directory or archive-named child directories. The second archive overwrites
+collisions from the first. Nightly mode reuses the data directory, replaces
 managed ZIP, extracted, and CSV files, preserves stale or unrelated files, and
 rejects regular-file destination conflicts; `--force` is accepted but has no
-additional effect. Register CSVs remain at `[base]/[names]`, with names
-defaulting to the configured data directory.
+additional effect. Register CSVs are also stored at `[base]/[data]` in nightly
+mode; `--names-directory` remains available and validated for compatibility but
+does not change that nightly destination.
 
 Failures are logged per artifact while independent downloads continue. The
 process returns `0` only when all artifacts succeed, `1` for operational or
 partial failures, and `2` for invalid command-line arguments.
+
+### Database update workflow
+
+`bbb-update-database` consumes the downloader’s path contract rather than
+assuming a hardcoded scorecard directory. It requires an absolute base path and
+a relative data path, with an optional relative names path for the shared
+register:
+
+- Both modes recursively scan JSON files below `[base]/[data]`; full archive
+  subdirectories and flat nightly output therefore use the same importer.
+- Full mode reads the player registry from `[base]/[names]/[player-registry]`.
+  Nightly mode reads it from `[base]/[data]/[player-registry]`, where the
+  downloader colocates the register CSVs.
+- Every JSON document supplies its competition and format metadata through its
+  `info` object. `Test`, `T20`, `IT20`, `ODI`, `ODM`, and `MDM` map to `t`,
+  `tt`, `itt`, `a`, `a`, and `f`; female documents receive the `w` prefix,
+  producing values such as `wtt` and `wa`. Missing event names use `Unknown`.
+
+SQL script output selected with `-o`/`--outputFile` or `-sf`/`--sqlFile` is
+resolved relative to the configured base directory. Nested paths are allowed,
+while absolute paths and paths that escape the base directory are rejected.
+CSV output selected with `-cd`/`--csvDir` follows the same base-directory
+relative path contract; the resolved directory is cleared and populated by the
+CSV adapter.
 
 ## Runtime flow & Authentication Architecture
 

@@ -76,7 +76,7 @@ class CommandLineArgumentsTest {
     }
 
     @Test
-    fun `given short nightly flag when parsed then nightly data directory is below nightly`() {
+    fun `given short nightly flag when parsed then nightly uses the configured data directory`() {
         expectThat(
             CommandLineArguments.parse(
                 arrayOf("-bd", "/tmp/cricsheet-root", "-dd", "matches", "-n", "-f")
@@ -84,7 +84,7 @@ class CommandLineArgumentsTest {
         ).isEqualTo(
             ApplicationCommand.Run(
                 baseDirectory = Path.of("/tmp/cricsheet-root"),
-                dataDirectory = Path.of("/tmp/cricsheet-root/nightly/matches"),
+                dataDirectory = Path.of("/tmp/cricsheet-root/matches"),
                 namesDirectory = Path.of("/tmp/cricsheet-root/matches"),
                 force = true,
                 nightly = true
@@ -105,8 +105,30 @@ class CommandLineArgumentsTest {
         expectThat(command).isEqualTo(
             ApplicationCommand.Run(
                 baseDirectory = Path.of("/tmp/cricsheet-root"),
-                dataDirectory = Path.of("/tmp/cricsheet-root/nightly/nested/matches"),
+                dataDirectory = Path.of("/tmp/cricsheet-root/nested/matches"),
                 namesDirectory = Path.of("/tmp/cricsheet-root/nested/matches"),
+                force = false,
+                nightly = true
+            )
+        )
+    }
+
+    @Test
+    fun `given nightly names directory when parsed then registers remain beside nightly data`() {
+        expectThat(
+            CommandLineArguments.parse(
+                arrayOf(
+                    "-bd", "/tmp/cricsheet-root",
+                    "-dd", "matches",
+                    "-nd", "register",
+                    "-n"
+                )
+            )
+        ).isEqualTo(
+            ApplicationCommand.Run(
+                baseDirectory = Path.of("/tmp/cricsheet-root"),
+                dataDirectory = Path.of("/tmp/cricsheet-root/matches"),
+                namesDirectory = Path.of("/tmp/cricsheet-root/matches"),
                 force = false,
                 nightly = true
             )
