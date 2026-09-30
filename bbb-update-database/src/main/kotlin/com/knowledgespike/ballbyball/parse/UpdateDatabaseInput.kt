@@ -40,7 +40,7 @@ object UpdateDatabaseArguments {
                 .longOpt("names-directory")
                 .argName("namesDirectory")
                 .hasArg()
-                .desc("relative player-registry directory below the base directory; defaults to data directory")
+                .desc("deprecated compatibility option; the player registry is read from the base directory")
                 .get()
         )
         addOption(
@@ -71,14 +71,16 @@ object UpdateDatabaseArguments {
     fun from(commandLine: CommandLine): UpdateDatabaseInput {
         val baseDirectory = absoluteBaseDirectory(requiredValue(commandLine, "bd", "base-directory"))
         val dataDirectoryName = requiredValue(commandLine, "dd", "data-directory")
-        val namesDirectoryName = commandLine.value("nd", "names-directory") ?: dataDirectoryName
         val dataDirectory = childDirectory(baseDirectory, dataDirectoryName, "--data-directory")
-        val namesDirectory = childDirectory(baseDirectory, namesDirectoryName, "--names-directory")
-            .let { if (commandLine.hasOption("n")) dataDirectory else it }
+        commandLine.value("nd", "names-directory")?.let { namesDirectory ->
+            childDirectory(baseDirectory, namesDirectory, "--names-directory")
+        }
+        val namesDirectory = baseDirectory
         val playerRegistry = childFile(
-            namesDirectory,
+            baseDirectory,
             requiredValue(commandLine, "pr", "player-registry"),
-            "--player-registry"
+            "--player-registry",
+            "base directory"
         )
 
         return UpdateDatabaseInput(
@@ -124,8 +126,8 @@ object UpdateDatabaseArguments {
         return resolved
     }
 
-    private fun childFile(root: Path, value: String, option: String): Path {
-        return childPath(root, value, option, "names directory")
+    private fun childFile(root: Path, value: String, option: String, rootDescription: String): Path {
+        return childPath(root, value, option, rootDescription)
     }
 }
 

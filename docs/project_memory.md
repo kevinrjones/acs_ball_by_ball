@@ -1,5 +1,45 @@
 # Project Memory
 
+## Task: Store register CSVs at the base directory
+
+### Title
+
+Align register download and database lookup paths
+
+### Date/time completed
+
+2026-09-30 17:00
+
+### What was shipped
+
+- `bbb-get-cricsheet-data` now stores `people.csv` and `names.csv` directly
+  under the configured base directory in both full and nightly modes.
+- `bbb-update-database` now resolves the player registry directly beneath the
+  base directory for both modes.
+- The legacy `--names-directory` option remains validated and accepted for
+  command compatibility but no longer changes the register location.
+
+### Key decisions
+
+- Register files are shared base-level artifacts, separate from the configured
+  match-data directory and its extracted JSON files.
+- Existing data-directory preflight and nightly overwrite behavior remain
+  unchanged; only register path resolution moved.
+
+### Gotchas
+
+- Existing invocations that pass `--names-directory` can continue to run, but
+  the option is deprecated and its directory is not created or read.
+- The updater still requires `--player-registry` as a filename, now resolved
+  relative to `--base-directory`.
+
+### Test coverage areas
+
+- Retrieval tests cover full and nightly register placement, overwrite
+  preservation, and request continuation.
+- Updater argument tests cover base-level registry resolution with and without
+  the compatibility names-directory option.
+
 ## Task: Add parser application logging
 
 ### Title

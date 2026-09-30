@@ -37,14 +37,14 @@ class CommandLineArgumentsTest {
             ApplicationCommand.Run(
                 baseDirectory = Path.of("/tmp/cricsheet-root"),
                 dataDirectory = Path.of("/tmp/cricsheet-root/matches"),
-                namesDirectory = Path.of("/tmp/cricsheet-root/register"),
+                namesDirectory = Path.of("/tmp/cricsheet-root"),
                 force = false
             )
         )
     }
 
     @Test
-    fun `given names directory omitted when parsed then data directory is used`() {
+    fun `given names directory omitted when parsed then base directory is used`() {
         expectThat(
             CommandLineArguments.parse(
                 arrayOf("-bd", "/tmp/cricsheet-root", "-dd", "matches")
@@ -53,7 +53,7 @@ class CommandLineArgumentsTest {
             ApplicationCommand.Run(
                 baseDirectory = Path.of("/tmp/cricsheet-root"),
                 dataDirectory = Path.of("/tmp/cricsheet-root/matches"),
-                namesDirectory = Path.of("/tmp/cricsheet-root/matches"),
+                namesDirectory = Path.of("/tmp/cricsheet-root"),
                 force = false
             )
         )
@@ -69,7 +69,7 @@ class CommandLineArgumentsTest {
             ApplicationCommand.Run(
                 baseDirectory = Path.of("/tmp/cricsheet-root"),
                 dataDirectory = Path.of("/tmp/cricsheet-root/matches"),
-                namesDirectory = Path.of("/tmp/cricsheet-root/matches"),
+                namesDirectory = Path.of("/tmp/cricsheet-root"),
                 force = true
             )
         )
@@ -85,7 +85,7 @@ class CommandLineArgumentsTest {
             ApplicationCommand.Run(
                 baseDirectory = Path.of("/tmp/cricsheet-root"),
                 dataDirectory = Path.of("/tmp/cricsheet-root/matches"),
-                namesDirectory = Path.of("/tmp/cricsheet-root/matches"),
+                namesDirectory = Path.of("/tmp/cricsheet-root"),
                 force = true,
                 nightly = true
             )
@@ -106,7 +106,7 @@ class CommandLineArgumentsTest {
             ApplicationCommand.Run(
                 baseDirectory = Path.of("/tmp/cricsheet-root"),
                 dataDirectory = Path.of("/tmp/cricsheet-root/nested/matches"),
-                namesDirectory = Path.of("/tmp/cricsheet-root/nested/matches"),
+                namesDirectory = Path.of("/tmp/cricsheet-root"),
                 force = false,
                 nightly = true
             )
@@ -114,7 +114,7 @@ class CommandLineArgumentsTest {
     }
 
     @Test
-    fun `given nightly names directory when parsed then registers remain beside nightly data`() {
+    fun `given names directory when parsed then registers remain at the base directory`() {
         expectThat(
             CommandLineArguments.parse(
                 arrayOf(
@@ -128,7 +128,7 @@ class CommandLineArgumentsTest {
             ApplicationCommand.Run(
                 baseDirectory = Path.of("/tmp/cricsheet-root"),
                 dataDirectory = Path.of("/tmp/cricsheet-root/matches"),
-                namesDirectory = Path.of("/tmp/cricsheet-root/matches"),
+                namesDirectory = Path.of("/tmp/cricsheet-root"),
                 force = false,
                 nightly = true
             )

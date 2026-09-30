@@ -68,13 +68,13 @@ class CricsheetDataRetriever(
         }
         processCsv(
             uri = sources.peopleCsv,
-            destination = configuration.namesDirectory.resolve("people.csv"),
+            destination = configuration.baseDirectory.resolve("people.csv"),
             expectedHeader = PEOPLE_HEADER,
             failures = failures
         )
         processCsv(
             uri = sources.namesCsv,
-            destination = configuration.namesDirectory.resolve("names.csv"),
+            destination = configuration.baseDirectory.resolve("names.csv"),
             expectedHeader = NAMES_HEADER,
             failures = failures
         )
@@ -239,7 +239,7 @@ class CricsheetDataRetriever(
     }
 
     private fun prepareDirectories(configuration: RetrievalConfiguration) {
-        val destinations = listOf(configuration.dataDirectory, configuration.namesDirectory).distinct()
+        val destinations = listOf(configuration.dataDirectory).distinct()
         destinations.filter { Files.exists(it) }.forEach { destination ->
             require(Files.isDirectory(destination)) {
                 "Destination is not a directory: $destination"

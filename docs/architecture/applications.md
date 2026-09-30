@@ -56,10 +56,10 @@ injectable transport seam for deterministic tests.
 
 ### Cricsheet retrieval workflow
 
-The application requires an absolute base directory and relative data and
-names directories, then creates missing directories and processes sources
-sequentially. Full mode rejects existing target directories unless `--force`
-is provided:
+The application requires an absolute base directory and a relative data
+directory, then creates missing directories and processes sources sequentially.
+Register CSVs are always written directly under the base directory. Full mode
+rejects an existing data directory unless `--force` is provided:
 
 1. Fetch the matches page and select HTTPS Cricsheet links ending in
    `_json.zip`, excluding `all_json.zip`.
@@ -67,7 +67,7 @@ is provided:
 3. Validate and stage each ZIP before safely committing its extracted files to
    the data directory.
 4. Download and validate `people.csv` and `names.csv` from the Cricsheet
-   register into the names directory.
+   register into the base directory.
 
 Nightly mode (`--nightly`/`-n`) bypasses page discovery and processes exactly
 these sources in order:
@@ -81,9 +81,9 @@ directory or archive-named child directories. The second archive overwrites
 collisions from the first. Nightly mode reuses the data directory, replaces
 managed ZIP, extracted, and CSV files, preserves stale or unrelated files, and
 rejects regular-file destination conflicts; `--force` is accepted but has no
-additional effect. Register CSVs are also stored at `[base]/[data]` in nightly
-mode; `--names-directory` remains available and validated for compatibility but
-does not change that nightly destination.
+additional effect. Register CSVs are stored at `[base]` in nightly mode as
+well; `--names-directory` remains available and validated for compatibility
+but does not change that destination.
 
 Failures are logged per artifact while independent downloads continue. The
 process returns `0` only when all artifacts succeed, `1` for operational or
@@ -93,14 +93,14 @@ partial failures, and `2` for invalid command-line arguments.
 
 `bbb-update-database` consumes the downloader’s path contract rather than
 assuming a hardcoded scorecard directory. It requires an absolute base path and
-a relative data path, with an optional relative names path for the shared
-register:
+a relative data path; the shared register is read directly from the base:
 
 - Both modes recursively scan JSON files below `[base]/[data]`; full archive
   subdirectories and flat nightly output therefore use the same importer.
-- Full mode reads the player registry from `[base]/[names]/[player-registry]`.
-  Nightly mode reads it from `[base]/[data]/[player-registry]`, where the
-  downloader colocates the register CSVs.
+- Both modes read the player registry from `[base]/[player-registry]`, matching
+  the downloader's base-level register files. The deprecated
+  `--names-directory` option is validated for compatibility but does not alter
+  this location.
 - Every normalized JSON document supplies its competition and format metadata
   through its `match` object. `Test`, `T20`, `IT20`, `ODI`, `ODM`, and `MDM` map to `t`,
   `tt`, `itt`, `a`, `a`, and `f`; female documents receive the `w` prefix,

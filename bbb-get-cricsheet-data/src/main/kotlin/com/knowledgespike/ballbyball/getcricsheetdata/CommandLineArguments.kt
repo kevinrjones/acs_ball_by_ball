@@ -35,17 +35,14 @@ object CommandLineArguments {
         val dataDirectoryName = commandLine.requiredValue("data-directory")
         val nightly = commandLine.hasOption("nightly")
         val dataDirectory = childDirectory(baseDirectory, dataDirectoryName, "--data-directory")
-        val configuredNamesDirectory = childDirectory(
-            baseDirectory,
-            commandLine.getOptionValue("names-directory", dataDirectoryName),
-            "--names-directory"
-        )
-        val namesDirectory = if (nightly) dataDirectory else configuredNamesDirectory
+        commandLine.getOptionValue("names-directory")?.let { namesDirectory ->
+            childDirectory(baseDirectory, namesDirectory, "--names-directory")
+        }
 
         return ApplicationCommand.Run(
             baseDirectory = baseDirectory,
             dataDirectory = dataDirectory,
-            namesDirectory = namesDirectory,
+            namesDirectory = baseDirectory,
             force = commandLine.hasOption("force"),
             nightly = nightly
         )
@@ -75,7 +72,7 @@ object CommandLineArguments {
                 .longOpt("names-directory")
                 .hasArg()
                 .argName("directory")
-                .desc("relative directory for people.csv and names.csv in full mode (default: data directory)")
+                .desc("deprecated compatibility option; register CSVs are stored in the base directory")
                 .get()
         )
         addOption(

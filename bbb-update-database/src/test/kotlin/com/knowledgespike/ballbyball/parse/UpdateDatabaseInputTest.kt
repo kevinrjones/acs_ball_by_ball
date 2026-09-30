@@ -10,7 +10,7 @@ import java.nio.file.Path
 
 class UpdateDatabaseInputTest {
     @Test
-    fun `given nightly options when parsed then data and registry paths use the configured data root`() {
+    fun `given nightly options when parsed then registry path uses the base root`() {
         val input = UpdateDatabaseArguments.parse(
             arrayOf(
                 "-bd", "/tmp/cricsheet",
@@ -25,15 +25,15 @@ class UpdateDatabaseInputTest {
             UpdateDatabaseInput(
                 baseDirectory = Path.of("/tmp/cricsheet"),
                 dataDirectory = Path.of("/tmp/cricsheet/matches"),
-                namesDirectory = Path.of("/tmp/cricsheet/matches"),
-                playerRegistry = Path.of("/tmp/cricsheet/matches/people.csv"),
+                namesDirectory = Path.of("/tmp/cricsheet"),
+                playerRegistry = Path.of("/tmp/cricsheet/people.csv"),
                 nightly = true
             )
         )
     }
 
     @Test
-    fun `given full options without names directory when parsed then data directory is reused`() {
+    fun `given full options without names directory when parsed then base directory is used for the registry`() {
         val input = UpdateDatabaseArguments.parse(
             arrayOf(
                 "--base-directory", "/tmp/cricsheet",
@@ -43,7 +43,8 @@ class UpdateDatabaseInputTest {
         )
 
         expectThat(input.dataDirectory).isEqualTo(Path.of("/tmp/cricsheet/matches"))
-        expectThat(input.namesDirectory).isEqualTo(Path.of("/tmp/cricsheet/matches"))
+        expectThat(input.namesDirectory).isEqualTo(Path.of("/tmp/cricsheet"))
+        expectThat(input.playerRegistry).isEqualTo(Path.of("/tmp/cricsheet/people.csv"))
         expectThat(input.nightly).isEqualTo(false)
     }
 

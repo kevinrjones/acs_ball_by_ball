@@ -15,7 +15,7 @@ Add a `--nightly`/`-n` retrieval mode to `bbb-get-cricsheet-data` for scheduled 
 - Store nightly ZIPs in `[base directory]/[data directory]/zips`.
 - Extract both archives directly into `[base directory]/[data directory]/`, without archive-named subdirectories or an implicit `nightly` path segment.
 - Process `recently_added_7_json.zip` before `recently_added_2_json.zip`; if both contain the same relative file, the second archive overwrites the first.
-- Always download and validate `people.csv` and `names.csv` using the existing register sources. Full mode uses `[base directory]/[names directory]`; nightly mode stores them alongside the nightly JSON in `[base directory]/[data directory]`.
+- Always download and validate `people.csv` and `names.csv` using the existing register sources. Both modes store them directly under `[base directory]`.
 - Nightly mode may reuse existing target directories and always replaces managed ZIP, extracted, and CSV files. It preserves stale/unrelated files and rejects destination paths that are regular files.
 - Existing `--force`/`-f` remains accepted in nightly mode as a harmless no-op.
 - Preserve existing retry, atomic-download, ZIP-safety, CSV-validation, continue-and-report, logging, and exit-code behavior. Nightly attempts remaining archives and CSVs after an individual failure and returns `1` for any operational failure.
@@ -37,7 +37,7 @@ Add a `--nightly`/`-n` retrieval mode to `bbb-get-cricsheet-data` for scheduled 
 
 ### Proposed Changes
 - Extend the parsed run command with an explicit nightly mode value/flag while retaining required absolute `bd`, safe relative `dd`, optional `nd`, and `-f`/`--force` behavior.
-- Resolve the effective archive data directory centrally to `[bd]/[dd]` in both modes. Full mode keeps register output at `[bd]/[nd]`; nightly mode uses the effective data directory for register output as well.
+- Resolve the effective archive data directory centrally to `[bd]/[dd]` in both modes. Register output is always rooted directly at `[bd]`.
 - Add fixed nightly archive URIs to the Cricsheet source configuration. The nightly branch must not fetch or parse the downloads page.
 - Reuse the existing downloader, retry policy, atomic temporary-file replacement, ZIP validation, safe-entry validation, logging, CSV validation, and failure aggregation.
 - Add a nightly archive processing path that stages entries without an archive-name child directory, commits them to the nightly data directory, and runs the two archives in the fixed `7`, then `2` order.
@@ -82,7 +82,7 @@ Use the existing JUnit 5, Strikt, and injected local HTTP transport seams. Do no
 ### Key Scenarios
 - Parse both `-n` and `--nightly` and confirm full-mode arguments remain backward compatible.
 - Run nightly retrieval against local fixtures and verify requests occur as `recently_added_7_json.zip`, `recently_added_2_json.zip`, `people.csv`, then `names.csv`.
-- Verify ZIPs, extracted JSON, `people.csv`, and `names.csv` are stored directly under `[bd]/[dd]` (with ZIPs in its `zips` child), not below an implicit `nightly` or archive-named directory.
+- Verify ZIPs and extracted JSON are stored under `[bd]/[dd]` (with ZIPs in its `zips` child), while `people.csv` and `names.csv` are stored directly under `[bd]`.
 - Use overlapping ZIP fixtures to prove the second archive overwrites the first archive’s same-path file.
 - Verify existing nightly directories work without `--force`, managed files are replaced, stale files remain, and `-n -f` is accepted.
 - Verify a failed first archive does not prevent the second archive or either CSV from being attempted and produces a non-zero result.
@@ -132,10 +132,10 @@ Contributor documentation describes how to run and reason about full versus nigh
 - Confirm formatting and repository diff checks pass.
 
 ### ✓ Step 5: Remove the implicit nightly directory from retrieval
-Nightly archives and register CSVs use the configured data directory directly, without an implicit `nightly` path segment; full-mode behavior remains unchanged.
+Nightly archives and extracted JSON use the configured data directory directly, without an implicit `nightly` path segment; register CSVs use the base directory and full-mode archive behavior remains unchanged.
 
 - Resolve nightly archive ZIPs and flat extracted JSON under `[bd]/[dd]`.
-- Store nightly `people.csv` and `names.csv` alongside the extracted JSON under `[bd]/[dd]`.
+- Store nightly `people.csv` and `names.csv` directly under `[bd]`, separately from the extracted JSON.
 - Preserve nightly reuse, overwrite, collision ordering, stale-file preservation, and regular-file rejection.
 - Update parser and retriever tests plus contributor and architecture documentation for the revised layout.
 - Run the retrieval module tests and `git diff --check`.
@@ -241,3 +241,11 @@ Remove Cricsheet-only `meta` from normalized JSON and expose normalized match de
 - Update `BbbMatchData`, parser conversion, updater decoding, tests, and documentation for the revised contract.
 - Preserve raw Cricsheet `meta`/`info` decoding only inside `bbb-parse-cricsheet`.
 - Run the shared, parser, and updater tests plus repository checks.
+
+### ✓ Step 16: Move register CSVs to the base directory
+Store `people.csv` and `names.csv` directly under `[bd]` and make `bbb-update-database` read those files from the same location.
+
+- Update `bbb-get-cricsheet-data` retrieval destinations and relevant CLI/help wording without changing archive paths or full/nightly JSON behavior.
+- Update `bbb-update-database` registry resolution to use the base directory for the managed register files.
+- Add regression coverage for retrieval and updater path resolution, then update contributor and architecture documentation.
+- Run focused tests, repository checks, and `git diff --check`.

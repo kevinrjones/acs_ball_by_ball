@@ -21,7 +21,6 @@ spaces when passing them through Gradle's `--args` option.
 export CRICSHEET_ROOT=/path/to/cricsheet
 export CRICSHEET_RAW=cricsheet
 export CRICSHEET_DATA=normalized
-export CRICSHEET_NAMES=register
 export PLAYER_REGISTRY=people.csv
 export CSV_DIR=generated-warehouse-csv
 export SQL_FILE=generated-warehouse.sql
@@ -68,22 +67,23 @@ Download the Cricsheet JSON archives and register CSV files:
 
 ```bash
 ./gradlew :bbb-get-cricsheet-data:run --no-daemon \
-  --args="--base-directory /path/to/data --data-directory cricsheet --names-directory register"
+  --args="--base-directory /path/to/data --data-directory cricsheet"
 ```
 
 The command creates `/path/to/data/cricsheet/zips`, extracts each JSON archive
 into `/path/to/data/cricsheet/<archive-name-without-.zip>`, and stores
-`people.csv` and `names.csv` in `/path/to/data/register`. For example,
+`people.csv` and `names.csv` directly in `/path/to/data`. For example,
 `bbl_json.zip` is extracted into `/path/to/data/cricsheet/bbl_json`.
-`--names-directory` defaults to the data directory; use `--force` when either
-target directory already exists. The base directory must be absolute, while
-the data and names directories must be relative to it.
+`--names-directory` is accepted for compatibility but does not change the
+register destination. Use `--force` when the data directory already exists.
+The base directory must be absolute, while the data directory must be
+relative to it.
 
 For a scheduled partial refresh, add `--nightly` (or `-n`):
 
 ```bash
 ./gradlew :bbb-get-cricsheet-data:run --no-daemon \
-  --args="--base-directory /path/to/data --data-directory cricsheet --names-directory register --nightly"
+  --args="--base-directory /path/to/data --data-directory cricsheet --nightly"
 ```
 
 Nightly mode downloads only `recently_added_7_json.zip` followed by
@@ -91,11 +91,11 @@ Nightly mode downloads only `recently_added_7_json.zip` followed by
 `/path/to/data/cricsheet/zips` and merges their contents directly into
 `/path/to/data/cricsheet`; when both archives contain a file, the second
 archive wins. It always refreshes `people.csv` and `names.csv` in
-`/path/to/data/cricsheet`, alongside the extracted JSON, reuses existing
+`/path/to/data`, separately from the extracted JSON, reuses existing
 directories without requiring `--force`, overwrites managed files, and keeps
 stale or unrelated files. `--names-directory` is validated but does not change
-the nightly register destination. `--force` remains accepted as a harmless
-no-op in nightly mode.
+the register destination. `--force` remains accepted as a harmless no-op in
+nightly mode.
 
 The retrieval options are:
 
@@ -105,9 +105,9 @@ The retrieval options are:
 | `--version` | No | Print the application version. |
 | `-bd`, `--base-directory` | Yes | Absolute root directory for the download. |
 | `-dd`, `--data-directory` | Yes | Relative directory for JSON match data and downloaded ZIPs. |
-| `-nd`, `--names-directory` | No | Relative directory for `people.csv` and `names.csv` in full mode; defaults to `dd` and is ignored for nightly output. |
+| `-nd`, `--names-directory` | No | Deprecated compatibility option; registers are always stored directly in the base directory. |
 | `-f`, `--force` | No | Reuse existing target directories and overwrite managed files without deleting unrelated files. |
-| `-n`, `--nightly` | No | Download the two fixed recent archives directly into the configured data directory and place the CSVs alongside them. |
+| `-n`, `--nightly` | No | Download the two fixed recent archives directly into the configured data directory; registers remain in the base directory. |
 
 ## Normalize Cricsheet data
 
@@ -198,8 +198,8 @@ All parser runs use the Gradle application task:
 | `-h`, `--help`             | No                  | Print the command-line help.                                                  |
 | `-bd`, `--base-directory`  | Yes                 | Absolute root directory containing scorecards and register data.              |
 | `-dd`, `--data-directory`  | Yes                 | Relative match-data directory below `baseDirectory`.                          |
-| `-nd`, `--names-directory` | No                  | Relative register directory below `baseDirectory`; defaults to `dd`.          |
-| `-pr`, `--player-registry` | Yes                 | Player-registry filename relative to the names directory.                     |
+| `-nd`, `--names-directory` | No                  | Deprecated compatibility option; the register is read from `baseDirectory`.  |
+| `-pr`, `--player-registry` | Yes                 | Player-registry filename relative to `baseDirectory`.                         |
 | `-n`, `--nightly`          | No                  | Read JSON files from the configured data directory using the same discovery and metadata rules as full mode. |
 | `-ot`, `--outputType`      | No                  | `SQL` (default), `DATABASE`, `SQL_FILE`, or `CSV`.                            |
 | `-c`, `--connectionString` | For database output | JDBC connection string.                                                       |
@@ -215,9 +215,9 @@ The updater consumes only normalized `BbbMatchData` JSON from
 Both full and nightly modes scan normalized JSON files recursively below
 `[base]/[data]`, so archive-named full directories and flat nightly files use
 the same importer. The player registry is read from
-`[base]/[names]/[player-registry]` in full mode and from
-`[base]/[data]/[player-registry]` in nightly mode, matching the downloader's
-colocated nightly register files:
+`[base]/[player-registry]` in both modes, matching the downloader's base-level
+register files. The deprecated `--names-directory` option is accepted and
+validated but does not alter this location:
 
 SQL output file paths supplied with `-o`/`--outputFile` or `-sf`/`--sqlFile`
 must be relative to `baseDirectory`; for example, `sql/update.sql` is written
@@ -260,7 +260,7 @@ Run the parser with `CSV` output and a destination directory:
 
 ```bash
 ./gradlew :bbb-update-database:run --no-daemon \
-  --args="--outputType CSV --base-directory $CRICSHEET_ROOT --data-directory cricsheet --names-directory register --player-registry people.csv --csvDir $CSV_DIR"
+  --args="--outputType CSV --base-directory $CRICSHEET_ROOT --data-directory cricsheet --player-registry people.csv --csvDir $CSV_DIR"
 ```
 
 The adapter clears `[base]/$CSV_DIR` before writing. It emits one file per warehouse
@@ -440,7 +440,7 @@ Write an executable MariaDB SQL script instead of CSV:
 
 ```bash
 ./gradlew :bbb-update-database:run --no-daemon \
-  --args="--outputType SQL_FILE --base-directory $CRICSHEET_ROOT --data-directory cricsheet --names-directory register --player-registry people.csv --outputFile $SQL_FILE"
+  --args="--outputType SQL_FILE --base-directory $CRICSHEET_ROOT --data-directory cricsheet --player-registry people.csv --outputFile $SQL_FILE"
 ```
 
 Load that script into MariaDB:

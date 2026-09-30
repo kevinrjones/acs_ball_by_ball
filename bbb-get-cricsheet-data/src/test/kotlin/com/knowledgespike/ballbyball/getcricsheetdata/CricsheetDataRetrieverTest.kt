@@ -57,8 +57,8 @@ class CricsheetDataRetrieverTest {
         expectThat(Files.readString(configuration.dataDirectory.resolve("tests_json/tests.json"))).isEqualTo("tests.json")
         expectThat(Files.readString(configuration.dataDirectory.resolve("odis_json/odis.json"))).isEqualTo("odis.json")
         expectThat(Files.exists(configuration.dataDirectory.resolve("zips/odis_json.zip"))).isTrue()
-        expectThat(Files.readString(configuration.namesDirectory.resolve("people.csv"))).isEqualTo(PEOPLE_CSV)
-        expectThat(Files.readString(configuration.namesDirectory.resolve("names.csv"))).isEqualTo(NAMES_CSV)
+        expectThat(Files.readString(configuration.baseDirectory.resolve("people.csv"))).isEqualTo(PEOPLE_CSV)
+        expectThat(Files.readString(configuration.baseDirectory.resolve("names.csv"))).isEqualTo(NAMES_CSV)
     }
 
     @Test
@@ -92,8 +92,8 @@ class CricsheetDataRetrieverTest {
 
         expectThat(result.succeeded).isFalse()
         expectThat(result.failures.map { it.artifact }).contains("tests_json.zip")
-        expectThat(Files.exists(temporaryDirectory.resolve("names/people.csv"))).isTrue()
-        expectThat(Files.exists(temporaryDirectory.resolve("names/names.csv"))).isTrue()
+        expectThat(Files.exists(temporaryDirectory.resolve("people.csv"))).isTrue()
+        expectThat(Files.exists(temporaryDirectory.resolve("names.csv"))).isTrue()
     }
 
     @Test
@@ -120,8 +120,7 @@ class CricsheetDataRetrieverTest {
         val sources = testSources()
         val configuration = configuration(force = true)
         Files.createDirectories(configuration.dataDirectory)
-        Files.createDirectories(configuration.namesDirectory)
-        val existingPeople = configuration.namesDirectory.resolve("people.csv")
+        val existingPeople = configuration.baseDirectory.resolve("people.csv")
         Files.writeString(existingPeople, PEOPLE_CSV)
         val httpClient = FakeHttpClient(
             page = "",
@@ -200,12 +199,11 @@ class CricsheetDataRetrieverTest {
         val sources = testSources()
         val configuration = configuration(nightly = true)
         Files.createDirectories(configuration.dataDirectory)
-        Files.createDirectories(configuration.namesDirectory)
         val staleFile = configuration.dataDirectory.resolve("stale.json")
         Files.writeString(staleFile, "stale")
         Files.writeString(configuration.dataDirectory.resolve("recent.json"), "old")
-        Files.writeString(configuration.namesDirectory.resolve("people.csv"), "old")
-        Files.writeString(configuration.namesDirectory.resolve("names.csv"), "old")
+        Files.writeString(configuration.baseDirectory.resolve("people.csv"), "old")
+        Files.writeString(configuration.baseDirectory.resolve("names.csv"), "old")
         val httpClient = FakeHttpClient(
             page = "unexpected page request",
             files = mapOf(
@@ -221,8 +219,8 @@ class CricsheetDataRetrieverTest {
         expectThat(result.succeeded).isTrue()
         expectThat(Files.readString(staleFile)).isEqualTo("stale")
         expectThat(Files.readString(configuration.dataDirectory.resolve("recent.json"))).isEqualTo("recent.json")
-        expectThat(Files.readString(configuration.namesDirectory.resolve("people.csv"))).isEqualTo(PEOPLE_CSV)
-        expectThat(Files.readString(configuration.namesDirectory.resolve("names.csv"))).isEqualTo(NAMES_CSV)
+        expectThat(Files.readString(configuration.baseDirectory.resolve("people.csv"))).isEqualTo(PEOPLE_CSV)
+        expectThat(Files.readString(configuration.baseDirectory.resolve("names.csv"))).isEqualTo(NAMES_CSV)
     }
 
     @Test
@@ -280,7 +278,7 @@ class CricsheetDataRetrieverTest {
     ): RetrievalConfiguration = RetrievalConfiguration(
         baseDirectory = temporaryDirectory,
         dataDirectory = temporaryDirectory.resolve("data"),
-        namesDirectory = if (nightly) temporaryDirectory.resolve("data") else temporaryDirectory.resolve("names"),
+        namesDirectory = temporaryDirectory,
         force = force,
         nightly = nightly
     )
