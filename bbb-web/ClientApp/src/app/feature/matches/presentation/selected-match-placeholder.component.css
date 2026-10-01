@@ -23,7 +23,7 @@
   width: 100%;
   min-width: 87rem;
   border-collapse: collapse;
-  color: #334155;
+  color: #1e293b;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.68rem;
   table-layout: auto;
@@ -133,6 +133,11 @@
   vertical-align: top;
 }
 
+.linear-matrix__bowler-cell {
+  min-width: 13rem;
+  vertical-align: top;
+}
+
 .linear-matrix__empty {
   padding: 2rem !important;
   color: #64748b;
@@ -145,32 +150,55 @@
   padding-top: 0.25rem;
 }
 
+.matrix-bowler-line {
+  display: flex;
+  min-width: max-content;
+  align-items: baseline;
+  gap: 0.3rem;
+  color: #0f172a;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.matrix-bowler-figures {
+  font-weight: 500;
+}
+
+.matrix-bowler-empty {
+  color: #cbd5e1;
+  font-size: 0.8rem;
+}
+
 .matrix-player-line + .matrix-player-line {
   margin-top: 0.35rem;
   border-top: 1px dashed #e2e8f0;
   padding-top: 0.35rem;
 }
 
+.matrix-player-line {
+  display: flex;
+  min-width: max-content;
+  align-items: baseline;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
 .matrix-player-header {
-  display: block;
-  width: fit-content;
-  margin-bottom: 0.25rem;
-  border: 1px solid #c7ddd4;
-  border-radius: 0.2rem;
-  padding: 0.16rem 0.35rem;
-  background: #e8f3ef;
-  color: #164e3e;
-  font-size: 0.78rem;
-  font-weight: 700;
-  line-height: 1.25;
+  color: #0f172a;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .matrix-symbols {
   display: inline-flex;
-  flex-wrap: wrap;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
   gap: 0.22rem;
-  margin: 0.25rem 0.3rem 0 0;
   letter-spacing: 0.05em;
+  white-space: nowrap;
 }
 
 .matrix-symbol {
@@ -184,8 +212,8 @@
   font-weight: 700;
 }
 
-.matrix-symbol--dot { color: #64748b; }
-.matrix-symbol--run { color: #334155; }
+.matrix-symbol--dot { color: #475569; }
+.matrix-symbol--run { color: #1e293b; }
 .matrix-symbol--boundary { background: #ecfdf5; color: #047857; padding: 0 0.18rem; }
 .matrix-symbol--extra { background: #fffbeb; color: #b45309; padding: 0 0.18rem; }
 .matrix-symbol--wicket { background: #e11d48; color: #fff; padding: 0 0.22rem; }
@@ -196,6 +224,10 @@
   color: #94a3b8;
   font-size: 0.59rem;
   white-space: nowrap;
+}
+
+.matrix-player-score {
+  flex: 0 0 auto;
 }
 
 .matrix-player-line .matrix-dismissed {

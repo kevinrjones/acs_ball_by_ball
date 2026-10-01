@@ -15,9 +15,53 @@ describe('presentScoresheet', () => {
     expect(innings.rows[0].notes).toContain('B:3 W:1');
     expect(innings.rows[0].ledger.extrasDisplay).toBe('B:3 W:1 (4)');
     expect(innings.rows[1].ledger.extrasDisplay).toBe('B:3 LB:2 W:1 (6)');
-    expect(innings.rows[1].bowlerSummaries[0]).toEqual({
-      bowler: 'Bowler', balls: 1, runs: 2, wickets: 0
+    expect(innings.rows[1].bowlingLanes[1][0]).toEqual({
+      bowler: 'Bowler', overs: '0.1', maidens: 0, runs: 1, wickets: 0, isFirstAppearance: false
     });
+  });
+
+  it('should alternate bowlers by end and accumulate their running figures', () => {
+    const firstOver = Array.from({length: 6}, (_, index) => delivery({
+      deliveryKey: index + 1,
+      inningsOrder: index + 1,
+      overNumber: 1,
+      ballInOver: index + 1,
+      bowler: 'Left bowler'
+    }));
+    const secondOver = Array.from({length: 6}, (_, index) => delivery({
+      deliveryKey: index + 7,
+      inningsOrder: index + 7,
+      overNumber: 2,
+      ballInOver: index + 1,
+      bowler: 'Right bowler',
+      totalRuns: index === 0 ? 4 : 0,
+      batterRuns: index === 0 ? 4 : 0,
+      wicketCount: index === 5 ? 1 : 0
+    }));
+    const thirdOver = Array.from({length: 6}, (_, index) => delivery({
+      deliveryKey: index + 13,
+      inningsOrder: index + 13,
+      overNumber: 3,
+      ballInOver: index + 1,
+      bowler: 'Left bowler',
+      totalRuns: 2,
+      batterRuns: 2
+    }));
+
+    const rows = presentScoresheet(scoresheet(...firstOver, ...secondOver, ...thirdOver)).innings[0].rows;
+
+    expect(rows[0].bowlingLanes[0][0]).toEqual({
+      bowler: 'Left bowler', overs: '1', maidens: 1, runs: 0, wickets: 0, isFirstAppearance: true
+    });
+    expect(rows[0].bowlingLanes[1]).toHaveSize(0);
+    expect(rows[1].bowlingLanes[0]).toHaveSize(0);
+    expect(rows[1].bowlingLanes[1][0]).toEqual({
+      bowler: 'Right bowler', overs: '1', maidens: 0, runs: 4, wickets: 1, isFirstAppearance: true
+    });
+    expect(rows[2].bowlingLanes[0][0]).toEqual({
+      bowler: 'Left bowler', overs: '2', maidens: 1, runs: 12, wickets: 0, isFirstAppearance: false
+    });
+    expect(rows[2].bowlingLanes[1]).toHaveSize(0);
   });
 
   it('should place multiple wicket notes on separate lines', () => {
@@ -42,7 +86,7 @@ describe('presentScoresheet', () => {
     );
   });
 
-  it('should prepare striker notation, non-striker placeholders, and dismissal figures once', () => {
+  it('should prepare striker notation, non-striker placeholders, and first-appearance styling', () => {
     const response = scoresheet(
       delivery({deliveryKey: 1, inningsOrder: 1, overNumber: 1, batter: 'Batter One', nonStriker: 'Batter Two', batterRuns: 4, totalRuns: 4}),
       delivery({deliveryKey: 2, inningsOrder: 2, overNumber: 1, batter: 'Batter One', nonStriker: 'Batter Two', wides: 1, totalRuns: 1}),
@@ -56,14 +100,15 @@ describe('presentScoresheet', () => {
 
     expect(firstLane.symbols.map((symbol) => symbol.value)).toEqual(['4', '1wd']);
     expect(secondLane.symbols.every((symbol) => symbol.className === 'matrix-symbol--non-striker-placeholder')).toBeTrue();
-    expect(firstLane.showName).toBeTrue();
-    expect(secondLane.showName).toBeTrue();
+    expect(secondLane.symbols.every((symbol) => symbol.value === '')).toBeTrue();
+    expect(firstLane.isFirstAppearance).toBeTrue();
+    expect(secondLane.isFirstAppearance).toBeTrue();
     expect(rows[1].battingLanes[0][0].scoreLabel).toBe('(10r, 3b, 1x4, 1x6)');
-    expect(rows[1].battingLanes[0][0].showName).toBeFalse();
+    expect(rows[1].battingLanes[0][0].isFirstAppearance).toBeFalse();
     expect(rows[1].battingLanes[0][0].dismissed).toBeTrue();
   });
 
-  it('should show a replacement batter name when they enter a stable lane', () => {
+  it('should mark only the first appearance of each batter', () => {
     const rows = presentScoresheet(scoresheet(
       delivery({deliveryKey: 1, overNumber: 1, batter: 'Batter One', nonStriker: 'Batter Two'}),
       delivery({deliveryKey: 2, inningsOrder: 2, overNumber: 2, batter: 'Batter Two', nonStriker: 'Batter One'}),
@@ -71,12 +116,22 @@ describe('presentScoresheet', () => {
       delivery({deliveryKey: 4, inningsOrder: 4, overNumber: 3, batter: 'Batter One', nonStriker: 'Batter Three'})
     )).innings[0].rows;
 
-    expect(rows[0].battingLanes[0][0].showName).toBeTrue();
-    expect(rows[0].battingLanes[1][0].showName).toBeTrue();
-    expect(rows[1].battingLanes[0][0].showName).toBeFalse();
-    expect(rows[1].battingLanes[1][0].showName).toBeFalse();
-    expect(rows[2].battingLanes[0][0].showName).toBeFalse();
-    expect(rows[2].battingLanes[1][0].showName).toBeTrue();
+    expect(rows[0].battingLanes[0][0].isFirstAppearance).toBeTrue();
+    expect(rows[0].battingLanes[1][0].isFirstAppearance).toBeTrue();
+    expect(rows[1].battingLanes[0][0].isFirstAppearance).toBeFalse();
+    expect(rows[1].battingLanes[1][0].isFirstAppearance).toBeFalse();
+    expect(rows[2].battingLanes[0][0].isFirstAppearance).toBeFalse();
+    expect(rows[2].battingLanes[1][0].isFirstAppearance).toBeTrue();
+  });
+
+  it('should show cumulative runs and balls for a batter', () => {
+    const rows = presentScoresheet(scoresheet(
+      delivery({deliveryKey: 1, inningsOrder: 1, overNumber: 1, batterRuns: 2, totalRuns: 2}),
+      delivery({deliveryKey: 2, inningsOrder: 2, overNumber: 2, batterRuns: 3, totalRuns: 3})
+    )).innings[0].rows;
+
+    expect(rows[0].battingLanes[0][0].scoreLabel).toBe('(2r, 1b)');
+    expect(rows[1].battingLanes[0][0].scoreLabel).toBe('(5r, 2b)');
   });
 
   it('should render counted extra symbols for each delivery', () => {

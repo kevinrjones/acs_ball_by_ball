@@ -90,7 +90,7 @@ describe('SelectedMatchPlaceholderComponent', () => {
     expect(document.activeElement).toBe(cards[2]);
   });
 
-  it('should display batters side-by-side with placeholders for the non-striker', async () => {
+  it('should display plain inline batter names with placeholders and fade repeated names', async () => {
     const deliveryOne = delivery({
       deliveryKey: 1, sourceBallId: 101, overNumber: 1, ballInOver: 1, batter: 'Batter One',
       nonStriker: 'Batter Two', batterRuns: 4, totalRuns: 4
@@ -99,11 +99,16 @@ describe('SelectedMatchPlaceholderComponent', () => {
       deliveryKey: 2, sourceBallId: 102, overNumber: 1, ballInOver: 2, batter: 'Batter One',
       nonStriker: 'Batter Two', batterRuns: 1, totalRuns: 1
     });
-    await configure({}, '101', scoresheet(deliveryOne, deliveryTwo));
+    const deliveryThree = delivery({
+      deliveryKey: 3, sourceBallId: 103, overNumber: 2, ballInOver: 1, batter: 'Batter One',
+      nonStriker: 'Batter Two', batterRuns: 2, totalRuns: 2
+    });
+    await configure({}, '101', scoresheet(deliveryOne, deliveryTwo, deliveryThree));
     const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
     fixture.detectChanges();
 
     const batterCells = fixture.nativeElement.querySelectorAll('.linear-matrix__batter-cell') as NodeListOf<HTMLElement>;
+    const rows = fixture.nativeElement.querySelectorAll('.linear-matrix tbody tr') as NodeListOf<HTMLTableRowElement>;
     const strikerCell = batterCells[0];
     const nonStrikerCell = batterCells[1];
 
@@ -113,9 +118,85 @@ describe('SelectedMatchPlaceholderComponent', () => {
     expect(nonStrikerCell.textContent).toContain('Batter Two');
     expect(nonStrikerCell.querySelectorAll('.matrix-symbol')).toHaveSize(2);
     expect(nonStrikerCell.querySelectorAll('.matrix-symbol--non-striker-placeholder')).toHaveSize(2);
-    expect(fixture.nativeElement.querySelectorAll('.matrix-player-line')).toHaveSize(2);
+    expect(Array.from(nonStrikerCell.querySelectorAll('.matrix-symbol--non-striker-placeholder'))
+      .every((symbol) => symbol.textContent === '')).toBeTrue();
+    expect(fixture.nativeElement.querySelectorAll('.matrix-player-line')).toHaveSize(4);
     expect(strikerCell.querySelectorAll('.matrix-player-line')).toHaveSize(1);
     expect(nonStrikerCell.querySelectorAll('.matrix-player-line')).toHaveSize(1);
+    expect(fixture.nativeElement.querySelectorAll('.matrix-player-header')).toHaveSize(4);
+    expect(fixture.nativeElement.querySelectorAll('.matrix-player-header--repeated')).toHaveSize(0);
+    const strikerLine = strikerCell.querySelector('.matrix-player-line') as HTMLElement;
+    const playerHeader = strikerLine.querySelector('.matrix-player-header') as HTMLElement;
+    expect(playerHeader.tagName).toBe('SPAN');
+    expect(playerHeader.textContent).toBe('Batter One:');
+    expect(playerHeader.nextElementSibling?.classList).toContain('matrix-symbols');
+    expect(rows[1].querySelector('.linear-matrix__batter-cell')?.textContent).toContain('(7r, 3b)');
+  });
+
+  it('should place the batter score after the last ball before trailing placeholders', async () => {
+    const facedBall = delivery({
+      deliveryKey: 1, sourceBallId: 101, overNumber: 1, ballInOver: 1, batter: 'Batter One',
+      nonStriker: 'Batter Two', batterRuns: 1, totalRuns: 1
+    });
+    const nonStrikerBall = delivery({
+      deliveryKey: 2, sourceBallId: 102, overNumber: 1, ballInOver: 2, batter: 'Batter Two',
+      nonStriker: 'Batter One', batterRuns: 3, totalRuns: 3
+    });
+    await configure({}, '101', scoresheet(facedBall, nonStrikerBall));
+    const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
+    fixture.detectChanges();
+
+    const batterLine = fixture.nativeElement.querySelector('.linear-matrix__batter-cell .matrix-player-line') as HTMLElement;
+    const notation = batterLine.querySelector('.matrix-symbols') as HTMLElement;
+    const score = batterLine.querySelector('.matrix-player-score') as HTMLElement;
+
+    expect(score.parentElement).toBe(notation);
+    expect(score.previousElementSibling?.classList).toContain('matrix-symbol--run');
+    expect(score.nextElementSibling?.classList).toContain('matrix-symbol--non-striker-placeholder');
+  });
+
+  it('should display bowlers in alternating end columns with cumulative figures', async () => {
+    const leftOver = delivery({
+      deliveryKey: 1, sourceBallId: 101, overNumber: 1, bowler: 'Left bowler', totalRuns: 1, batterRuns: 1
+    });
+    const rightOver = delivery({
+      deliveryKey: 2, sourceBallId: 102, overNumber: 2, bowler: 'Right bowler', totalRuns: 2, batterRuns: 2
+    });
+    await configure({}, '101', scoresheet(leftOver, rightOver));
+    const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
+    fixture.detectChanges();
+
+    const headers = fixture.nativeElement.querySelectorAll('.linear-matrix__sub-row th') as NodeListOf<HTMLElement>;
+    const rows = fixture.nativeElement.querySelectorAll('.linear-matrix tbody tr') as NodeListOf<HTMLTableRowElement>;
+    const bowlerCells = (row: HTMLTableRowElement): NodeListOf<HTMLElement> =>
+      row.querySelectorAll('.linear-matrix__bowler-cell');
+
+    expect(headers[0].textContent?.trim()).toBe('Left');
+    expect(headers[1].textContent?.trim()).toBe('Right');
+    expect(bowlerCells(rows[0])[0].textContent).toContain('Left bowler');
+    expect(bowlerCells(rows[0])[0].textContent).toContain('(0.1-0-1-0)');
+    expect(bowlerCells(rows[0])[1].textContent?.trim()).toBe('—');
+    expect(bowlerCells(rows[1])[0].textContent?.trim()).toBe('—');
+    expect(bowlerCells(rows[1])[1].textContent).toContain('Right bowler');
+    expect(bowlerCells(rows[1])[1].textContent).toContain('(0.1-0-2-0)');
+    expect(fixture.nativeElement.querySelectorAll('.matrix-bowler-line')).toHaveSize(2);
+  });
+
+  it('should keep repeated bowler names in the same style', async () => {
+    const firstOver = delivery({
+      deliveryKey: 1, sourceBallId: 101, overNumber: 1, bowler: 'Left bowler', totalRuns: 1, batterRuns: 1
+    });
+    const repeatedOver = delivery({
+      deliveryKey: 2, sourceBallId: 102, overNumber: 3, bowler: 'Left bowler', totalRuns: 2, batterRuns: 2
+    });
+    await configure({}, '101', scoresheet(firstOver, repeatedOver));
+    const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
+    fixture.detectChanges();
+
+    const bowlerLines = fixture.nativeElement.querySelectorAll('.matrix-bowler-line') as NodeListOf<HTMLElement>;
+
+    expect(bowlerLines).toHaveSize(2);
+    expect(Array.from(bowlerLines).every((line) => !line.classList.contains('matrix-bowler-line--repeated'))).toBeTrue();
   });
 
   it('should show dismissal details for an out batter and in the notes', async () => {
@@ -253,13 +334,16 @@ describe('SelectedMatchPlaceholderComponent', () => {
 
     expect(batterCells(rows[0])[0].textContent).toContain('BM Duckett');
     expect(batterCells(rows[0])[1].textContent).toContain('JG Bethell');
-    expect(batterCells(rows[1])[0].textContent).not.toContain('BM Duckett');
-    expect(batterCells(rows[1])[1].textContent).not.toContain('JG Bethell');
-    expect(batterCells(rows[2])[0].textContent).not.toContain('BM Duckett');
+    expect(batterCells(rows[1])[0].textContent).toContain('BM Duckett');
+    expect(batterCells(rows[1])[1].textContent).toContain('JG Bethell');
+    expect(batterCells(rows[2])[0].textContent).toContain('BM Duckett');
     expect(batterCells(rows[2])[1].textContent).toContain('H Brook');
     expect(rows[0].querySelectorAll('.matrix-player-header')).toHaveSize(2);
-    expect(rows[1].querySelectorAll('.matrix-player-header')).toHaveSize(0);
-    expect(rows[2].querySelectorAll('.matrix-player-header')).toHaveSize(1);
+    expect(rows[1].querySelectorAll('.matrix-player-header')).toHaveSize(2);
+    expect(rows[2].querySelectorAll('.matrix-player-header')).toHaveSize(2);
+    expect(rows[0].querySelectorAll('.matrix-player-header--repeated')).toHaveSize(0);
+    expect(rows[1].querySelectorAll('.matrix-player-header--repeated')).toHaveSize(0);
+    expect(rows[2].querySelectorAll('.matrix-player-header--repeated')).toHaveSize(0);
   });
 });
 

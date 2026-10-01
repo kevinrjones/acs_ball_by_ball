@@ -27,8 +27,9 @@ export interface ScoresheetDeliverySymbol {
 
 export interface ScoresheetPlayerNotation {
   readonly player: string;
-  readonly showName: boolean;
+  readonly isFirstAppearance: boolean;
   readonly symbols: readonly ScoresheetDeliverySymbol[];
+  readonly lastPlayedSymbolIndex: number;
   readonly runs: number;
   readonly balls: number;
   readonly dismissed: boolean;
@@ -37,9 +38,11 @@ export interface ScoresheetPlayerNotation {
 
 export interface ScoresheetBowlerSummary {
   readonly bowler: string;
-  readonly balls: number;
+  readonly overs: string;
+  readonly maidens: number;
   readonly runs: number;
   readonly wickets: number;
+  readonly isFirstAppearance: boolean;
 }
 
 export interface ScoresheetOverRow {
@@ -49,7 +52,10 @@ export interface ScoresheetOverRow {
   readonly wicketCount: number;
   readonly boundaryCount: number;
   readonly overExtras: string;
-  readonly bowlerSummaries: readonly ScoresheetBowlerSummary[];
+  readonly bowlingLanes: readonly [
+    readonly ScoresheetBowlerSummary[],
+    readonly ScoresheetBowlerSummary[]
+  ];
   readonly battingLanes: readonly [
     readonly ScoresheetPlayerNotation[],
     readonly ScoresheetPlayerNotation[]
@@ -84,6 +90,13 @@ interface BattingScore {
   readonly balls: number;
   readonly fours: number;
   readonly sixes: number;
+}
+
+interface BowlerFigures {
+  readonly legalBalls: number;
+  readonly maidens: number;
+  readonly runs: number;
+  readonly wickets: number;
 }
 
 interface OverAccumulator {
@@ -172,12 +185,16 @@ function buildOverRows(
 ): ScoresheetOverRow[] {
   const overs = groupDeliveriesByOver(deliveries);
   const displayedPlayers = new Set<string>();
+  const battingScores = new Map<string, BattingScore>();
+  const displayedBowlers = new Set<string>();
+  const bowlerFigures = new Map<string, BowlerFigures>();
   let ledger = emptyLedger();
 
   return overs.map(({overNumber, deliveries: overDeliveries}) => {
     const over = summarizeOver(overDeliveries);
     const overExtras = extraTotals(overDeliveries);
     ledger = addToLedger(ledger, over, overExtras);
+    addBattingScores(battingScores, overDeliveries);
     return {
       overNumber,
       deliveries: overDeliveries,
@@ -185,8 +202,8 @@ function buildOverRows(
       wicketCount: over.wicketCount,
       boundaryCount: over.boundaryCount,
       overExtras: formatOverExtras(overExtras),
-      bowlerSummaries: bowlerSummaries(overDeliveries),
-      battingLanes: battingLanes(overDeliveries, assignments, dismissalScores, displayedPlayers),
+      bowlingLanes: bowlingLanes(overDeliveries, overNumber, bowlerFigures, displayedBowlers),
+      battingLanes: battingLanes(overDeliveries, assignments, battingScores, dismissalScores, displayedPlayers),
       notes: overNotes(overDeliveries, overExtras, over.boundaryCount),
       ledger
     };
@@ -220,6 +237,7 @@ function summarizeOver(deliveries: readonly ScoresheetDelivery[]): OverAccumulat
 function battingLanes(
   deliveries: readonly ScoresheetDelivery[],
   assignments: ReadonlyMap<number, readonly BattingLaneAssignment[]>,
+  battingScores: ReadonlyMap<string, BattingScore>,
   dismissalScores: ReadonlyMap<string, BattingScore>,
   displayedPlayers: Set<string>
 ): readonly [readonly ScoresheetPlayerNotation[], readonly ScoresheetPlayerNotation[]] {
@@ -232,8 +250,8 @@ function battingLanes(
     });
   });
 
-  const firstLane = playerNotations(playersByLane[0], deliveries, assignments, dismissalScores, displayedPlayers);
-  const secondLane = playerNotations(playersByLane[1], deliveries, assignments, dismissalScores, displayedPlayers);
+  const firstLane = playerNotations(playersByLane[0], deliveries, assignments, battingScores, dismissalScores, displayedPlayers);
+  const secondLane = playerNotations(playersByLane[1], deliveries, assignments, battingScores, dismissalScores, displayedPlayers);
   return [firstLane, secondLane];
 }
 
@@ -241,12 +259,13 @@ function playerNotations(
   players: readonly string[],
   deliveries: readonly ScoresheetDelivery[],
   assignments: ReadonlyMap<number, readonly BattingLaneAssignment[]>,
+  battingScores: ReadonlyMap<string, BattingScore>,
   dismissalScores: ReadonlyMap<string, BattingScore>,
   displayedPlayers: Set<string>
 ): ScoresheetPlayerNotation[] {
   return players.map((player) => {
-    const showName = !displayedPlayers.has(player);
-    const notation = playerNotation(player, deliveries, assignments, dismissalScores, showName);
+    const isFirstAppearance = !displayedPlayers.has(player);
+    const notation = playerNotation(player, deliveries, assignments, battingScores, dismissalScores, isFirstAppearance);
     displayedPlayers.add(player);
     return notation;
   });
@@ -256,28 +275,40 @@ function playerNotation(
   player: string,
   deliveries: readonly ScoresheetDelivery[],
   assignments: ReadonlyMap<number, readonly BattingLaneAssignment[]>,
+  battingScores: ReadonlyMap<string, BattingScore>,
   dismissalScores: ReadonlyMap<string, BattingScore>,
-  showName: boolean
+  isFirstAppearance: boolean
 ): ScoresheetPlayerNotation {
   const strikerDeliveries = deliveries.filter((delivery) =>
     isPlayerAssigned(delivery, player, assignments) && delivery.batter?.trim() === player
   );
-  const runs = strikerDeliveries.reduce((total, delivery) => total + delivery.batterRuns, 0);
-  const balls = strikerDeliveries.filter((delivery) => delivery.wides === 0).length;
+  const score = battingScores.get(player) || emptyBattingScore();
   const dismissed = strikerDeliveries.some((delivery) => delivery.wicketCount > 0);
   const dismissalScore = dismissalScores.get(player);
 
   return {
     player,
-    showName,
+    isFirstAppearance,
     symbols: deliveries.map((delivery) => deliverySymbolFor(player, delivery, strikerDeliveries)),
-    runs,
-    balls,
+    lastPlayedSymbolIndex: lastPlayedSymbolIndex(deliveries, strikerDeliveries),
+    runs: score.runs,
+    balls: score.balls,
     dismissed,
     scoreLabel: dismissed && dismissalScore
       ? dismissalSummary(dismissalScore)
-      : `(${runs}r, ${balls}b)`
+      : `(${score.runs}r, ${score.balls}b)`
   };
+}
+
+function lastPlayedSymbolIndex(
+  deliveries: readonly ScoresheetDelivery[],
+  strikerDeliveries: readonly ScoresheetDelivery[]
+): number {
+  const strikerDeliveryKeys = new Set(strikerDeliveries.map((delivery) => delivery.deliveryKey));
+  return deliveries.reduce(
+    (lastIndex, delivery, index) => strikerDeliveryKeys.has(delivery.deliveryKey) ? index : lastIndex,
+    -1
+  );
 }
 
 function isPlayerAssigned(
@@ -296,7 +327,7 @@ function deliverySymbolFor(
   if (!strikerDeliveries.some((strikerDelivery) => strikerDelivery.deliveryKey === delivery.deliveryKey)) {
     return {
       deliveryKey: delivery.deliveryKey,
-      value: '•',
+      value: '',
       className: 'matrix-symbol--non-striker-placeholder',
       ariaLabel: `${player} was non-striker on this delivery`
     };
@@ -375,11 +406,32 @@ function battingScoresAtDismissal(deliveries: readonly ScoresheetDelivery[]): Ma
   return dismissalScores;
 }
 
+function addBattingScores(scores: Map<string, BattingScore>, deliveries: readonly ScoresheetDelivery[]): void {
+  deliveries.forEach((delivery) => {
+    const player = delivery.batter?.trim();
+    if (!player) {
+      return;
+    }
+    const previous = scores.get(player) || emptyBattingScore();
+    scores.set(player, {
+      runs: previous.runs + delivery.batterRuns,
+      balls: previous.balls + (delivery.wides === 0 ? 1 : 0),
+      fours: previous.fours + (delivery.batterRuns === 4 ? 1 : 0),
+      sixes: previous.sixes + (delivery.batterRuns === 6 ? 1 : 0)
+    });
+  });
+}
+
 function emptyBattingScore(): BattingScore {
   return {runs: 0, balls: 0, fours: 0, sixes: 0};
 }
 
-function bowlerSummaries(deliveries: readonly ScoresheetDelivery[]): ScoresheetBowlerSummary[] {
+function bowlingLanes(
+  deliveries: readonly ScoresheetDelivery[],
+  overNumber: number,
+  figuresByBowler: Map<string, BowlerFigures>,
+  displayedBowlers: Set<string>
+): readonly [readonly ScoresheetBowlerSummary[], readonly ScoresheetBowlerSummary[]] {
   const deliveriesByBowler = new Map<string, ScoresheetDelivery[]>();
   deliveries.forEach((delivery) => {
     const bowler = delivery.bowler?.trim() || 'Unknown bowler';
@@ -387,12 +439,59 @@ function bowlerSummaries(deliveries: readonly ScoresheetDelivery[]): ScoresheetB
     bowlerDeliveries.push(delivery);
     deliveriesByBowler.set(bowler, bowlerDeliveries);
   });
-  return Array.from(deliveriesByBowler.entries()).map(([bowler, bowlerDeliveries]) => ({
+  const summaries = Array.from(deliveriesByBowler.entries()).map(([bowler, bowlerDeliveries]) =>
+    cumulativeBowlerSummary(bowler, bowlerDeliveries, figuresByBowler, displayedBowlers)
+  );
+  const lane = overNumber % 2 === 0 ? 1 : 0;
+  const lanes: [ScoresheetBowlerSummary[], ScoresheetBowlerSummary[]] = [[], []];
+  lanes[lane].push(...summaries);
+  return lanes;
+}
+
+function cumulativeBowlerSummary(
+  bowler: string,
+  deliveries: readonly ScoresheetDelivery[],
+  figuresByBowler: Map<string, BowlerFigures>,
+  displayedBowlers: Set<string>
+): ScoresheetBowlerSummary {
+  const previous = figuresByBowler.get(bowler) || emptyBowlerFigures();
+  const legalBalls = deliveries.filter(isLegalDelivery).length;
+  const runs = deliveries.reduce((total, delivery) => total + bowlerRunsConceded(delivery), 0);
+  const figures = {
+    legalBalls: previous.legalBalls + legalBalls,
+    maidens: previous.maidens + (legalBalls === 6 && runs === 0 ? 1 : 0),
+    runs: previous.runs + runs,
+    wickets: previous.wickets + deliveries.reduce((total, delivery) => total + delivery.wicketCount, 0)
+  };
+  figuresByBowler.set(bowler, figures);
+  const isFirstAppearance = !displayedBowlers.has(bowler);
+  displayedBowlers.add(bowler);
+  return {
     bowler,
-    balls: bowlerDeliveries.length,
-    runs: bowlerDeliveries.reduce((total, delivery) => total + delivery.totalRuns, 0),
-    wickets: bowlerDeliveries.reduce((total, delivery) => total + delivery.wicketCount, 0)
-  }));
+    overs: formatBowlerOvers(figures.legalBalls),
+    maidens: figures.maidens,
+    runs: figures.runs,
+    wickets: figures.wickets,
+    isFirstAppearance
+  };
+}
+
+function emptyBowlerFigures(): BowlerFigures {
+  return {legalBalls: 0, maidens: 0, runs: 0, wickets: 0};
+}
+
+function formatBowlerOvers(legalBalls: number): string {
+  const completedOvers = Math.floor(legalBalls / 6);
+  const ballsInCurrentOver = legalBalls % 6;
+  return ballsInCurrentOver === 0 ? completedOvers.toString() : `${completedOvers}.${ballsInCurrentOver}`;
+}
+
+function isLegalDelivery(delivery: ScoresheetDelivery): boolean {
+  return delivery.wides === 0 && delivery.noBalls === 0;
+}
+
+function bowlerRunsConceded(delivery: ScoresheetDelivery): number {
+  return Math.max(0, delivery.totalRuns - delivery.byes - delivery.legByes);
 }
 
 function overNotes(

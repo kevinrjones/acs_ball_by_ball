@@ -1,5 +1,259 @@
 # Project Memory
 
+## Task: Keep all scorecard names consistently bold
+
+### Title
+
+Use the same readable name styling for repeated bowlers and batters
+
+### Date/time completed
+
+2026-10-01 10:04
+
+### What was shipped
+
+- Bowler names now retain the same bold, readable styling every time they
+  appear in the Left or Right lane.
+- Batter names now use the same consistent styling across all scorecard rows,
+  while delivery symbols and cumulative figures remain unchanged.
+
+### Key decisions
+
+- Removed only the repeated-name class bindings and muted CSS rules; the base
+  scorecard typography remains the single authoritative style for both name
+  types.
+- Kept the presenter’s appearance state and lane calculations intact because
+  they do not affect the scorecard data or layout after the styling change.
+
+### Gotchas
+
+- The repeated-name selector names remain referenced only by regression
+  assertions to ensure those visual variants are not rendered.
+
+### Test coverage areas
+
+- Angular component tests cover repeated bowler and batter names using the
+  base classes only.
+- All 63 Angular tests pass after the change.
+
+## Task: Improve scorecard grid text contrast
+
+### Title
+
+Make scorecard matrix text clearer against the grid background
+
+### Date/time completed
+
+2026-10-01 10:00
+
+### What was shipped
+
+- Darkened the matrix's inherited body text and standard run symbols so the
+  scorecard grid is easier to read.
+- Preserved the intentional faded styling for repeated player names, score
+  summaries, and empty non-striker slots.
+
+### Key decisions
+
+- Limited the visual change to the scorecard component stylesheet rather than
+  changing the application-wide typography or layout.
+- Matched the darker slate tones used by the Stitch reference design.
+
+### Gotchas
+
+- Muted states remain lighter by design so repeated names and unused delivery
+  positions retain their visual hierarchy.
+
+### Test coverage areas
+
+- Full Gradle `check` passed, including all 62 Angular tests and the production
+  web bundle.
+
+## Task: Place batter scores after the last played ball
+
+### Title
+
+Keep batter score labels adjacent to the final delivery symbol
+
+### Date/time completed
+
+2026-10-01 09:57
+
+### What was shipped
+
+- Batter runs-and-balls labels now appear immediately after each batter's last
+  played ball in the over.
+- Empty non-striker delivery slots remain rendered after the score label so
+  the existing matrix spacing is preserved.
+
+### Key decisions
+
+- Added the final played delivery index to the presenter model so the template
+  can place the score without changing delivery symbols or their alignment.
+- Kept dismissed-batter scores and the `[OUT]` marker together at the same
+  insertion point.
+
+### Gotchas
+
+- A batter with no played delivery in the row receives the score before all
+  placeholder slots; this avoids placing a score after invisible content.
+
+### Test coverage areas
+
+- Component regression coverage verifies score, final ball, and trailing
+  placeholder DOM order.
+- Angular tests, production build, and repository checks validate the change.
+
+## Task: Show cumulative batter runs and balls
+
+### Title
+
+Display running batter scores in every over row
+
+### Date/time completed
+
+2026-10-01 09:08
+
+### What was shipped
+
+- Batter notation now shows each batter's cumulative runs and balls faced at
+  the end of the current over rather than only that over's contribution.
+- Delivery symbols remain scoped to the current over, while the adjacent
+  score label reflects the running innings total.
+
+### Key decisions
+
+- Maintained a per-innings batter score map alongside the existing cumulative
+  bowler and ledger state.
+- Preserved the existing dismissed-batter boundary formatting and wide-ball
+  ball-counting behavior.
+
+### Gotchas
+
+- A batter's name and symbols can repeat in each row, but the score label is
+  intentionally cumulative so later rows represent the current innings state.
+
+### Test coverage areas
+
+- Presenter regression tests cover cumulative runs and balls across overs.
+- Angular component tests verify the cumulative value is rendered in the
+  scorebook table.
+- Client tests, build, and repository checks pass.
+
+## Task: Remove trailing zero from bowler overs
+
+### Title
+
+Format completed bowler overs without a `.0` suffix
+
+### Date/time completed
+
+2026-10-01 09:03
+
+### What was shipped
+
+- Completed bowler overs now display as whole numbers, for example `1` rather
+  than `1.0`.
+- Partial overs continue to display their legal-ball remainder, for example
+  `0.1`.
+
+### Key decisions
+
+- Kept the existing cumulative legal-ball calculation and changed only the
+  presentation formatter.
+
+### Gotchas
+
+- The decimal notation represents balls within the current over, not a
+  fractional decimal value; therefore only a zero remainder omits the suffix.
+
+### Test coverage areas
+
+- Presenter regression tests cover completed one- and two-over figures and
+  retain existing partial-over coverage.
+- Web tests, build, and repository checks pass after this change.
+
+## Task: Add alternating cumulative bowler lanes
+
+### Title
+
+Display bowlers by end with running bowling figures
+
+### Date/time completed
+
+2026-10-01 08:25
+
+### What was shipped
+
+- Replaced the combined per-over bowler listing with explicit Left and Right
+  end columns in the scorebook matrix.
+- Bowlers now occupy alternating end columns by over and show cumulative
+  `(overs-maidens-runs-wickets)` figures, with a dash for the unused end.
+- Repeated bowler names use the same softer styling established for repeated
+  batter names.
+
+### Key decisions
+
+- Odd-numbered overs map to the Left end and even-numbered overs map to the
+  Right end, matching the supplied reference layout.
+- Bowler overs count legal balls, maidens count completed six-ball overs with
+  no conceded runs, and byes and leg-byes are excluded from bowler runs.
+- Existing innings ledger, batter lanes, and end-of-over event handling remain
+  unchanged.
+
+### Gotchas
+
+- A row can retain multiple summaries in one end lane if malformed source data
+  contains more than one bowler in an over; normal deliveries still render one
+  bowler per end column.
+- The Impeccable detector remains in degraded regex mode because optional
+  HTML/CSS parser modules are unavailable; the final scan reported no findings.
+
+### Test coverage areas
+
+- Presenter tests cover alternating lanes, cumulative overs, maidens, conceded
+  runs, wickets, and repeated-bowler appearance state.
+- Angular component tests cover Left/Right headers, empty-end placeholders, and
+  inline cumulative figures.
+- `npm test` (60 tests), `npm run build`, and `./gradlew clean check --no-daemon`
+  pass.
+
+## Task: Remove empty batter delivery dots
+
+### Title
+
+Keep non-striker spacing without rendering placeholder dots
+
+### Date/time completed
+
+2026-10-01 08:18
+
+### What was shipped
+
+- Non-striker delivery slots remain present in the inline batter notation, but
+  no longer render pale grey dot glyphs.
+- Real dot-ball symbols remain unchanged, so the notation still distinguishes a
+  batter's own scoreless delivery from a delivery faced by the other batter.
+
+### Key decisions
+
+- Kept the existing placeholder spans, minimum width, and flex gap so the
+  over-by-over columns retain their alignment and rhythm.
+- Represented the visual absence with an empty placeholder value while keeping
+  the existing accessible non-striker label on each slot.
+
+### Gotchas
+
+- The Impeccable detector runs in degraded regex mode because optional HTML/CSS
+  parser modules are unavailable; the final scan reported no findings.
+
+### Test coverage areas
+
+- Presenter tests verify non-striker placeholders are empty while retaining
+  their semantic class.
+- Angular component tests verify placeholder spans remain counted and empty.
+- `npm test`, `npm run build`, and `./gradlew clean check --no-daemon` pass.
+
 ## Task: Prevent duplicate database match inserts
 
 ### Title
