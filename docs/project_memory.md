@@ -1,5 +1,36 @@
 # Project Memory
 
+## Task: Add typesafe JOOQ generation to bbb-api
+
+### Title
+
+Generate and adopt typed MariaDB schema bindings
+
+### Date/time completed
+
+2026-10-01 13:21
+
+### What was shipped
+
+- Added the official JOOQ Gradle code-generation plugin and a checked-in Kotlin generated source set for `bbb-api`.
+- Migrated `JooqMatchRepository` and `MatchSearchConditionBuilder` from string-based tables and fields to generated JOOQ table and column definitions.
+- Scoped generation to the warehouse tables used by the matches API and generated only the typed table/record bindings required by the repository.
+
+### Key decisions
+
+- `jooqCodegen` reads MariaDB connection settings from `JOOQ_DATABASE_URL`, `JOOQ_DATABASE_USER`, and `JOOQ_DATABASE_PASSWORD`, with local defaults matching the development database.
+- MariaDB unsigned warehouse key columns are forced to JOOQ `BIGINT` so they map to the API's existing `Long` identifiers; the schema's `INT` match ID remains explicitly converted at the domain boundary.
+- Generated sources are stored under `bbb-api/src/generated/jooq/kotlin` and are not regenerated during ordinary compilation.
+
+### Gotchas
+
+- Code generation requires the target MariaDB schema to be available; run `./gradlew :bbb-api:jooqCodegen --no-daemon` with the connection overrides when regenerating.
+- The current warehouse uses `dim_match.id` and integer match foreign keys, so those fields must not be included in the unsigned key forced-type mapping.
+
+### Test coverage areas
+
+- `bbb-api` compilation and existing repository/API integration tests cover recent matches, historical search, scoresheets, pagination, nullable fields, and database failure behavior using the generated bindings.
+
 ## Task: Extract numeric match IDs from decorated filenames
 
 ### Title

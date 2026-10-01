@@ -41,6 +41,7 @@ flyway = { module = "org.flywaydb:flyway-mysql", version.ref = "flyway-version" 
 flyway-postgres = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway-version" }
 hikari-cp = { module = "com.zaxxer:HikariCP", version.ref = "hikari-version" }
 jooq = { module = "org.jooq:jooq", version.ref = "jooq-version" }
+jooq-codegen = { module = "org.jooq:jooq-codegen", version.ref = "jooq-version" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup-version" }
 jwks-rsa = { module = "com.auth0:jwks-rsa", version.ref = "auth0-jwks-rsa-version" }
 junit-engine = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit-version" }
@@ -76,6 +77,7 @@ strikt = { module = "io.strikt:strikt-core", version.ref = "strikt-version" }
 
 [plugins]
 catalog-update = { id = "nl.littlerobots.version-catalog-update", version.ref = "catalog-update-version-version" }
+jooq = { id = "org.jooq.jooq-codegen-gradle", version.ref = "jooq-version" }
 flyway = { id = "org.flywaydb.flyway", version.ref = "flyway-version" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin-version" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin-version" }

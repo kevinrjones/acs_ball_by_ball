@@ -4,7 +4,18 @@ plugins {
     alias(ktorlibs.plugins.ktor)
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.jooq)
     application
+}
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath(libs.jooq.codegen)
+        classpath(libs.mariadb)
+    }
 }
 
 group = "com.knowledgespike"
@@ -40,6 +51,7 @@ dependencies {
 
     implementation(libs.hikari.cp)
     implementation(libs.jooq)
+
     // Loads local .env configuration into JVM system properties on startup
 
     implementation(libs.dotenv.kotlin)
@@ -69,4 +81,53 @@ tasks.withType<Test>().configureEach {
 
 kotlin {
     jvmToolchain(21)
+}
+
+sourceSets {
+    main {
+        java.srcDir(layout.projectDirectory.dir("src/generated/jooq/kotlin"))
+    }
+}
+
+val jooqDatabaseUrl = providers.environmentVariable("JOOQ_DATABASE_URL")
+    .orElse("jdbc:mariadb://localhost:3306/acs_ball_by_ball")
+val jooqDatabaseUser = providers.environmentVariable("JOOQ_DATABASE_USER")
+    .orElse("ballbyball")
+val jooqDatabasePassword = providers.environmentVariable("JOOQ_DATABASE_PASSWORD")
+    .orElse("p4ssw0rd")
+
+jooq {
+    configuration {
+        basedir = layout.projectDirectory.dir("src").asFile.path
+        jdbc {
+                    driver = "org.mariadb.jdbc.Driver"
+                    url = jooqDatabaseUrl.get()
+                    user = jooqDatabaseUser.get()
+                    password = jooqDatabasePassword.get()
+                }
+                generator {
+                    name = "org.jooq.codegen.KotlinGenerator"
+                    database {
+                        name = "org.jooq.meta.mariadb.MariaDBDatabase"
+                        inputSchema = "acs_ball_by_ball"
+//                        includes = "(?i:(dim_match|dim_date|dim_team|dim_ground|fact_match|dim_innings|fact_delivery|dim_person|dim_wicket|bridge_delivery_wicket|bridge_delivery_fielder))"
+                        forcedTypes {
+                            forcedType {
+                                name = "BIGINT"
+                                includeExpression = "(?i:.*\\.(team1_key|team2_key|ground_key|toss_team_key|winner_team_key|loser_team_key|team_key|person_key|innings_key|delivery_key|wicket_key|batter_key|non_striker_key|bowler_key|batting_team_key|bowling_team_key))"
+                            }
+                        }
+                    }
+                    generate {
+                        isPojos = false
+                        isDaos = false
+                        isRelations = false
+                    }
+                    target {
+                        packageName = "com.knowledgespike.ballbyball.api.generated.jooq"
+                        directory = "generated/jooq/kotlin"
+                        isClean = true
+                    }
+                }
+    }
 }

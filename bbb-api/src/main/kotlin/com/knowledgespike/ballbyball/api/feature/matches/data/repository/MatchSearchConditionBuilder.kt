@@ -12,14 +12,14 @@ import org.jooq.impl.DSL.trueCondition
 import java.time.LocalDate
 
 data class MatchSearchFields(
-    val matchType: Field<String>,
+    val matchType: Field<String?>,
     val winnerTeamKey: Field<Long?>,
     val team1Key: Field<Long?>,
     val team2Key: Field<Long?>,
-    val team1Name: Field<String>,
-    val team2Name: Field<String>,
+    val team1Name: Field<String?>,
+    val team2Name: Field<String?>,
     val calendarDate: Field<LocalDate?>,
-    val victoryType: Field<String>
+    val victoryType: Field<String?>
 )
 
 class MatchSearchConditionBuilder(private val fields: MatchSearchFields) {
@@ -45,7 +45,7 @@ class MatchSearchConditionBuilder(private val fields: MatchSearchFields) {
         ).reduce { left, right -> left.and(right) }
     }
 
-    private fun teamCondition(field: Field<String>, team: SearchTeam, exact: Boolean): Condition =
+    private fun teamCondition(field: Field<String?>, team: SearchTeam, exact: Boolean): Condition =
         if (exact) field.equalIgnoreCase(team.value) else field.containsIgnoreCase(team.value)
 
     private fun matchTypeCondition(criteria: MatchSearchCriteria): Condition = when (criteria.matchType.value) {
