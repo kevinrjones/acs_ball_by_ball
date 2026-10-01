@@ -113,7 +113,7 @@
                 <tbody>
                   @for (row of innings.rows; track row.overNumber) {
                     <tr [class.linear-matrix__wicket-row]="row.wicketCount > 0">
-                      <td class="linear-matrix__over">{{ row.overNumber }}</td>
+                      <td class="linear-matrix__over">{{ row.overNumber + 1 }}</td>
                       @for (entries of row.bowlingLanes; track $index) {
                         <td class="linear-matrix__bowler-cell">
                           @for (entry of entries; track entry.bowler) {

@@ -115,8 +115,9 @@ const EMPTY_EXTRA_TOTALS: ScoresheetExtraTotals = Object.freeze({
 
 /**
  * The warehouse contract associates a wicket with a delivery, not a separate
- * dismissed-player field. Until that field exists, wicket attribution is
- * explicitly defined as the delivery batter in the scoresheet presentation.
+ * dismissed-player field. The following delivery is used to identify which
+ * member of the previous batting pair was replaced, with the delivery batter
+ * as the fallback when that evidence is unavailable or ambiguous.
  */
 export function presentScoresheet(response: MatchScoresheetResponse): PresentedScoresheet {
   const innings = response.innings.map(presentInnings);
@@ -131,9 +132,10 @@ export function presentScoresheet(response: MatchScoresheetResponse): PresentedS
 
 function presentInnings(innings: ScoresheetInnings): PresentedScoresheetInnings {
   const deliveries = orderDeliveries(innings.deliveries);
-  const assignments = battingLaneAssignments(deliveries);
-  const dismissalScores = battingScoresAtDismissal(deliveries);
-  const rows = buildOverRows(deliveries, assignments, dismissalScores);
+  const dismissedPlayers = dismissedPlayersByDelivery(deliveries);
+  const assignments = battingLaneAssignments(deliveries, dismissedPlayers);
+  const dismissalScores = battingScoresAtDismissal(deliveries, dismissedPlayers);
+  const rows = buildOverRows(deliveries, assignments, dismissalScores, dismissedPlayers);
   const totalRuns = deliveries.reduce((total, delivery) => total + delivery.totalRuns, 0);
   const totalWickets = deliveries.reduce((total, delivery) => total + delivery.wicketCount, 0);
 
@@ -181,7 +183,8 @@ function orderDeliveries(deliveries: readonly ScoresheetDelivery[]): ScoresheetD
 function buildOverRows(
   deliveries: readonly ScoresheetDelivery[],
   assignments: ReadonlyMap<number, readonly BattingLaneAssignment[]>,
-  dismissalScores: ReadonlyMap<string, BattingScore>
+  dismissalScores: ReadonlyMap<string, BattingScore>,
+  dismissedPlayers: ReadonlyMap<number, string>
 ): ScoresheetOverRow[] {
   const overs = groupDeliveriesByOver(deliveries);
   const displayedPlayers = new Set<string>();
@@ -203,8 +206,8 @@ function buildOverRows(
       boundaryCount: over.boundaryCount,
       overExtras: formatOverExtras(overExtras),
       bowlingLanes: bowlingLanes(overDeliveries, overNumber, bowlerFigures, displayedBowlers),
-      battingLanes: battingLanes(overDeliveries, assignments, battingScores, dismissalScores, displayedPlayers),
-      notes: overNotes(overDeliveries, overExtras, over.boundaryCount),
+      battingLanes: battingLanes(overDeliveries, assignments, battingScores, dismissalScores, displayedPlayers, dismissedPlayers),
+      notes: overNotes(overDeliveries, overExtras, over.boundaryCount, dismissedPlayers),
       ledger
     };
   });
@@ -239,7 +242,8 @@ function battingLanes(
   assignments: ReadonlyMap<number, readonly BattingLaneAssignment[]>,
   battingScores: ReadonlyMap<string, BattingScore>,
   dismissalScores: ReadonlyMap<string, BattingScore>,
-  displayedPlayers: Set<string>
+  displayedPlayers: Set<string>,
+  dismissedPlayers: ReadonlyMap<number, string>
 ): readonly [readonly ScoresheetPlayerNotation[], readonly ScoresheetPlayerNotation[]] {
   const playersByLane: [string[], string[]] = [[], []];
   deliveries.forEach((delivery) => {
@@ -250,8 +254,8 @@ function battingLanes(
     });
   });
 
-  const firstLane = playerNotations(playersByLane[0], deliveries, assignments, battingScores, dismissalScores, displayedPlayers);
-  const secondLane = playerNotations(playersByLane[1], deliveries, assignments, battingScores, dismissalScores, displayedPlayers);
+  const firstLane = playerNotations(playersByLane[0], deliveries, assignments, battingScores, dismissalScores, displayedPlayers, dismissedPlayers);
+  const secondLane = playerNotations(playersByLane[1], deliveries, assignments, battingScores, dismissalScores, displayedPlayers, dismissedPlayers);
   return [firstLane, secondLane];
 }
 
@@ -261,11 +265,12 @@ function playerNotations(
   assignments: ReadonlyMap<number, readonly BattingLaneAssignment[]>,
   battingScores: ReadonlyMap<string, BattingScore>,
   dismissalScores: ReadonlyMap<string, BattingScore>,
-  displayedPlayers: Set<string>
+  displayedPlayers: Set<string>,
+  dismissedPlayers: ReadonlyMap<number, string>
 ): ScoresheetPlayerNotation[] {
   return players.map((player) => {
     const isFirstAppearance = !displayedPlayers.has(player);
-    const notation = playerNotation(player, deliveries, assignments, battingScores, dismissalScores, isFirstAppearance);
+    const notation = playerNotation(player, deliveries, assignments, battingScores, dismissalScores, isFirstAppearance, dismissedPlayers);
     displayedPlayers.add(player);
     return notation;
   });
@@ -277,20 +282,21 @@ function playerNotation(
   assignments: ReadonlyMap<number, readonly BattingLaneAssignment[]>,
   battingScores: ReadonlyMap<string, BattingScore>,
   dismissalScores: ReadonlyMap<string, BattingScore>,
-  isFirstAppearance: boolean
+  isFirstAppearance: boolean,
+  dismissedPlayers: ReadonlyMap<number, string>
 ): ScoresheetPlayerNotation {
   const strikerDeliveries = deliveries.filter((delivery) =>
     isPlayerAssigned(delivery, player, assignments) && delivery.batter?.trim() === player
   );
   const score = battingScores.get(player) || emptyBattingScore();
-  const dismissed = strikerDeliveries.some((delivery) => delivery.wicketCount > 0);
-  const dismissalScore = dismissalScores.get(player);
+  const dismissed = deliveries.some((delivery) => dismissedPlayers.get(delivery.deliveryKey) === player);
+  const dismissalScore = dismissed ? dismissalScores.get(player) : undefined;
 
   return {
     player,
     isFirstAppearance,
-    symbols: deliveries.map((delivery) => deliverySymbolFor(player, delivery, strikerDeliveries)),
-    lastPlayedSymbolIndex: lastPlayedSymbolIndex(deliveries, strikerDeliveries),
+    symbols: deliveries.map((delivery) => deliverySymbolFor(player, delivery, strikerDeliveries, dismissedPlayers)),
+    lastPlayedSymbolIndex: lastPlayedSymbolIndex(deliveries, player, strikerDeliveries, dismissedPlayers),
     runs: score.runs,
     balls: score.balls,
     dismissed,
@@ -302,11 +308,15 @@ function playerNotation(
 
 function lastPlayedSymbolIndex(
   deliveries: readonly ScoresheetDelivery[],
-  strikerDeliveries: readonly ScoresheetDelivery[]
+  player: string,
+  strikerDeliveries: readonly ScoresheetDelivery[],
+  dismissedPlayers: ReadonlyMap<number, string>
 ): number {
   const strikerDeliveryKeys = new Set(strikerDeliveries.map((delivery) => delivery.deliveryKey));
   return deliveries.reduce(
-    (lastIndex, delivery, index) => strikerDeliveryKeys.has(delivery.deliveryKey) ? index : lastIndex,
+    (lastIndex, delivery, index) => strikerDeliveryKeys.has(delivery.deliveryKey) || dismissedPlayers.get(delivery.deliveryKey) === player
+      ? index
+      : lastIndex,
     -1
   );
 }
@@ -322,9 +332,12 @@ function isPlayerAssigned(
 function deliverySymbolFor(
   player: string,
   delivery: ScoresheetDelivery,
-  strikerDeliveries: readonly ScoresheetDelivery[]
+  strikerDeliveries: readonly ScoresheetDelivery[],
+  dismissedPlayers: ReadonlyMap<number, string>
 ): ScoresheetDeliverySymbol {
-  if (!strikerDeliveries.some((strikerDelivery) => strikerDelivery.deliveryKey === delivery.deliveryKey)) {
+  const isDismissedPlayer = dismissedPlayers.get(delivery.deliveryKey) === player;
+  const isStriker = strikerDeliveries.some((strikerDelivery) => strikerDelivery.deliveryKey === delivery.deliveryKey);
+  if (!isDismissedPlayer && !isStriker) {
     return {
       deliveryKey: delivery.deliveryKey,
       value: '',
@@ -334,12 +347,52 @@ function deliverySymbolFor(
   }
   return {
     deliveryKey: delivery.deliveryKey,
-    value: deliverySymbol(delivery),
-    className: deliverySymbolClass(delivery)
+    value: deliverySymbol(delivery, isDismissedPlayer),
+    className: deliverySymbolClass(delivery, isDismissedPlayer)
   };
 }
 
-function battingLaneAssignments(deliveries: readonly ScoresheetDelivery[]): Map<number, BattingLaneAssignment[]> {
+function dismissedPlayersByDelivery(deliveries: readonly ScoresheetDelivery[]): Map<number, string> {
+  const dismissedPlayers = new Map<number, string>();
+  deliveries.forEach((delivery, index) => {
+    const dismissedPlayer = dismissedPlayerForDelivery(deliveries, index);
+    if (dismissedPlayer) {
+      dismissedPlayers.set(delivery.deliveryKey, dismissedPlayer);
+    }
+  });
+  return dismissedPlayers;
+}
+
+function dismissedPlayerForDelivery(
+  deliveries: readonly ScoresheetDelivery[],
+  deliveryIndex: number
+): string | undefined {
+  const delivery = deliveries[deliveryIndex];
+  if (!delivery || delivery.wicketCount === 0) {
+    return undefined;
+  }
+
+  const batter = delivery.batter?.trim() || undefined;
+  const currentPlayers = Array.from(new Set([batter, delivery.nonStriker?.trim() || undefined].filter(
+    (player): player is string => player !== undefined
+  )));
+  const nextDelivery = deliveries[deliveryIndex + 1];
+  if (!nextDelivery || currentPlayers.length !== 2) {
+    return batter;
+  }
+
+  const nextPlayers = new Set([
+    nextDelivery.batter?.trim() || undefined,
+    nextDelivery.nonStriker?.trim() || undefined
+  ]);
+  const replacedPlayer = currentPlayers.filter((player) => !nextPlayers.has(player));
+  return replacedPlayer.length === 1 ? replacedPlayer[0] : batter;
+}
+
+function battingLaneAssignments(
+  deliveries: readonly ScoresheetDelivery[],
+  dismissedPlayers: ReadonlyMap<number, string>
+): Map<number, BattingLaneAssignment[]> {
   const lanes: Array<string | undefined> = [undefined, undefined];
   const playerLanes = new Map<string, number>();
   const assignments = new Map<number, BattingLaneAssignment[]>();
@@ -354,7 +407,7 @@ function battingLaneAssignments(deliveries: readonly ScoresheetDelivery[]): Map<
       const lane = playerLanes.get(player);
       return lane === undefined ? [] : [{lane, player}];
     }));
-    releaseDismissedBatter(delivery, lanes, playerLanes);
+    releaseDismissedBatter(delivery, lanes, playerLanes, dismissedPlayers);
   });
   return assignments;
 }
@@ -373,34 +426,37 @@ function assignPlayerToLane(player: string, lanes: Array<string | undefined>, pl
 function releaseDismissedBatter(
   delivery: ScoresheetDelivery,
   lanes: Array<string | undefined>,
-  playerLanes: Map<string, number>
+  playerLanes: Map<string, number>,
+  dismissedPlayers: ReadonlyMap<number, string>
 ): void {
-  const dismissedBatter = delivery.batter?.trim();
+  const dismissedBatter = dismissedPlayers.get(delivery.deliveryKey);
   const batterLane = dismissedBatter ? playerLanes.get(dismissedBatter) : undefined;
-  if (dismissedBatter && delivery.wicketCount > 0 && batterLane !== undefined) {
+  if (dismissedBatter && batterLane !== undefined) {
     lanes[batterLane] = undefined;
     playerLanes.delete(dismissedBatter);
   }
 }
 
-function battingScoresAtDismissal(deliveries: readonly ScoresheetDelivery[]): Map<string, BattingScore> {
+function battingScoresAtDismissal(
+  deliveries: readonly ScoresheetDelivery[],
+  dismissedPlayers: ReadonlyMap<number, string>
+): Map<string, BattingScore> {
   const scores = new Map<string, BattingScore>();
   const dismissalScores = new Map<string, BattingScore>();
   deliveries.forEach((delivery) => {
     const player = delivery.batter?.trim();
-    if (!player) {
-      return;
+    if (player) {
+      const previous = scores.get(player) || emptyBattingScore();
+      scores.set(player, {
+        runs: previous.runs + delivery.batterRuns,
+        balls: previous.balls + (delivery.wides === 0 ? 1 : 0),
+        fours: previous.fours + (delivery.batterRuns === 4 ? 1 : 0),
+        sixes: previous.sixes + (delivery.batterRuns === 6 ? 1 : 0)
+      });
     }
-    const previous = scores.get(player) || emptyBattingScore();
-    const score = {
-      runs: previous.runs + delivery.batterRuns,
-      balls: previous.balls + (delivery.wides === 0 ? 1 : 0),
-      fours: previous.fours + (delivery.batterRuns === 4 ? 1 : 0),
-      sixes: previous.sixes + (delivery.batterRuns === 6 ? 1 : 0)
-    };
-    scores.set(player, score);
-    if (delivery.wicketCount > 0 && !dismissalScores.has(player)) {
-      dismissalScores.set(player, score);
+    const dismissedPlayer = dismissedPlayers.get(delivery.deliveryKey);
+    if (dismissedPlayer && !dismissalScores.has(dismissedPlayer)) {
+      dismissalScores.set(dismissedPlayer, scores.get(dismissedPlayer) || emptyBattingScore());
     }
   });
   return dismissalScores;
@@ -497,13 +553,14 @@ function bowlerRunsConceded(delivery: ScoresheetDelivery): number {
 function overNotes(
   deliveries: readonly ScoresheetDelivery[],
   extras: ScoresheetExtraTotals,
-  boundaryCount: number
+  boundaryCount: number,
+  dismissedPlayers: ReadonlyMap<number, string>
 ): string {
   const notes: string[] = [];
   const wicketNotes = deliveries.flatMap((delivery) => {
     const description = wicketDescription(delivery);
     return description
-      ? description.split('; ').map((wicket) => `${delivery.batter?.trim() || 'Unknown batter'} — ${wicket}`)
+      ? description.split('; ').map((wicket) => `${dismissedPlayers.get(delivery.deliveryKey) || delivery.batter?.trim() || 'Unknown batter'} — ${wicket}`)
       : [];
   });
   if (wicketNotes.length > 0) {
@@ -528,8 +585,8 @@ function wicketDescription(delivery: ScoresheetDelivery): string {
   return descriptions.length > 0 ? descriptions.join('; ') : delivery.wicketCount > 0 ? 'Wicket' : '';
 }
 
-function deliverySymbol(delivery: ScoresheetDelivery): string {
-  if (delivery.wicketCount > 0) {
+function deliverySymbol(delivery: ScoresheetDelivery, includeWicket = true): string {
+  if (includeWicket && delivery.wicketCount > 0) {
     return 'W';
   }
   if (delivery.wides > 0) {
@@ -550,8 +607,8 @@ function deliverySymbol(delivery: ScoresheetDelivery): string {
   return delivery.totalRuns.toString();
 }
 
-function deliverySymbolClass(delivery: ScoresheetDelivery): string {
-  if (delivery.wicketCount > 0) {
+function deliverySymbolClass(delivery: ScoresheetDelivery, includeWicket = true): string {
+  if (includeWicket && delivery.wicketCount > 0) {
     return 'matrix-symbol--wicket';
   }
   if (delivery.wides > 0 || delivery.noBalls > 0 || delivery.legByes > 0 || delivery.byes > 0) {

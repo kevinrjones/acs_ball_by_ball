@@ -55,6 +55,18 @@ describe('SelectedMatchPlaceholderComponent', () => {
     expect(fixture.componentInstance.scoresheet()!.innings[0].rows).toHaveSize(1);
   });
 
+  it('should display zero-based delivery overs starting at one', async () => {
+    const firstOver = delivery({deliveryKey: 1, sourceBallId: 101, overNumber: 0, ballInOver: 1});
+    const secondOver = delivery({deliveryKey: 2, sourceBallId: 102, overNumber: 1, ballInOver: 1});
+    await configure({}, '101', scoresheet(firstOver, secondOver));
+    const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
+    fixture.detectChanges();
+
+    const overLabels = fixture.nativeElement.querySelectorAll('.linear-matrix__over') as NodeListOf<HTMLElement>;
+
+    expect(Array.from(overLabels).map((label) => label.textContent?.trim())).toEqual(['1', '2']);
+  });
+
   it('should show one summary card per innings and only the selected innings panel', async () => {
     const firstInnings = innings(1, 'England', 'India', delivery({deliveryKey: 1, batter: 'England batter', batterRuns: 302, totalRuns: 302}));
     const secondInnings = innings(2, 'India', 'England', delivery({deliveryKey: 2, batter: 'India batter', batterRuns: 150, totalRuns: 150}));
@@ -262,6 +274,27 @@ describe('SelectedMatchPlaceholderComponent', () => {
     expect(dismissedCell.textContent).toContain('[OUT]');
     expect(notDismissedCell.querySelector('.matrix-dismissed')).toBeNull();
     expect(notDismissedCell.querySelector('.matrix-symbol--wicket')).toBeNull();
+  });
+
+  it('should not render a later dismissal against the batter in an earlier row', async () => {
+    const earlierDelivery = delivery({
+      deliveryKey: 1, sourceBallId: 101, inningsOrder: 1, overNumber: 13, ballInOver: 1,
+      batter: 'M Kapp', nonStriker: 'S Verma', batterRuns: 1, totalRuns: 1
+    });
+    const dismissal = delivery({
+      deliveryKey: 2, sourceBallId: 102, inningsOrder: 2, overNumber: 14, ballInOver: 1,
+      batter: 'M Kapp', nonStriker: 'D Penna', wicketCount: 1,
+      wickets: [{wicketKey: 2, kind: 'caught', fielders: ['Fielder']}]
+    });
+    await configure({}, '101', scoresheet(earlierDelivery, dismissal));
+    const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
+    fixture.detectChanges();
+
+    const rows = fixture.nativeElement.querySelectorAll('.linear-matrix tbody tr') as NodeListOf<HTMLTableRowElement>;
+
+    expect(rows[0].querySelector('.matrix-dismissed')).toBeNull();
+    expect(rows[0].textContent).not.toContain('[OUT]');
+    expect(rows[1].querySelector('.matrix-dismissed')).not.toBeNull();
   });
 
   it('should display cumulative wickets in the end-of-over ledger', async () => {

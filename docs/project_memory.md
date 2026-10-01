@@ -1,5 +1,146 @@
 # Project Memory
 
+## Task: Keep future dismissals out of earlier scorecard rows
+
+### Title
+
+Render dismissal details only on the dismissal row
+
+### Date/time completed
+
+2026-10-01 10:30
+
+### What was shipped
+
+- Batter dismissal status and score details are now limited to the row where
+  the wicket occurs.
+- A batter who is dismissed in a later over keeps their earlier cumulative
+  score without an `[OUT]` marker or dismissal styling in preceding rows.
+
+### Key decisions
+
+- Retained the cumulative batting totals and global dismissal-score lookup,
+  but determine `dismissed` from the current row's deliveries.
+- Kept the existing next-delivery inference for identifying the dismissed
+  batter, including non-striker run outs.
+
+### Gotchas
+
+- The API still reports wickets at delivery level and does not provide a
+  dismissed-player field, so attribution remains dependent on the existing
+  transition inference and fallback behavior.
+
+### Test coverage areas
+
+- Presenter regression verifies a later Kapp dismissal does not mark Kapp out
+  in the earlier row, while the dismissal row still shows the final score.
+- Component regression verifies the earlier HTML row has no dismissal marker;
+  all 67 Angular tests pass.
+
+## Task: Render non-striker wickets against the dismissed batter
+
+### Title
+
+Keep wicket symbols and delivery runs with the correct batter
+
+### Date/time completed
+
+2026-10-01 10:26
+
+### What was shipped
+
+- The scorecard now renders a non-striker run-out wicket beside the dismissed
+  batter rather than the batter who faced the delivery.
+- The facing batter keeps the delivery outcome, such as Kapp's `1`, while the
+  dismissed batter receives the `W` symbol and dismissal details.
+
+### Key decisions
+
+- Reused the existing next-delivery dismissal inference for cell-level symbol
+  ownership so status, notes, scores, and symbols remain consistent.
+- Suppressed only the wicket portion of a non-dismissed striker's symbol; run,
+  extra, boundary, and alignment behavior remains unchanged.
+
+### Gotchas
+
+- The API still identifies wickets only at delivery level, so the next delivery
+  remains the evidence used to identify a non-striker dismissal.
+
+### Test coverage areas
+
+- The ball-88 Kapp/Verma regression verifies Kapp renders `1` and Verma renders
+  `W`, alongside dismissal status, score, notes, and lane continuity.
+- The pre-fix regression failed; all 65 Angular tests pass after the fix.
+
+## Task: Attribute wickets to the replaced batter
+
+### Title
+
+Use the next delivery to identify non-striker dismissals
+
+### Date/time completed
+
+2026-10-01 10:19
+
+### What was shipped
+
+- The scoresheet now identifies the dismissed batter by comparing the wicket
+  delivery's batting pair with the next delivery's pair.
+- Non-striker run outs now receive the dismissal score, `[OUT]` marker, lane
+  release, and wicket note instead of incorrectly marking the striker.
+
+### Key decisions
+
+- Select the sole player from the wicket delivery who is absent on the next
+  delivery; retain the striker as a safe fallback when the next delivery is
+  unavailable or the player transition is ambiguous.
+- Apply the same inferred player consistently to lane assignment, dismissal
+  scores, and wicket notes so the scorecard remains internally consistent.
+
+### Gotchas
+
+- The API contract does not contain a dismissed-player field, so an innings-end
+  wicket or incomplete next delivery cannot always be attributed beyond the
+  striker fallback.
+
+### Test coverage areas
+
+- Regression coverage reproduces ball 88's Kapp/Verma run out followed by
+  Penna/Kapp and verifies status, score, note, and subsequent lane continuity.
+- The pre-fix regression failed; all 65 Angular tests pass after the fix.
+
+## Task: Start the displayed over count at one
+
+### Title
+
+Display zero-based delivery overs as one-based scorecard labels
+
+### Date/time completed
+
+2026-10-01 10:10
+
+### What was shipped
+
+- The scorecard's leftmost over column now displays the first zero-based
+  delivery over as `1`, followed by `2`, `3`, and so on.
+
+### Key decisions
+
+- Applied the one-based conversion only in the Angular presentation template;
+  delivery grouping, lane allocation, and domain data remain unchanged.
+
+### Gotchas
+
+- The source/API contract uses zero-based `overNumber` values, so tests must
+  distinguish raw delivery numbers from displayed scorecard labels.
+
+### Test coverage areas
+
+- Added a component regression using source overs `0` and `1` and asserting
+  visible labels `1` and `2`.
+- The baseline regression failed before the fix; all 64 Angular tests passed
+  after the fix.
+
 ## Task: Keep all scorecard names consistently bold
 
 ### Title

@@ -86,6 +86,85 @@ describe('presentScoresheet', () => {
     );
   });
 
+  it('should attribute a wicket to the non-striker when the next delivery replaces that player', () => {
+    const wicketDelivery = delivery({
+      deliveryKey: 88,
+      sourceBallId: 16031106,
+      inningsOrder: 88,
+      overNumber: 13,
+      ballNumber: 88,
+      ballInOver: 6,
+      batter: 'M Kapp',
+      nonStriker: 'S Verma',
+      batterRuns: 1,
+      totalRuns: 1,
+      wicketCount: 1,
+      wickets: [{wicketKey: 438986, kind: 'run out', fielders: ['EA Burns', 'S Ismail']}]
+    });
+    const nextDelivery = delivery({
+      deliveryKey: 89,
+      sourceBallId: 16031107,
+      inningsOrder: 89,
+      overNumber: 14,
+      ballNumber: 89,
+      ballInOver: 1,
+      batter: 'D Penna',
+      nonStriker: 'M Kapp'
+    });
+
+    const rows = presentScoresheet(scoresheet(wicketDelivery, nextDelivery)).innings[0].rows;
+    const wicketRow = rows[0];
+    const notationFor = (player: string) => wicketRow.battingLanes.flat().find((entry) => entry.player === player)!;
+
+    expect(notationFor('M Kapp').dismissed).toBeFalse();
+    expect(notationFor('S Verma').dismissed).toBeTrue();
+    expect(notationFor('S Verma').scoreLabel).toBe('(0r, 0b)');
+    expect(notationFor('M Kapp').symbols[0].value).toBe('1');
+    expect(notationFor('M Kapp').symbols[0].className).toBe('matrix-symbol--run');
+    expect(notationFor('S Verma').symbols[0].value).toBe('W');
+    expect(notationFor('S Verma').symbols[0].className).toBe('matrix-symbol--wicket');
+    expect(wicketRow.notes).toContain('WICKET 1: S Verma — Run out (EA Burns, S Ismail)');
+    expect(rows[1].battingLanes.flat().map((entry) => entry.player)).toEqual(['M Kapp', 'D Penna']);
+  });
+
+  it('should only show dismissal details from the row where the batter is dismissed', () => {
+    const earlierDelivery = delivery({
+      deliveryKey: 1,
+      sourceBallId: 1,
+      inningsOrder: 1,
+      overNumber: 13,
+      ballNumber: 85,
+      ballInOver: 1,
+      batter: 'M Kapp',
+      nonStriker: 'S Verma',
+      batterRuns: 1,
+      totalRuns: 1
+    });
+    const dismissal = delivery({
+      deliveryKey: 2,
+      sourceBallId: 2,
+      inningsOrder: 2,
+      overNumber: 14,
+      ballNumber: 89,
+      ballInOver: 1,
+      batter: 'M Kapp',
+      nonStriker: 'D Penna',
+      wicketCount: 1,
+      wickets: [{wicketKey: 2, kind: 'caught', fielders: ['Fielder']}]
+    });
+
+    const rows = presentScoresheet(scoresheet(earlierDelivery, dismissal)).innings[0].rows;
+
+    expect(rows[0].battingLanes.flat().find((entry) => entry.player === 'M Kapp')).toEqual(jasmine.objectContaining({
+      dismissed: false,
+      scoreLabel: '(1r, 1b)'
+    }));
+    expect(rows[1].battingLanes.flat().find((entry) => entry.player === 'M Kapp')).toEqual(jasmine.objectContaining({
+      dismissed: true,
+      scoreLabel: '(1r, 2b)'
+    }));
+  });
+
   it('should prepare striker notation, non-striker placeholders, and first-appearance styling', () => {
     const response = scoresheet(
       delivery({deliveryKey: 1, inningsOrder: 1, overNumber: 1, batter: 'Batter One', nonStriker: 'Batter Two', batterRuns: 4, totalRuns: 4}),
