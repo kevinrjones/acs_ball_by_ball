@@ -64,8 +64,7 @@ CREATE TABLE dim_ground
 -- are shared by both the match and delivery facts.
 CREATE TABLE dim_match
 (
-    match_key            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    source_match_id      INT             NOT NULL,
+    id                   INT             NOT NULL PRIMARY KEY,
     source_ca_id         VARCHAR(10)     NULL,
     file_name            VARCHAR(120)    NOT NULL,
     match_in_series      INT             NOT NULL,
@@ -86,7 +85,6 @@ CREATE TABLE dim_match
     winner_team_key      BIGINT UNSIGNED NULL,
     loser_team_key       BIGINT UNSIGNED NULL,
 
-    UNIQUE KEY uq_dim_match_source_id (source_match_id),
     KEY idx_dim_match_type (match_type),
     KEY idx_dim_match_file_name (file_name),
     KEY idx_dim_match_type_year (match_type, match_start_year),
@@ -118,7 +116,7 @@ CREATE TABLE dim_match
 CREATE TABLE dim_innings
 (
     innings_key      BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    match_key        BIGINT UNSIGNED NOT NULL,
+    match_key        INT             NOT NULL,
     innings_number   INT             NOT NULL,
     batting_team_key BIGINT UNSIGNED NOT NULL,
     bowling_team_key BIGINT UNSIGNED NOT NULL,
@@ -128,7 +126,7 @@ CREATE TABLE dim_innings
     KEY idx_dim_innings_bowling_team (bowling_team_key),
 
     CONSTRAINT fk_dim_innings_match
-        FOREIGN KEY (match_key) REFERENCES dim_match (match_key),
+        FOREIGN KEY (match_key) REFERENCES dim_match (id),
     CONSTRAINT fk_dim_innings_batting_team
         FOREIGN KEY (batting_team_key) REFERENCES dim_team (team_key),
     CONSTRAINT fk_dim_innings_bowling_team
@@ -148,7 +146,7 @@ CREATE TABLE dim_wicket
 -- Fact grain: one row per source match.
 CREATE TABLE fact_match
 (
-    match_key      BIGINT UNSIGNED  NOT NULL PRIMARY KEY,
+    match_key      INT              NOT NULL PRIMARY KEY,
     match_date_key INT              NULL,
     ground_key     BIGINT UNSIGNED  NOT NULL,
     duration_days  INT              NOT NULL,
@@ -159,7 +157,7 @@ CREATE TABLE fact_match
     KEY idx_fact_match_ground (ground_key),
 
     CONSTRAINT fk_fact_match_match
-        FOREIGN KEY (match_key) REFERENCES dim_match (match_key),
+        FOREIGN KEY (match_key) REFERENCES dim_match (id),
     CONSTRAINT fk_fact_match_date
         FOREIGN KEY (match_date_key) REFERENCES dim_date (date_key),
     CONSTRAINT fk_fact_match_ground
@@ -171,7 +169,7 @@ CREATE TABLE fact_delivery
 (
     delivery_key     BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     source_ball_id   INT             NOT NULL,
-    match_key        BIGINT UNSIGNED NOT NULL,
+    match_key        INT             NOT NULL,
     match_date_key   INT             NULL,
     innings_key      BIGINT UNSIGNED NOT NULL,
     batting_team_key BIGINT UNSIGNED NOT NULL,
@@ -209,7 +207,7 @@ CREATE TABLE fact_delivery
     KEY idx_fact_delivery_powerplay (powerplay),
 
     CONSTRAINT fk_fact_delivery_match
-        FOREIGN KEY (match_key) REFERENCES dim_match (match_key),
+        FOREIGN KEY (match_key) REFERENCES dim_match (id),
     CONSTRAINT fk_fact_delivery_date
         FOREIGN KEY (match_date_key) REFERENCES dim_date (date_key),
     CONSTRAINT fk_fact_delivery_innings
@@ -230,7 +228,7 @@ CREATE TABLE fact_delivery
 CREATE TABLE bridge_match_person
 (
     match_person_key BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    match_key        BIGINT UNSIGNED NOT NULL,
+    match_key        INT             NOT NULL,
     person_key       BIGINT UNSIGNED NOT NULL,
     role_code        VARCHAR(32)     NOT NULL,
 
@@ -239,7 +237,7 @@ CREATE TABLE bridge_match_person
     KEY idx_bridge_match_person_role (role_code),
 
     CONSTRAINT fk_bridge_match_person_match
-        FOREIGN KEY (match_key) REFERENCES dim_match (match_key),
+        FOREIGN KEY (match_key) REFERENCES dim_match (id),
     CONSTRAINT fk_bridge_match_person_person
         FOREIGN KEY (person_key) REFERENCES dim_person (person_key)
 ) ENGINE = InnoDB;

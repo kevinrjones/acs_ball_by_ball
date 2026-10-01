@@ -67,7 +67,7 @@ class SqlScriptOutputAdapterTest {
     @Test
     fun `given warehouse entities when written then generated script preserves foreign keys`() {
         val output = Files.createTempFile("warehouse", ".sql")
-        val sourceFile = Files.createTempFile("match", ".json").toAbsolutePath().normalize()
+        val sourceFile = output.parent.resolve("12345.json").toAbsolutePath().normalize()
         val adapter = SqlScriptOutputAdapter(output)
         val team1 = adapter.upsertTeam("Home")
         val team2 = adapter.upsertTeam("Away")
@@ -98,11 +98,12 @@ class SqlScriptOutputAdapterTest {
         adapter.close()
 
         val sql = Files.readString(output)
-        expectThat(sql).contains("INSERT INTO dim_match (match_key, source_match_id")
-        expectThat(sql).contains("VALUES (1, 1, NULL, '${sourceFile.toString().replace("'", "''")}', '${sourceFile.fileName}'")
-        expectThat(sql.lineSequence().single { it.startsWith("INSERT INTO dim_match") }.contains("?")).isEqualTo(false)
+        expectThat(sql).contains("INSERT INTO dim_match (id, source_ca_id, file_name")
+        expectThat(sql).contains("VALUES (12345, NULL, '${sourceFile.toString().replace("'", "''")}'")
+        val matchInsert = sql.lineSequence().single { it.startsWith("INSERT INTO dim_match") }
+        expectThat(matchInsert.count { it == '?' }).isEqualTo(0)
         expectThat(sql).contains("INSERT INTO fact_match (match_key, match_date_key")
-            .and { contains("VALUES (1, 20240102, 1, 1, 10, 1)") }
+            .and { contains("VALUES (12345, 20240102, 1, 1, 10, 1)") }
     }
 
     @Test
@@ -166,7 +167,6 @@ class SqlScriptOutputAdapterTest {
                 }
                 listOf(
                     "idx_fact_delivery_match_seq",
-                    "idx_dim_match_source_file_name",
                     "idx_dim_match_file_name",
                     "idx_dim_match_type_year",
                     "idx_dim_match_teams_type",

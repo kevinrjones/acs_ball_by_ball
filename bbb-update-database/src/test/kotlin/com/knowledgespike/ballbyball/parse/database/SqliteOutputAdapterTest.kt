@@ -14,19 +14,18 @@ class SqliteOutputAdapterTest {
                 statement.execute(
                     """
                     create table dim_match (
-                        match_key integer primary key,
-                        file_name varchar(120) not null,
-                        source_file_name varchar(120)
+                        id integer primary key,
+                        file_name varchar(120) not null
                     )
                     """.trimIndent()
                 )
                 statement.executeUpdate(
-                    "insert into dim_match (match_key, file_name, source_file_name) values (7, '/old/root/match.json', 'match.json')"
+                    "insert into dim_match (id, file_name) values (12345, '/old/root/12345.json')"
                 )
             }
 
             SqlOutputAdapter(connection).use { adapter ->
-                expectThat(adapter.findMatchKey("/new/root/match.json")).isEqualTo(7L)
+                expectThat(adapter.findMatchKey("/new/root/12345.json")).isEqualTo(12345L)
             }
         }
     }

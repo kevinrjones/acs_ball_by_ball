@@ -269,8 +269,9 @@ export FLYWAY_URL="jdbc:sqlite:/path/to/cricsheet.db"
 For a new MySQL or PostgreSQL database, ensure the `cricsheet` database exists
 before running the migrations. Each dialect directory includes the original
 schema `1__initial_tables.sql`, the complete warehouse schema
-`2__initial_warehouse.sql`, and incremental changes such as
-`3__add_source_file_name.sql`.
+`2__initial_warehouse.sql`. Match identity is stored as the integer `id` formed
+from the numeric characters in the JSON filename, for example
+`wi_201706_revised.json` becomes `id = 201706`.
 
 ```bash
 mariadb --host="$DB_HOST" --port="$DB_PORT" \
@@ -321,9 +322,10 @@ CSV output directories supplied with `-cd`/`--csvDir` follow the same rule; for
 example, `csv/warehouse` is written to `[base]/csv/warehouse`. Absolute paths
 and paths that escape `baseDirectory` are rejected.
 
-Direct `DATABASE`/`SQL` output is idempotent for matches: it checks the
-unqualified JSON basename in `dim_match.source_file_name` before inserting a
-match. The fully qualified source path remains in `dim_match.file_name` for
+Direct `DATABASE`/`SQL` output is idempotent for matches: it checks the integer
+ID formed from the numeric characters in the JSON filename against
+`dim_match.id` before inserting a match.
+The fully qualified source path remains in `dim_match.file_name` for
 provenance. `SQL_FILE` and `CSV` outputs are file-generation workflows and do
 not query an existing database.
 

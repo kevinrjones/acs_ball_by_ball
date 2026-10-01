@@ -62,8 +62,7 @@ class JooqMatchRepository(
     private val bridgeDeliveryWicket = table(name("bridge_delivery_wicket"))
     private val bridgeDeliveryFielder = table(name("bridge_delivery_fielder"))
 
-    private val mMatchKey = field(name("dim_match", "match_key"), Long::class.javaObjectType)
-    private val mSourceMatchId = field(name("dim_match", "source_match_id"), Int::class.javaObjectType)
+    private val mMatchKey = field(name("dim_match", "id"), Long::class.javaObjectType)
     private val mFileName = field(name("dim_match", "file_name"), String::class.java)
     private val mMatchType = field(name("dim_match", "match_type"), String::class.java)
     private val mEventName = field(name("dim_match", "event_name"), String::class.java)
@@ -174,7 +173,6 @@ class JooqMatchRepository(
             // Fetch match descriptors on those dates
             val matchRows = dsl.select(
                 mMatchKey,
-                mSourceMatchId,
                 mFileName,
                 mMatchType,
                 mEventName,
@@ -250,7 +248,7 @@ class JooqMatchRepository(
 
                 MatchSummary(
                     matchKey = MatchKey.from(matchId),
-                    sourceMatchId = SourceMatchId.from(record.get(mSourceMatchId) ?: 0),
+                    sourceMatchId = SourceMatchId.from((record.get(mMatchKey) ?: 0L).toInt()),
                     fileName = record.get(mFileName).orEmpty(),
                     matchType = MatchType.from(rawMatchType),
                     season = Season.from(record.get(mSeason).orEmpty()),
@@ -292,7 +290,6 @@ class JooqMatchRepository(
 
             val rows = dsl.select(
                 mMatchKey,
-                mSourceMatchId,
                 mFileName,
                 mMatchType,
                 mSeason,
@@ -340,7 +337,7 @@ class JooqMatchRepository(
                     }
                     MatchSearchMatch(
                         matchKey = MatchKey.from(requireNotNull(record.get(mMatchKey))),
-                        sourceMatchId = SourceMatchId.from(requireNotNull(record.get(mSourceMatchId))),
+                        sourceMatchId = SourceMatchId.from(requireNotNull(record.get(mMatchKey)).toInt()),
                         fileName = requireNotNull(record.get(mFileName)),
                         matchType = record.get(mMatchType)?.takeIf { it.isNotBlank() }?.let(MatchType::from),
                         season = record.get(mSeason)?.takeIf { it.isNotBlank() }?.let(Season::from),
@@ -369,7 +366,6 @@ class JooqMatchRepository(
         try {
             val match = dsl.select(
                 mMatchKey,
-                mSourceMatchId,
                 mFileName,
                 mMatchType,
                 mSeason,
@@ -404,7 +400,7 @@ class JooqMatchRepository(
             }
             val context = MatchScoresheetContext(
                 matchKey = MatchKey.from(requireNotNull(match.get(mMatchKey))),
-                sourceMatchId = SourceMatchId.from(requireNotNull(match.get(mSourceMatchId))),
+                sourceMatchId = SourceMatchId.from(requireNotNull(match.get(mMatchKey)).toInt()),
                 fileName = requireNotNull(match.get(mFileName)),
                 matchType = match.get(mMatchType)?.takeIf { it.isNotBlank() }?.let(MatchType::from),
                 season = match.get(mSeason)?.takeIf { it.isNotBlank() }?.let(Season::from),

@@ -7,7 +7,8 @@ Accepted for the search slice of BBB Sprint 1.
 ## Context
 
 The warehouse has one `dim_match` row per source match. Match identity is
-available through `match_key`, `source_match_id`, `file_name`, `match_type`,
+available through the integer `id` derived from the numeric characters in the
+JSON filename, `file_name`, `match_type`,
 `event_name`, `match_date_text`, `season`, the two team keys, and `ground_key`.
 The optional `match_start_date_key` joins to `dim_date`; `fact_match` is a
 one-to-zero-or-one extension and is not required for search. Team and ground
@@ -35,7 +36,7 @@ implementation.
 - Parse raw query names once in the shared contract module and reuse that
   parser from the API and BFF routes.
 - Order by known calendar date descending with null dates last, then the
-  warehouse `match_key` descending as a deterministic tie-breaker.
+  warehouse `id` descending as a deterministic tie-breaker.
 - Forward only the BFF's server-side bearer token to the configured API and
   map upstream failures to the existing unavailable response model.
 

@@ -37,19 +37,18 @@ class DatabaseTest {
                 statement.execute(
                     """
                     create table dim_match (
-                        match_key integer primary key,
-                        file_name varchar(120) not null,
-                        source_file_name varchar(120)
+                        id integer primary key,
+                        file_name varchar(120) not null
                     )
                     """.trimIndent()
                 )
                 statement.executeUpdate(
-                    "insert into dim_match (match_key, file_name, source_file_name) values (7, '/old/root/match.json', 'match.json')"
+                    "insert into dim_match (id, file_name) values (12345, '/old/root/12345.json')"
                 )
             }
 
             SqlOutputAdapter(connection).use { adapter ->
-                Database(adapter).writeMatch("/new/root/match.json", cricSheetWithFielder())
+                Database(adapter).writeMatch("/new/root/12345.json", cricSheetWithFielder())
             }
 
             connection.createStatement().use { statement ->
@@ -75,7 +74,7 @@ class DatabaseTest {
 
         SqlScriptOutputAdapter(output).use { adapter ->
             Database(adapter).writeMatch(
-                fileName = "match.json",
+                fileName = "12345.json",
                 cricSheet = cricSheet
             )
         }
@@ -127,7 +126,7 @@ class DatabaseTest {
 
         SqlScriptOutputAdapter(output).use { adapter ->
             Database(adapter).writeMatch(
-                fileName = "match.json",
+                fileName = "12345.json",
                 cricSheet = cricSheetWithFielder(Player(name = "Fielder"))
             )
         }
@@ -139,7 +138,7 @@ class DatabaseTest {
         )
         expectThat(sql).contains(
             "INSERT INTO fact_match (match_key, match_date_key, ground_key, duration_days, margin, match_count) " +
-                "VALUES (1, 20240101, 1, 1, 1, 1);"
+                "VALUES (12345, 20240101, 1, 1, 1, 1);"
         )
     }
 
@@ -149,7 +148,7 @@ class DatabaseTest {
 
         SqlScriptOutputAdapter(output).use { adapter ->
             Database(adapter).writeMatch(
-                fileName = "match.json",
+                fileName = "12345.json",
                 cricSheet = cricSheetWithFielders(listOf(Player(name = "Fielder"), Player(name = "Fielder")))
             )
         }
@@ -164,7 +163,7 @@ class DatabaseTest {
 
         SqlScriptOutputAdapter(output).use { adapter ->
             Database(adapter).writeMatch(
-                fileName = "match.json",
+                fileName = "12345.json",
                 cricSheet = cricSheetWithFielder(Player(name = null, substitute = true))
             )
         }
@@ -186,7 +185,7 @@ class DatabaseTest {
         assertThrows<InvalidStateException> {
             SqlScriptOutputAdapter(output).use { adapter ->
                 Database(adapter).writeMatch(
-                    fileName = "match.json",
+                    fileName = "12345.json",
                     cricSheet = cricSheetWithFielder(Player(name = null, substitute = null))
                 )
             }
@@ -218,7 +217,7 @@ class DatabaseTest {
 
         SqlScriptOutputAdapter(output).use { adapter ->
             Database(adapter).writeMatch(
-                fileName = "match.json",
+                fileName = "12345.json",
                 cricSheet = cricSheetWithPowerplays()
             )
         }
@@ -265,7 +264,7 @@ class DatabaseTest {
         val matchData = cricSheet.copy(match = cricSheet.match.copy(event = Event(competitionName)))
         SqlScriptOutputAdapter(output).use { adapter ->
             Database(adapter).writeMatch(
-                fileName = "match.json",
+                fileName = "12345.json",
                 cricSheet = matchData
             )
         }

@@ -9,6 +9,7 @@ import com.knowledgespike.ballbyball.parse.database.WarehouseMatch
 import com.knowledgespike.ballbyball.parse.database.adapter.OutputAdapter
 import com.knowledgespike.ballbyball.parse.database.adapter.DeliveryRecord
 import com.knowledgespike.ballbyball.parse.database.adapter.MatchRecord
+import com.knowledgespike.ballbyball.parse.database.adapter.matchIdFromFileName
 import com.knowledgespike.ballbyball.parse.database.getNameParts
 import java.io.BufferedWriter
 import java.nio.charset.StandardCharsets
@@ -29,27 +30,25 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
     private val teams = mutableMapOf<String, Team>()
     private val grounds = mutableMapOf<String, Location>()
     private val dates = mutableMapOf<LocalDate, Int>()
-    private val matches = mutableMapOf<String, Long>()
+    private val matches = mutableMapOf<Int, Long>()
     private val innings = mutableMapOf<Pair<Long, Int>, WarehouseInnings>()
     private val deliveries = mutableMapOf<Triple<Long, Long, Int>, Long>()
     private val matchPeople = mutableSetOf<Triple<Long, Long, String>>()
     private val deliveryFielders = mutableSetOf<Triple<Long, Long, Long>>()
     private var nextTeamSourceId = 1L
     private var nextGroundSourceId = 1L
-    private var nextMatchSourceId = 1L
     private var nextBallSourceId = 1L
     private var nextWicketSourceId = 1L
     private var nextPersonKey = 1L
     private var nextTeamKey = 1L
     private var nextGroundKey = 1L
-    private var nextMatchKey = 1L
     private var nextInningsKey = 1L
     private var nextDeliveryKey = 1L
     private var nextWicketKey = 1L
     private var closed = false
     private val path: Path = prepareOutput(output)
 
-    override fun findMatchKey(fileName: String): Long? = matches[fileName]
+    override fun findMatchKey(fileName: String): Long? = matches[matchIdFromFileName(fileName)]
 
     override fun upsertPerson(sourceId: String, fullName: String, caId: Int): Long {
         people[sourceId]?.let { return it }
@@ -106,17 +105,15 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
     }
 
     override fun insertMatch(match: MatchRecord): WarehouseMatch {
-        matches[match.fileName]?.let { return WarehouseMatch(it) }
-        val key = nextMatchKey++
+        matches[match.id]?.let { return WarehouseMatch(it) }
+        val key = match.id.toLong()
         writeRow(
             "dim_match",
             MATCH_HEADERS,
             listOf(
-                key,
-                nextMatchSourceId++,
+                match.id,
                 null,
                 match.fileName,
-                match.sourceFileName,
                 match.matchInSeries,
                 match.matchType,
                 match.eventName,
@@ -136,7 +133,7 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
                 match.loserTeamKey
             )
         )
-        matches[match.fileName] = key
+        matches[match.id] = key
         return WarehouseMatch(key)
     }
 
@@ -305,7 +302,7 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
         val PERSON_HEADERS = listOf("person_key", "source_person_id", "full_name", "sort_name_part", "other_name_part", "ca_id")
         val GROUND_HEADERS = listOf("ground_key", "source_ground_id", "ground_name")
         val MATCH_HEADERS = listOf(
-            "match_key", "source_match_id", "source_ca_id", "file_name", "source_file_name", "match_in_series", "match_type", "event_name",
+            "id", "source_ca_id", "file_name", "match_in_series", "match_type", "event_name",
             "match_date_text", "season", "match_start_year", "match_start_date_key", "balls_per_over", "added_timestamp",
             "team1_key", "team2_key", "ground_key", "toss_team_key", "toss_decision", "victory_type", "winner_team_key", "loser_team_key"
         )

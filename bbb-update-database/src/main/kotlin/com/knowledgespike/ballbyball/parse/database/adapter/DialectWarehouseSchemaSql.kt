@@ -103,11 +103,9 @@ internal object WarehouseSchemaSql {
             """
             CREATE TABLE dim_match
             (
-                match_key            $identity,
-                source_match_id      $integer NOT NULL,
+                id                   $integer NOT NULL PRIMARY KEY,
                 source_ca_id         VARCHAR(10) NULL,
                 file_name            VARCHAR(120) NOT NULL,
-                source_file_name     VARCHAR(120) NOT NULL,
                 match_in_series      $integer NOT NULL,
                 match_type           VARCHAR(15) NOT NULL,
                 event_name           VARCHAR(200) NOT NULL,
@@ -125,7 +123,6 @@ internal object WarehouseSchemaSql {
                 victory_type         VARCHAR(15) NOT NULL,
                 winner_team_key      $key NULL,
                 loser_team_key       $key NULL,
-                CONSTRAINT uq_dim_match_source_id UNIQUE (source_match_id),
                 CONSTRAINT fk_dim_match_start_date FOREIGN KEY (match_start_date_key) REFERENCES dim_date (date_key),
                 CONSTRAINT fk_dim_match_team1 FOREIGN KEY (team1_key) REFERENCES dim_team (team_key),
                 CONSTRAINT fk_dim_match_team2 FOREIGN KEY (team2_key) REFERENCES dim_team (team_key),
@@ -135,7 +132,6 @@ internal object WarehouseSchemaSql {
                 CONSTRAINT fk_dim_match_loser_team FOREIGN KEY (loser_team_key) REFERENCES dim_team (team_key)
             );
             CREATE INDEX idx_dim_match_type ON dim_match (match_type);
-            CREATE INDEX idx_dim_match_source_file_name ON dim_match (source_file_name);
             CREATE INDEX idx_dim_match_file_name ON dim_match (file_name);
             CREATE INDEX idx_dim_match_type_year ON dim_match (match_type, match_start_year);
             CREATE INDEX idx_dim_match_teams_type ON dim_match (match_type, team1_key, team2_key);
@@ -149,12 +145,12 @@ internal object WarehouseSchemaSql {
             CREATE TABLE dim_innings
             (
                 innings_key      $identity,
-                match_key        $key NOT NULL,
+                match_key        $integer NOT NULL,
                 innings_number   $integer NOT NULL,
                 batting_team_key $key NOT NULL,
                 bowling_team_key $key NOT NULL,
                 CONSTRAINT uq_dim_innings_match_number UNIQUE (match_key, innings_number),
-                CONSTRAINT fk_dim_innings_match FOREIGN KEY (match_key) REFERENCES dim_match (match_key),
+                CONSTRAINT fk_dim_innings_match FOREIGN KEY (match_key) REFERENCES dim_match (id),
                 CONSTRAINT fk_dim_innings_batting_team FOREIGN KEY (batting_team_key) REFERENCES dim_team (team_key),
                 CONSTRAINT fk_dim_innings_bowling_team FOREIGN KEY (bowling_team_key) REFERENCES dim_team (team_key)
             );
@@ -174,13 +170,13 @@ internal object WarehouseSchemaSql {
             """
             CREATE TABLE fact_match
             (
-                match_key       $key NOT NULL PRIMARY KEY,
+                match_key       $integer NOT NULL PRIMARY KEY,
                 match_date_key  $integer NULL,
                 ground_key       $key NOT NULL,
                 duration_days   $integer NOT NULL,
                 margin           $integer NOT NULL,
                 match_count     $smallInteger NOT NULL DEFAULT 1,
-                CONSTRAINT fk_fact_match_match FOREIGN KEY (match_key) REFERENCES dim_match (match_key),
+                CONSTRAINT fk_fact_match_match FOREIGN KEY (match_key) REFERENCES dim_match (id),
                 CONSTRAINT fk_fact_match_date FOREIGN KEY (match_date_key) REFERENCES dim_date (date_key),
                 CONSTRAINT fk_fact_match_ground FOREIGN KEY (ground_key) REFERENCES dim_ground (ground_key)
             );
@@ -192,7 +188,7 @@ internal object WarehouseSchemaSql {
             (
                 delivery_key       $identity,
                 source_ball_id     $integer NOT NULL,
-                match_key          $key NOT NULL,
+                match_key          $integer NOT NULL,
                 match_date_key     $integer NULL,
                 innings_key        $key NOT NULL,
                 batting_team_key   $key NOT NULL,
@@ -215,7 +211,7 @@ internal object WarehouseSchemaSql {
                 powerplay           $integer NOT NULL,
                 wicket_count        $integer NOT NULL,
                 CONSTRAINT uq_fact_delivery_source_id UNIQUE (source_ball_id),
-                CONSTRAINT fk_fact_delivery_match FOREIGN KEY (match_key) REFERENCES dim_match (match_key),
+                CONSTRAINT fk_fact_delivery_match FOREIGN KEY (match_key) REFERENCES dim_match (id),
                 CONSTRAINT fk_fact_delivery_date FOREIGN KEY (match_date_key) REFERENCES dim_date (date_key),
                 CONSTRAINT fk_fact_delivery_innings FOREIGN KEY (innings_key) REFERENCES dim_innings (innings_key),
                 CONSTRAINT fk_fact_delivery_batting_team FOREIGN KEY (batting_team_key) REFERENCES dim_team (team_key),
@@ -241,11 +237,11 @@ internal object WarehouseSchemaSql {
             CREATE TABLE bridge_match_person
             (
                 match_person_key $identity,
-                match_key         $key NOT NULL,
+                match_key         $integer NOT NULL,
                 person_key        $key NOT NULL,
                 role_code         VARCHAR(32) NOT NULL,
                 CONSTRAINT uq_bridge_match_person_role UNIQUE (match_key, person_key, role_code),
-                CONSTRAINT fk_bridge_match_person_match FOREIGN KEY (match_key) REFERENCES dim_match (match_key),
+                CONSTRAINT fk_bridge_match_person_match FOREIGN KEY (match_key) REFERENCES dim_match (id),
                 CONSTRAINT fk_bridge_match_person_person FOREIGN KEY (person_key) REFERENCES dim_person (person_key)
             );
             CREATE INDEX idx_bridge_match_person_person ON bridge_match_person (person_key);

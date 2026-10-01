@@ -60,8 +60,7 @@ CREATE INDEX idx_dim_ground_name ON dim_ground (ground_name);
 
 CREATE TABLE dim_match
 (
-    match_key            INTEGER PRIMARY KEY AUTOINCREMENT,
-    source_match_id      INTEGER      NOT NULL,
+    id                   INTEGER      NOT NULL PRIMARY KEY,
     source_ca_id         VARCHAR(10)  NULL,
     file_name            VARCHAR(120) NOT NULL,
     match_in_series      INTEGER      NOT NULL,
@@ -82,7 +81,6 @@ CREATE TABLE dim_match
     winner_team_key      INTEGER      NULL,
     loser_team_key       INTEGER      NULL,
 
-    UNIQUE (source_match_id),
     FOREIGN KEY (match_start_date_key) REFERENCES dim_date (date_key),
     FOREIGN KEY (team1_key) REFERENCES dim_team (team_key),
     FOREIGN KEY (team2_key) REFERENCES dim_team (team_key),
@@ -111,7 +109,7 @@ CREATE TABLE dim_innings
     bowling_team_key INTEGER NOT NULL,
 
     UNIQUE (match_key, innings_number),
-    FOREIGN KEY (match_key) REFERENCES dim_match (match_key),
+    FOREIGN KEY (match_key) REFERENCES dim_match (id),
     FOREIGN KEY (batting_team_key) REFERENCES dim_team (team_key),
     FOREIGN KEY (bowling_team_key) REFERENCES dim_team (team_key)
 );
@@ -139,7 +137,7 @@ CREATE TABLE fact_match
     margin         INTEGER NOT NULL,
     match_count    INTEGER NOT NULL DEFAULT 1,
 
-    FOREIGN KEY (match_key) REFERENCES dim_match (match_key),
+    FOREIGN KEY (match_key) REFERENCES dim_match (id),
     FOREIGN KEY (match_date_key) REFERENCES dim_date (date_key),
     FOREIGN KEY (ground_key) REFERENCES dim_ground (ground_key)
 );
@@ -175,7 +173,7 @@ CREATE TABLE fact_delivery
     wicket_count     INTEGER NOT NULL,
 
     UNIQUE (source_ball_id),
-    FOREIGN KEY (match_key) REFERENCES dim_match (match_key),
+    FOREIGN KEY (match_key) REFERENCES dim_match (id),
     FOREIGN KEY (match_date_key) REFERENCES dim_date (date_key),
     FOREIGN KEY (innings_key) REFERENCES dim_innings (innings_key),
     FOREIGN KEY (batting_team_key) REFERENCES dim_team (team_key),
@@ -206,7 +204,7 @@ CREATE TABLE bridge_match_person
     role_code        VARCHAR(32)  NOT NULL,
 
     UNIQUE (match_key, person_key, role_code),
-    FOREIGN KEY (match_key) REFERENCES dim_match (match_key),
+    FOREIGN KEY (match_key) REFERENCES dim_match (id),
     FOREIGN KEY (person_key) REFERENCES dim_person (person_key)
 );
 

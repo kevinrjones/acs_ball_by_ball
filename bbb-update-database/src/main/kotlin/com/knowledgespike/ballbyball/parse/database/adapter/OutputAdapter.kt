@@ -6,6 +6,7 @@ import com.knowledgespike.ballbyball.parse.database.Location
 import com.knowledgespike.ballbyball.parse.database.WarehouseInnings
 import com.knowledgespike.ballbyball.parse.database.WarehouseMatch
 import com.knowledgespike.ballbyball.clishared.schema.Delivery
+import com.knowledgespike.cricketarchive.InvalidStateException
 
 /**
  * Persists warehouse rows without coupling the parser to a particular output.
@@ -71,9 +72,15 @@ data class MatchRecord(
     val winnerTeamKey: Long?,
     val loserTeamKey: Long?
 ) {
-    val sourceFileName: String
-        get() = fileName.substringAfterLast('/').substringAfterLast('\\')
+    val id: Int
+        get() = matchIdFromFileName(fileName)
 }
+
+internal fun matchIdFromFileName(fileName: String): Int =
+    fileName.substringAfterLast('/').substringAfterLast('\\')
+        .filter(Char::isDigit)
+        .toIntOrNull()
+        ?: throw InvalidStateException("Match filename must contain a numeric ID: $fileName")
 
 data class DeliveryRecord(
     val matchKey: Long,

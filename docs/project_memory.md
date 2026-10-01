@@ -1,5 +1,83 @@
 # Project Memory
 
+## Task: Extract numeric match IDs from decorated filenames
+
+### Title
+
+Allow filename prefixes and suffixes during database updates
+
+### Date/time completed
+
+2026-10-01 12:46
+
+### What was shipped
+
+- Match IDs now extract all numeric characters from the source filename after
+  removing its directory path, allowing names such as `wi_201706_revised.json`.
+- JDBC, SQL-file, and CSV duplicate detection and insertion continue to use the
+  shared extracted ID.
+
+### Key decisions
+
+- Non-numeric filename decorations are ignored while the basename is preserved
+  unchanged in `dim_match.file_name` for provenance.
+- Filenames without a numeric value, or values outside the existing `Int` range,
+  remain invalid and raise `InvalidStateException`.
+
+### Gotchas
+
+- Different decorated filenames that produce the same numeric value identify the
+  same warehouse match and therefore cannot create separate `dim_match` rows.
+- The live MariaDB integration database still has the pre-consolidation match
+  columns, so the repository-wide integration check requires the prior schema
+  migration to be applied first.
+
+### Test coverage areas
+
+- Regression coverage verifies that prefixed and suffixed filenames resolve to
+  their numeric match ID.
+
+## Task: Consolidate match identity columns
+
+### Title
+
+Use the numeric JSON filename stem as the warehouse match ID
+
+### Date/time completed
+
+2026-10-01 11:11
+
+### What was shipped
+
+- Replaced `dim_match.match_key`, `source_match_id`, and `source_file_name` with
+  the integer `id` derived from the source filename without `.json`.
+- Updated JDBC, SQL-file, CSV, generated-schema, Docker bootstrap, API query,
+  and dialect migration definitions to use the shared ID.
+- Removed the separate `3__add_source_file_name.sql` migrations; the complete
+  schema is now defined by each dialect's `2__initial_warehouse.sql`.
+
+### Key decisions
+
+- The fully qualified source path remains in `dim_match.file_name` for
+  provenance, while duplicate detection extracts the numeric filename stem and
+  queries `dim_match.id`.
+- Match IDs are validated at the output boundary and reject filenames whose
+  stem is not an integer JSON match identifier.
+
+### Gotchas
+
+- Existing databases using the removed three-column identity contract need to
+  be recreated or migrated before running the updated loader; the new
+  `2__initial_warehouse.sql` files describe the target schema for fresh loads.
+
+### Test coverage areas
+
+- Duplicate detection works when the same numeric filename is loaded from a
+  different directory.
+- SQL-file, CSV, and SQLite outputs emit and reuse the numeric match ID.
+- `:bbb-update-database:test` passes; the full repository `clean check` is the
+  final validation for this task.
+
 ## Task: Keep future dismissals out of earlier scorecard rows
 
 ### Title
