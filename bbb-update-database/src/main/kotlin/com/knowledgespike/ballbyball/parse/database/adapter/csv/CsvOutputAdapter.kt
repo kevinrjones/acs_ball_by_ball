@@ -116,6 +116,7 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
                 nextMatchSourceId++,
                 null,
                 match.fileName,
+                match.sourceFileName,
                 match.matchInSeries,
                 match.matchType,
                 match.eventName,
@@ -304,7 +305,7 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
         val PERSON_HEADERS = listOf("person_key", "source_person_id", "full_name", "sort_name_part", "other_name_part", "ca_id")
         val GROUND_HEADERS = listOf("ground_key", "source_ground_id", "ground_name")
         val MATCH_HEADERS = listOf(
-            "match_key", "source_match_id", "source_ca_id", "file_name", "match_in_series", "match_type", "event_name",
+            "match_key", "source_match_id", "source_ca_id", "file_name", "source_file_name", "match_in_series", "match_type", "event_name",
             "match_date_text", "season", "match_start_year", "match_start_date_key", "balls_per_over", "added_timestamp",
             "team1_key", "team2_key", "ground_key", "toss_team_key", "toss_decision", "victory_type", "winner_team_key", "loser_team_key"
         )

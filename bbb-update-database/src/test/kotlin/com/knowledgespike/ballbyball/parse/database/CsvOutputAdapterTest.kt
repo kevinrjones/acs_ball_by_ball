@@ -62,8 +62,8 @@ class CsvOutputAdapterTest {
         adapter.close()
 
         val matchCsv = Files.readString(output.resolve("dim_match.csv"))
-        expectThat(matchCsv).contains("match_key,source_match_id,source_ca_id,file_name")
-        expectThat(matchCsv).contains("1,1,\\N,${sourceFile.toString()}")
+        expectThat(matchCsv).contains("match_key,source_match_id,source_ca_id,file_name,source_file_name")
+        expectThat(matchCsv).contains("1,1,\\N,${sourceFile.toString()},${sourceFile.fileName}")
         expectThat(Files.readString(output.resolve("fact_match.csv")))
             .contains("match_key,match_date_key,ground_key,duration_days,margin,match_count\n1,20240102,1,1,10,1")
     }

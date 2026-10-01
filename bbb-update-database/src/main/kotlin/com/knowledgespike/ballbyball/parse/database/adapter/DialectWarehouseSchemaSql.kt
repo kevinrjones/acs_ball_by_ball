@@ -107,6 +107,7 @@ internal object WarehouseSchemaSql {
                 source_match_id      $integer NOT NULL,
                 source_ca_id         VARCHAR(10) NULL,
                 file_name            VARCHAR(120) NOT NULL,
+                source_file_name     VARCHAR(120) NOT NULL,
                 match_in_series      $integer NOT NULL,
                 match_type           VARCHAR(15) NOT NULL,
                 event_name           VARCHAR(200) NOT NULL,
@@ -134,6 +135,7 @@ internal object WarehouseSchemaSql {
                 CONSTRAINT fk_dim_match_loser_team FOREIGN KEY (loser_team_key) REFERENCES dim_team (team_key)
             );
             CREATE INDEX idx_dim_match_type ON dim_match (match_type);
+            CREATE INDEX idx_dim_match_source_file_name ON dim_match (source_file_name);
             CREATE INDEX idx_dim_match_file_name ON dim_match (file_name);
             CREATE INDEX idx_dim_match_type_year ON dim_match (match_type, match_start_year);
             CREATE INDEX idx_dim_match_teams_type ON dim_match (match_type, team1_key, team2_key);

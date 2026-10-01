@@ -118,14 +118,15 @@ abstract class SqlScriptOutputAdapter(
         matches[match.fileName]?.let { return WarehouseMatch(it) }
         val key = nextMatchKey++
         write(
-            "INSERT INTO dim_match (match_key, source_match_id, source_ca_id, file_name, match_in_series, match_type, event_name, " +
+            "INSERT INTO dim_match (match_key, source_match_id, source_ca_id, file_name, source_file_name, match_in_series, match_type, event_name, " +
                     "match_date_text, season, match_start_year, match_start_date_key, balls_per_over, added_timestamp, " +
                     "team1_key, team2_key, ground_key, toss_team_key, toss_decision, victory_type, winner_team_key, loser_team_key) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             key,
             nextMatchSourceId++,
             null,
             match.fileName,
+            match.sourceFileName,
             match.matchInSeries,
             match.matchType,
             match.eventName,

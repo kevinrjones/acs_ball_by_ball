@@ -68,6 +68,7 @@ CREATE TABLE dim_match
     source_match_id      INT             NOT NULL,
     source_ca_id         VARCHAR(10)     NULL,
     file_name            VARCHAR(120)    NOT NULL,
+    source_file_name     VARCHAR(120)    NOT NULL,
     match_in_series      INT             NOT NULL,
     match_type           VARCHAR(15)     NOT NULL,
     event_name           VARCHAR(200)    NOT NULL,
@@ -88,6 +89,7 @@ CREATE TABLE dim_match
 
     UNIQUE KEY uq_dim_match_source_id (source_match_id),
     KEY idx_dim_match_type (match_type),
+    KEY idx_dim_match_source_file_name (source_file_name),
     KEY idx_dim_match_file_name (file_name),
     KEY idx_dim_match_type_year (match_type, match_start_year),
     KEY idx_dim_match_teams_type (match_type, team1_key, team2_key),

@@ -22,7 +22,8 @@ import java.util.Locale
 abstract class JdbcOutputAdapter(protected val connection: Connection) : OutputAdapter {
     private val log by LoggerDelegate()
     override fun findMatchKey(fileName: String): Long? = queryKey(
-        "select match_key from dim_match where file_name = ?",
+        "select match_key from dim_match where source_file_name = ? or file_name = ?",
+        fileName.substringAfterLast('/').substringAfterLast('\\'),
         fileName
     )
 
@@ -91,13 +92,14 @@ abstract class JdbcOutputAdapter(protected val connection: Connection) : OutputA
     override fun insertMatch(match: MatchRecord): WarehouseMatch {
         val sourceId = nextSourceId("source_match_id", "dim_match")
         val key = insertWithKey(
-            sql = "insert into dim_match (source_match_id, source_ca_id, file_name, match_in_series, match_type, event_name, " +
+            sql = "insert into dim_match (source_match_id, source_ca_id, file_name, source_file_name, match_in_series, match_type, event_name, " +
                     "match_date_text, season, match_start_year, match_start_date_key, balls_per_over, added_timestamp, " +
                     "team1_key, team2_key, ground_key, toss_team_key, toss_decision, victory_type, winner_team_key, loser_team_key) " +
-                    "values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    "values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             sourceId,
             null,
             match.fileName,
+            match.sourceFileName,
             match.matchInSeries,
             match.matchType,
             match.eventName,

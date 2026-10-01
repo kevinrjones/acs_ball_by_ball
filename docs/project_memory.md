@@ -1,5 +1,52 @@
 # Project Memory
 
+## Task: Prevent duplicate database match inserts
+
+### Title
+
+Use the normalized JSON filename as the database match identity
+
+### Date/time completed
+
+2026-09-30 17:35
+
+### What was shipped
+
+- Added `dim_match.source_file_name` for the unqualified JSON filename while
+  retaining the fully qualified path in `dim_match.file_name`.
+- Direct JDBC database updates now find an existing match by the indexed source
+  filename before inserting it, so dependent innings, facts, and bridge rows
+  are not regenerated for a match already present in the database.
+- Added Flyway version 3 migrations for MariaDB, PostgreSQL, and SQLite, plus
+  matching generated-schema and container-bootstrap definitions.
+
+### Key decisions
+
+- The normalized JSON filename is the available source-stable identity; the
+  fully qualified path remains provenance and is not used as the primary
+  duplicate key because it can change between runs.
+- The lookup is indexed but not declared unique, avoiding a destructive schema
+  assumption if two source collections ever contain the same basename.
+- SQL-file and CSV output remain file-generation workflows and continue to
+  produce complete outputs without querying an existing database.
+
+### Gotchas
+
+- Existing databases must run `3__add_source_file_name.sql` before direct
+  database updates. SQLite cannot change an existing column's nullability in
+  place, so its migrated column is nullable although new writes always supply
+  the value.
+- The duplicate check is basename-based; a future source with colliding
+  basenames will need a stronger source identifier.
+
+### Test coverage areas
+
+- JDBC lookup returns the existing match key for a changed fully qualified path.
+- A repeated database import leaves the existing `dim_match` row unchanged and
+  does not insert dependent rows.
+- SQL and CSV output include both the full path and unqualified source filename.
+- SQLite Flyway migration syntax was applied against a fresh in-memory schema.
+
 ## Task: Store register CSVs at the base directory
 
 ### Title

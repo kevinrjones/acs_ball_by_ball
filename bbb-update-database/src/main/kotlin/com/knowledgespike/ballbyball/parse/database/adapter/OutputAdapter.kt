@@ -70,7 +70,10 @@ data class MatchRecord(
     val victoryType: String,
     val winnerTeamKey: Long?,
     val loserTeamKey: Long?
-)
+) {
+    val sourceFileName: String
+        get() = fileName.substringAfterLast('/').substringAfterLast('\\')
+}
 
 data class DeliveryRecord(
     val matchKey: Long,

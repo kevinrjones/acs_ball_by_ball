@@ -8,6 +8,30 @@ import java.sql.DriverManager
 
 class SqliteOutputAdapterTest {
     @Test
+    fun `given an existing match when found by a fully qualified path then its key is returned`() {
+        DriverManager.getConnection("jdbc:sqlite::memory:").use { connection ->
+            connection.createStatement().use { statement ->
+                statement.execute(
+                    """
+                    create table dim_match (
+                        match_key integer primary key,
+                        file_name varchar(120) not null,
+                        source_file_name varchar(120)
+                    )
+                    """.trimIndent()
+                )
+                statement.executeUpdate(
+                    "insert into dim_match (match_key, file_name, source_file_name) values (7, '/old/root/match.json', 'match.json')"
+                )
+            }
+
+            SqlOutputAdapter(connection).use { adapter ->
+                expectThat(adapter.findMatchKey("/new/root/match.json")).isEqualTo(7L)
+            }
+        }
+    }
+
+    @Test
     fun `given sqlite connection when adapter opens then foreign keys are enabled`() {
         DriverManager.getConnection("jdbc:sqlite::memory:").use { connection ->
             SqlOutputAdapter(connection).use { }

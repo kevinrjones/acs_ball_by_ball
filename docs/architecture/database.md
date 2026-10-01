@@ -232,6 +232,7 @@ the dimension keys shared by match-level and delivery-level analysis.
 | `source_match_id` | `INT` | No | Source match identifier; unique. |
 | `source_ca_id` | `VARCHAR(10)` | Yes | Optional source/Cricket Archive identifier. |
 | `file_name` | `VARCHAR(120)` | No | Fully qualified source JSON path. |
+| `source_file_name` | `VARCHAR(120)` | No* | Unqualified JSON filename used for idempotent database matching. |
 | `match_in_series` | `INT` | No | Match position within a series. |
 | `match_type` | `VARCHAR(15)` | No | Match format/type. |
 | `event_name` | `VARCHAR(200)` | No | Competition or event name. |
@@ -257,10 +258,18 @@ Foreign keys:
   `loser_team_key` reference `dim_team(team_key)`.
 - `ground_key` references `dim_ground(ground_key)`.
 
-Indexes include file name, match type/year, the ordered team pair by match type,
-match type, season, start date, both participating teams, and ground. The source
-match identifier is unique, making it suitable for idempotent source-match
-detection.
+Indexes include the source filename, full file name, match type/year, the ordered
+team pair by match type, season, start date, both participating teams, and
+ground. Direct database output uses the indexed `source_file_name` to detect an
+already-loaded match before inserting it; `file_name` remains the fully
+qualified provenance path. The source-match identifier is also unique, although
+the current normalized input does not provide a stable source identifier for
+this check.
+
+\* The version 3 migration backfills existing rows and makes this column
+non-null for MariaDB and PostgreSQL. SQLite keeps the migrated column nullable
+because SQLite cannot alter an existing column's nullability in place; new
+inserts always provide the filename.
 
 ### `dim_innings`
 
@@ -537,16 +546,17 @@ and a transaction around generated rows.
 
 ## Operational notes
 
-- Run Flyway migrations `1__initial_tables.sql` and
-  `2__initial_warehouse.sql` for the selected dialect before loading warehouse
-  data. The fully qualified source JSON path is stored in `dim_match.file_name`.
+- Run Flyway migrations `1__initial_tables.sql`, `2__initial_warehouse.sql`, and
+  `3__add_source_file_name.sql` for the selected dialect before loading
+  warehouse data. The fully qualified source JSON path is stored in
+  `dim_match.file_name`; its basename is stored in `dim_match.source_file_name`.
 - The migration creates tables but does not insert dimension or fact data.
 - The database schema is named `cricsheet` by the migration.
 - MySQL warehouse tables use `ENGINE = InnoDB`; PostgreSQL and SQLite use their
   native table storage.
-- Keep `2__initial_warehouse.sql` and generated SQL-file schema definitions in
-  sync when the warehouse changes; the SQL-file adapter recreates this schema
-  for destructive offline replacement loads.
+- Keep the versioned migrations, `WarehouseSchemaSql`, and generated SQL-file
+  schema definitions in sync when the warehouse changes; the SQL-file adapter
+  recreates this schema for destructive offline replacement loads.
 - Keep the shared `WarehouseSchemaSql` definitions aligned with all three
   warehouse migrations when a table, index, key, or constraint changes.
 - Source identifiers are not foreign keys to the original operational tables;
@@ -555,9 +565,10 @@ and a transaction around generated rows.
 
 ## Source of truth
 
-The authoritative DDL for this document is the matching
-`2__initial_warehouse.sql` in the selected dialect directory:
+The authoritative DDL for this document is the matching migration sequence in
+the selected dialect directory:
 
 - `bbb-update-database/migrations/mysql/2__initial_warehouse.sql`
 - `bbb-update-database/migrations/postgres/2__initial_warehouse.sql`
 - `bbb-update-database/migrations/sqlite/2__initial_warehouse.sql`
+- `bbb-update-database/migrations/{mysql,postgres,sqlite}/3__add_source_file_name.sql`

@@ -1,6 +1,7 @@
 package com.knowledgespike.ballbyball.parse.database
 
 import com.knowledgespike.ballbyball.parse.database.adapter.sqlite.SqlScriptOutputAdapter
+import com.knowledgespike.ballbyball.parse.database.adapter.sqlite.SqlOutputAdapter
 import com.knowledgespike.ballbyball.clishared.schema.BbbMatchData
 import com.knowledgespike.ballbyball.clishared.schema.By
 import com.knowledgespike.ballbyball.clishared.schema.Delivery
@@ -26,8 +27,40 @@ import strikt.api.expectThat
 import strikt.assertions.contains
 import strikt.assertions.isEqualTo
 import java.nio.file.Files
+import java.sql.DriverManager
 
 class DatabaseTest {
+    @Test
+    fun `given an existing database match when written again then no dependent rows are inserted`() {
+        DriverManager.getConnection("jdbc:sqlite::memory:").use { connection ->
+            connection.createStatement().use { statement ->
+                statement.execute(
+                    """
+                    create table dim_match (
+                        match_key integer primary key,
+                        file_name varchar(120) not null,
+                        source_file_name varchar(120)
+                    )
+                    """.trimIndent()
+                )
+                statement.executeUpdate(
+                    "insert into dim_match (match_key, file_name, source_file_name) values (7, '/old/root/match.json', 'match.json')"
+                )
+            }
+
+            SqlOutputAdapter(connection).use { adapter ->
+                Database(adapter).writeMatch("/new/root/match.json", cricSheetWithFielder())
+            }
+
+            connection.createStatement().use { statement ->
+                statement.executeQuery("select count(*) from dim_match").use { result ->
+                    result.next()
+                    expectThat(result.getInt(1)).isEqualTo(1)
+                }
+            }
+        }
+    }
+
     @Test
     fun `given female t20 match when written then warehouse match type is wtt`() {
         val base = cricSheetWithFielder()

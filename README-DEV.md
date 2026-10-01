@@ -176,8 +176,9 @@ export FLYWAY_URL="jdbc:sqlite:/path/to/cricsheet.db"
 
 For a new MySQL or PostgreSQL database, ensure the `cricsheet` database exists
 before running the migrations. Each dialect directory includes the original
-schema `1__initial_tables.sql` and the complete warehouse schema
-`2__initial_warehouse.sql`, with the source filename stored on `dim_match`.
+schema `1__initial_tables.sql`, the complete warehouse schema
+`2__initial_warehouse.sql`, and incremental changes such as
+`3__add_source_file_name.sql`.
 
 ```bash
 mariadb --host="$DB_HOST" --port="$DB_PORT" \
@@ -227,6 +228,12 @@ are rejected.
 CSV output directories supplied with `-cd`/`--csvDir` follow the same rule; for
 example, `csv/warehouse` is written to `[base]/csv/warehouse`. Absolute paths
 and paths that escape `baseDirectory` are rejected.
+
+Direct `DATABASE`/`SQL` output is idempotent for matches: it checks the
+unqualified JSON basename in `dim_match.source_file_name` before inserting a
+match. The fully qualified source path remains in `dim_match.file_name` for
+provenance. `SQL_FILE` and `CSV` outputs are file-generation workflows and do
+not query an existing database.
 
 To ouput the data in SQL format:
 
@@ -286,73 +293,29 @@ mysql -u root -p acs_ball_by_ball < update.sql
 ```
 ## Load CSV output into MariaDB
 
-The database must have the warehouse tables before loading CSV data. The
-following Bash loop loads files in foreign-key dependency order and skips
-optional files that were not generated because the source data contained no
-rows for that table:
+The database must have the warehouse tables before loading CSV data. The loader
+script loads files in foreign-key dependency order and skips optional files that
+were not generated because the source data contained no rows for that table.
+Its configuration is kept outside the applications project in
+`/Users/kevinjones/Dropbox/projects/cricket/KSBallByBall/scripts/.env`.
+
+Copy the example configuration, set the database credentials and CSV location,
+then run the loader:
 
 ```bash
-DB_PASSWORD='change-me'
-CSV_DIR=csv
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=acs_ball_by_ball
-DB_USER=ballbyball
-
-csv_path="$CSV_DIR"
-if [ ! -d "$csv_path" ]; then
-  printf 'CSV directory does not exist: %s\n' "$csv_path" >&2
-fi
-
-loaded=0
-
-for table in \
-  dim_date \
-  dim_team \
-  dim_person \
-  dim_ground \
-  dim_match \
-  dim_innings \
-  dim_wicket \
-  fact_match \
-  fact_delivery \
-  bridge_match_person \
-  bridge_delivery_wicket \
-  bridge_delivery_fielder
-do
-  file="$csv_path/$table.csv"
-  if [ ! -f "$file" ]; then
-    printf 'Skipping missing CSV: %s\n' "$file" >&2
-    continue
-  fi
-
-  printf 'Loading %s into %s...\n' "$file" "$table"
-  mariadb --verbose --local-infile=1 \
-    --host="$DB_HOST" --port="$DB_PORT" \
-    --user="$DB_USER" --password="$DB_PASSWORD" "$DB_NAME" <<SQL
-LOAD DATA LOCAL INFILE '$file'
-INTO TABLE $table
-FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"' ESCAPED BY '"'
-LINES TERMINATED BY '\n'
-IGNORE 1 LINES;
-SQL
-  loaded=1
-done
-
-if [ "$loaded" -eq 0 ]; then
-  printf 'No CSV files were found in: %s\n' "$csv_path" >&2
-  exit 1
-fi
+cp /Users/kevinjones/Dropbox/projects/cricket/KSBallByBall/scripts/.env.example \
+  /Users/kevinjones/Dropbox/projects/cricket/KSBallByBall/scripts/.env
+/Users/kevinjones/Dropbox/projects/cricket/KSBallByBall/scripts/load-warehouse-csv-mariadb.sh
 ```
 
-Set `CRICSHEET_ROOT` to the same base directory used when generating the CSVs,
-and set `CSV_DIR` to the same `--csvDir` value. The example intentionally stops
-with an error when that directory is missing and reports every file it skips or
-loads; this avoids silently doing nothing because the path is wrong. The loader
-must use `--local-infile=1`. The MariaDB server may also need
-`local_infile=ON`. The CSV adapter allocates warehouse keys in the files, so
-load CSV output into an empty warehouse (or coordinate key and duplicate
-handling explicitly before loading it into an existing warehouse).
+`CSV_DIR` may be an absolute path or a path relative to the repository root
+(`/Users/kevinjones/Dropbox/projects/cricket/KSBallByBall`). The script stops
+with an error when that directory is missing, reports every file it skips or
+loads, and returns a non-zero status if any load fails. It uses
+`--local-infile=1`; the MariaDB server may also need `local_infile=ON`. The CSV
+adapter allocates warehouse keys in the files, so load CSV output into an empty
+warehouse (or coordinate key and duplicate handling explicitly before loading it
+into an existing warehouse).
 
 ## Load CSV output into PostgreSQL
 
