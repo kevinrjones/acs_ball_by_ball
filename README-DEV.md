@@ -109,6 +109,98 @@ The retrieval options are:
 | `-f`, `--force` | No | Reuse existing target directories and overwrite managed files without deleting unrelated files. |
 | `-n`, `--nightly` | No | Download the two fixed recent archives directly into the configured data directory; registers remain in the base directory. |
 
+## IDE Gradle run configuration examples
+
+The following commands mirror the Gradle run configurations currently
+available in the IDE. Set the shell variables from the prerequisites section
+before running them; adjust `DB_*` values when using a different database.
+
+### `DataLoader [run-produce-sql]`
+
+Generate the SQL output file using the default SQL output adapter:
+
+```bash
+./gradlew :bbb-update-database:run --no-daemon \
+  --args="--base-directory $CRICSHEET_ROOT --data-directory $CRICSHEET_DATA \
+    --player-registry $PLAYER_REGISTRY --outputType SQL --outputFile $SQL_FILE"
+```
+
+### `applications [:bbb-update-database:run] (sql_file)`
+
+Generate an offline SQL script explicitly with `SQL_FILE` output:
+
+```bash
+./gradlew :bbb-update-database:run --no-daemon \
+  --args="--base-directory $CRICSHEET_ROOT --data-directory $CRICSHEET_DATA \
+    --player-registry $PLAYER_REGISTRY --outputType SQL_FILE \
+    --outputFile $SQL_FILE"
+```
+
+### `applications [:bbb-update-database:run] (nightly-db)`
+
+Import the normalized nightly data directly into MariaDB:
+
+```bash
+./gradlew :bbb-update-database:run --no-daemon \
+  --args="--base-directory $CRICSHEET_ROOT --data-directory $CRICSHEET_DATA \
+    --player-registry $PLAYER_REGISTRY --nightly --outputType DATABASE \
+    --connectionString jdbc:mariadb://${DB_HOST}:${DB_PORT}/${DB_NAME} \
+    --userName $DB_USER --password $DB_PASSWORD"
+```
+
+### `applications [:bbb-update-database:run] (nightly-csv)`
+
+Generate CSV output from the nightly data:
+
+```bash
+./gradlew :bbb-update-database:run --no-daemon \
+  --args="--base-directory $CRICSHEET_ROOT --data-directory $CRICSHEET_DATA \
+    --player-registry $PLAYER_REGISTRY --nightly --outputType CSV \
+    --csvDir $CSV_DIR"
+```
+
+### `applications [:bbb-parse-cricsheet:run] (nightly)`
+
+Normalize the downloaded nightly JSON into a separate output directory. For
+this configuration, point `CRICSHEET_RAW` at the nightly raw-data directory
+before running the command:
+
+```bash
+./gradlew :bbb-parse-cricsheet:run --no-daemon \
+  --args="--base-directory $CRICSHEET_ROOT --input $CRICSHEET_RAW \
+    --output normalized-nightly"
+```
+
+### `applications [:bb-web:run]`
+
+Start the browser-facing web application. The IDE configuration name is kept
+as shown, although the Gradle project is named `bbb-web`:
+
+```bash
+API_BASE_URL=http://localhost:8081 \
+./gradlew :bbb-web:run --no-daemon
+```
+
+### `applications [:bbb-update-database:run] (csv)`
+
+Generate warehouse CSV files from the full normalized data set:
+
+```bash
+./gradlew :bbb-update-database:run --no-daemon \
+  --args="--base-directory $CRICSHEET_ROOT --data-directory $CRICSHEET_DATA \
+    --player-registry $PLAYER_REGISTRY --outputType CSV --csvDir $CSV_DIR"
+```
+
+### `applications [:bbb-parse-cricsheet:run]`
+
+Normalize the full downloaded Cricsheet JSON into the shared schema:
+
+```bash
+./gradlew :bbb-parse-cricsheet:run --no-daemon \
+  --args="--base-directory $CRICSHEET_ROOT --input $CRICSHEET_RAW \
+    --output $CRICSHEET_DATA"
+```
+
 ## Normalize Cricsheet data
 
 `bbb-parse-cricsheet` is the Cricsheet source adapter. It reads raw Cricsheet
