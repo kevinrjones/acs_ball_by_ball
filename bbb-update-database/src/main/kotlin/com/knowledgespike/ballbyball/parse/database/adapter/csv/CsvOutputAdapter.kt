@@ -1,10 +1,8 @@
 package com.knowledgespike.ballbyball.parse.database.adapter.csv
 
-import com.knowledgespike.ballbyball.clishared.identity.CanonicalMatchId
+import com.knowledgespike.ballbyball.identity.CanonicalMatchId
 import com.knowledgespike.ballbyball.clishared.identity.SourceReference
 import com.knowledgespike.ballbyball.types.values.PublicMatchId
-
-import com.knowledgespike.cricketarchive.InvalidStateException
 
 import com.knowledgespike.cricketarchive.LoggerDelegate
 import com.knowledgespike.ballbyball.parse.database.Location
@@ -14,7 +12,9 @@ import com.knowledgespike.ballbyball.parse.database.WarehouseInnings
 import com.knowledgespike.ballbyball.parse.database.WarehouseMatch
 import com.knowledgespike.ballbyball.parse.database.adapter.OutputAdapter
 import com.knowledgespike.ballbyball.parse.database.adapter.DeliveryRecord
+import com.knowledgespike.ballbyball.parse.database.adapter.MatchWriteDecision
 import com.knowledgespike.ballbyball.parse.database.adapter.MatchRecord
+import com.knowledgespike.ballbyball.parse.database.adapter.WarehouseWriteSupport
 import com.knowledgespike.ballbyball.parse.database.getNameParts
 import java.io.BufferedWriter
 import java.nio.charset.StandardCharsets
@@ -24,8 +24,6 @@ import java.nio.file.StandardOpenOption
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.time.temporal.WeekFields
-import java.util.Locale
 
 /** Writes warehouse tables as UTF-8 CSV files suitable for bulk loading into MariaDB. */
 class CsvOutputAdapter(output: Path) : OutputAdapter {
@@ -59,9 +57,7 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
     override fun findMatchKey(canonicalMatchId: CanonicalMatchId): Long? = matches[canonicalMatchId]
 
     override fun ensurePublicMatchId(canonicalMatchId: CanonicalMatchId, publicMatchId: PublicMatchId) {
-        if (matches.containsKey(canonicalMatchId)) {
-            validatePublicMatchId(canonicalMatchId, publicMatchId)
-        }
+        decideMatchWrite(canonicalMatchId, publicMatchId)
     }
 
     override fun upsertPerson(sourceId: String, fullName: String, caId: Int): Long {
@@ -70,7 +66,7 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
         val (sortNamePart, otherNamePart) = getNameParts(fullName)
         writeRow(
             "dim_person",
-            PERSON_HEADERS,
+            WarehouseWriteSupport.PERSON_COLUMNS,
             listOf(key, sourceId, fullName, sortNamePart, otherNamePart, caId)
         )
         people[sourceId] = key
@@ -80,7 +76,7 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
     override fun upsertTeam(name: String): Team {
         teams[name]?.let { return it }
         val team = Team(nextTeamKey++, name)
-        writeRow("dim_team", TEAM_HEADERS, listOf(team.id, nextTeamSourceId++, team.name))
+        writeRow("dim_team", WarehouseWriteSupport.TEAM_COLUMNS, listOf(team.id, nextTeamSourceId++, team.name))
         teams[name] = team
         return team
     }
@@ -88,69 +84,35 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
     override fun upsertGround(name: String): Location {
         grounds[name]?.let { return it }
         val ground = Location(nextGroundKey++, name)
-        writeRow("dim_ground", GROUND_HEADERS, listOf(ground.id, nextGroundSourceId++, ground.name))
+        writeRow("dim_ground", WarehouseWriteSupport.GROUND_COLUMNS, listOf(ground.id, nextGroundSourceId++, ground.name))
         grounds[name] = ground
         return ground
     }
 
     override fun upsertDate(date: LocalDate): Int {
         dates[date]?.let { return it }
-        val dateKey = date.year * 10000 + date.monthValue * 100 + date.dayOfMonth
-        val weekFields = WeekFields.ISO
+        val dimensions = WarehouseWriteSupport.dateDimensions(date)
         writeRow(
             "dim_date",
-            DATE_HEADERS,
-            listOf(
-                dateKey,
-                date,
-                date.year,
-                (date.monthValue - 1) / 3 + 1,
-                date.monthValue,
-                date.month.getDisplayName(java.time.format.TextStyle.FULL, Locale.ENGLISH),
-                date.get(weekFields.weekOfYear()),
-                date.dayOfMonth,
-                date.dayOfWeek.value,
-                date.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, Locale.ENGLISH),
-                date.dayOfWeek.value >= 6
-            )
+            WarehouseWriteSupport.DATE_COLUMNS,
+            dimensions.values()
         )
-        dates[date] = dateKey
-        return dateKey
+        dates[date] = dimensions.dateKey
+        return dimensions.dateKey
     }
 
     override fun insertMatch(match: MatchRecord): WarehouseMatch {
-        matches[match.canonicalMatchId]?.let {
-            ensurePublicMatchId(match.canonicalMatchId, match.publicMatchId)
-            return WarehouseMatch(it, match.publicMatchId)
+        val key = when (val decision = decideMatchWrite(match.canonicalMatchId, match.publicMatchId)) {
+            is MatchWriteDecision.Reuse -> return WarehouseMatch(decision.matchKey, match.publicMatchId)
+            MatchWriteDecision.Insert -> nextMatchKey++
         }
-        validatePublicMatchId(match.canonicalMatchId, match.publicMatchId)
-        val key = nextMatchKey++
         writeRow(
             "dim_match",
-            MATCH_HEADERS,
-            listOf(
+            WarehouseWriteSupport.MATCH_COLUMNS,
+            WarehouseWriteSupport.matchValues(
                 key,
-                match.canonicalMatchId.value.toString(),
-                match.publicMatchId.value,
-                null,
-                match.fileName,
-                match.matchInSeries,
-                match.matchType,
-                match.eventName,
-                match.matchDateText,
-                match.season,
-                match.matchStartYear,
-                match.matchStartDateKey,
-                match.ballsPerOver,
-                LocalDateTime.now(java.time.ZoneOffset.UTC),
-                match.team1Key,
-                match.team2Key,
-                match.groundKey,
-                match.tossTeamKey,
-                match.tossDecision,
-                match.victoryType,
-                match.winnerTeamKey,
-                match.loserTeamKey
+                match,
+                LocalDateTime.now(java.time.ZoneOffset.UTC)
             )
         )
         matches[match.canonicalMatchId] = key
@@ -163,14 +125,8 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
         sources.forEach { source ->
             writeRow(
                 "match_source_reference",
-                SOURCE_REFERENCE_HEADERS,
-                listOf(
-                    matchKey,
-                    source.provider.value,
-                    source.providerRecordKey,
-                    source.sourceRecordId.value.toString(),
-                    source.rawContentDigest.value
-                )
+                WarehouseWriteSupport.SOURCE_REFERENCE_COLUMNS,
+                WarehouseWriteSupport.sourceReferenceValues(matchKey, source)
             )
         }
     }
@@ -184,7 +140,7 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
     ) {
         writeRow(
             "fact_match",
-            MATCH_FACT_HEADERS,
+            WarehouseWriteSupport.MATCH_FACT_COLUMNS,
             listOf(matchKey, matchDateKey, groundKey, durationDays, margin, 1)
         )
     }
@@ -200,7 +156,7 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
         val result = WarehouseInnings(nextInningsKey++)
         writeRow(
             "dim_innings",
-            INNINGS_HEADERS,
+            WarehouseWriteSupport.INNINGS_COLUMNS,
             listOf(result.key, matchKey, inningsNumber, battingTeamKey, bowlingTeamKey)
         )
         innings[lookup] = result
@@ -214,33 +170,8 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
         val key = nextDeliveryKey++
         writeRow(
             "fact_delivery",
-            DELIVERY_HEADERS,
-            listOf(
-                key,
-                nextBallSourceId++,
-                delivery.matchKey,
-                delivery.matchDateKey,
-                delivery.inningsKey,
-                delivery.battingTeamKey,
-                delivery.bowlingTeamKey,
-                delivery.batterKey,
-                delivery.nonStrikerKey,
-                delivery.bowlerKey,
-                delivery.overNumber,
-                delivery.ballNumber,
-                delivery.ballInOver,
-                delivery.inningsOrder,
-                delivery.delivery.runs.batter,
-                delivery.delivery.runs.extras,
-                delivery.delivery.runs.total,
-                delivery.delivery.extras?.noballs ?: 0,
-                delivery.delivery.extras?.wides ?: 0,
-                delivery.delivery.extras?.byes ?: 0,
-                delivery.delivery.extras?.legbyes ?: 0,
-                delivery.delivery.runs.nonBoundary?.let { if (it) 1 else 0 },
-                delivery.powerplay,
-                delivery.delivery.wickets.orEmpty().size
-            )
+            WarehouseWriteSupport.DELIVERY_COLUMNS,
+            WarehouseWriteSupport.deliveryValues(key, nextBallSourceId++, delivery)
         )
         deliveries[Triple(delivery.matchKey, delivery.inningsKey, delivery.inningsOrder)] = key
         return key
@@ -248,12 +179,16 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
 
     override fun insertWicket(kind: String): Long {
         val key = nextWicketKey++
-        writeRow("dim_wicket", WICKET_HEADERS, listOf(key, nextWicketSourceId++, kind))
+        writeRow("dim_wicket", WarehouseWriteSupport.WICKET_COLUMNS, listOf(key, nextWicketSourceId++, kind))
         return key
     }
 
     override fun insertDeliveryWicket(deliveryKey: Long, wicketKey: Long) {
-        writeRow("bridge_delivery_wicket", DELIVERY_WICKET_HEADERS, listOf(deliveryKey, wicketKey))
+        writeRow(
+            "bridge_delivery_wicket",
+            WarehouseWriteSupport.DELIVERY_WICKET_COLUMNS,
+            listOf(deliveryKey, wicketKey)
+        )
     }
 
     override fun insertDeliveryFielder(deliveryKey: Long, wicketKey: Long, personKey: Long) {
@@ -267,12 +202,16 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
             )
             return
         }
-        writeRow("bridge_delivery_fielder", DELIVERY_FIELDER_HEADERS, listOf(deliveryKey, wicketKey, personKey))
+        writeRow(
+            "bridge_delivery_fielder",
+            WarehouseWriteSupport.DELIVERY_FIELDER_COLUMNS,
+            listOf(deliveryKey, wicketKey, personKey)
+        )
     }
 
     override fun insertMatchPerson(matchKey: Long, personKey: Long, roleCode: String) {
         if (matchPeople.add(Triple(matchKey, personKey, roleCode))) {
-            writeRow("bridge_match_person", MATCH_PERSON_HEADERS, listOf(null, matchKey, personKey, roleCode))
+            writeRow("bridge_match_person", WarehouseWriteSupport.MATCH_PERSON_COLUMNS, listOf(null, matchKey, personKey, roleCode))
         }
     }
 
@@ -292,24 +231,14 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
         writers.clear()
     }
 
-    private fun validatePublicMatchId(canonicalMatchId: CanonicalMatchId, publicMatchId: PublicMatchId) {
-        publicMatches[publicMatchId]?.let { existingCanonicalMatchId ->
-            if (existingCanonicalMatchId != canonicalMatchId) {
-                throw InvalidStateException(
-                    "Deterministic publicMatchId ${publicMatchId.value} collides for " +
-                        "canonical matches ${existingCanonicalMatchId.value} and ${canonicalMatchId.value}"
-                )
-            }
-        }
-        matchPublicIds[canonicalMatchId]?.let { existingPublicMatchId ->
-            if (existingPublicMatchId != publicMatchId) {
-                throw InvalidStateException(
-                    "Canonical match ${canonicalMatchId.value} already has publicMatchId " +
-                        existingPublicMatchId.value
-                )
-            }
-        }
-    }
+    private fun decideMatchWrite(canonicalMatchId: CanonicalMatchId, publicMatchId: PublicMatchId) =
+        WarehouseWriteSupport.matchWriteDecision(
+            canonicalMatchId = canonicalMatchId,
+            publicMatchId = publicMatchId,
+            existingMatchKey = matches[canonicalMatchId],
+            existingPublicMatchId = matchPublicIds[canonicalMatchId]?.value,
+            publicIdOwnedByAnotherMatch = publicMatches[publicMatchId]?.let { it != canonicalMatchId } ?: false
+        )
 
     private fun writeRow(tableName: String, headers: List<String>, values: List<Any?>) {
         check(!closed) { "Cannot write to a closed CSV output adapter" }
@@ -351,33 +280,5 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
             return output
         }
 
-        val DATE_HEADERS = listOf(
-            "date_key", "calendar_date", "calendar_year", "calendar_quarter", "calendar_month",
-            "month_name", "week_of_year", "day_of_month", "day_of_week", "day_name", "is_weekend"
-        )
-        val TEAM_HEADERS = listOf("team_key", "source_team_id", "team_name")
-        val PERSON_HEADERS = listOf("person_key", "source_person_id", "full_name", "sort_name_part", "other_name_part", "ca_id")
-        val GROUND_HEADERS = listOf("ground_key", "source_ground_id", "ground_name")
-        val MATCH_HEADERS = listOf(
-            "match_key", "canonical_match_id", "public_match_id", "source_ca_id", "file_name", "match_in_series", "match_type", "event_name",
-            "match_date_text", "season", "match_start_year", "match_start_date_key", "balls_per_over", "added_timestamp",
-            "team1_key", "team2_key", "ground_key", "toss_team_key", "toss_decision", "victory_type", "winner_team_key", "loser_team_key"
-        )
-        val SOURCE_REFERENCE_HEADERS = listOf(
-            "match_key", "provider", "provider_record_key", "source_record_id", "raw_content_digest"
-        )
-        val INNINGS_HEADERS = listOf("innings_key", "match_key", "innings_number", "batting_team_key", "bowling_team_key")
-        val WICKET_HEADERS = listOf("wicket_key", "source_wicket_id", "wicket_kind")
-        val MATCH_FACT_HEADERS = listOf(
-            "match_key", "match_date_key", "ground_key", "duration_days", "margin", "match_count"
-        )
-        val DELIVERY_HEADERS = listOf(
-            "delivery_key", "source_ball_id", "match_key", "match_date_key", "innings_key", "batting_team_key", "bowling_team_key",
-            "batter_key", "non_striker_key", "bowler_key", "over_number", "ball_number", "ball_in_over", "innings_order",
-            "batter_runs", "extra_runs", "total_runs", "no_balls", "wides", "byes", "leg_byes", "non_boundary", "powerplay", "wicket_count"
-        )
-        val MATCH_PERSON_HEADERS = listOf("match_person_key", "match_key", "person_key", "role_code")
-        val DELIVERY_WICKET_HEADERS = listOf("delivery_key", "wicket_key")
-        val DELIVERY_FIELDER_HEADERS = listOf("delivery_key", "wicket_key", "person_key")
     }
 }

@@ -1,9 +1,9 @@
 import {TestBed} from '@angular/core/testing';
 import {ActivatedRoute, convertToParamMap} from '@angular/router';
 import {of} from 'rxjs';
-import {MatchService} from '../../../services/match.service';
+import {MatchService} from '../data/match.service';
 import {SelectedMatchPlaceholderComponent} from './selected-match-placeholder.component';
-import {MatchScoresheetResponse, ScoresheetDelivery, ScoresheetInnings} from '../../../models/match.model';
+import {MatchScoresheetResponse, ScoresheetDelivery, ScoresheetInnings} from '../domain/match.model';
 
 describe('SelectedMatchPlaceholderComponent', () => {
   it('should preserve the complete valid search query when returning to results', async () => {
@@ -407,7 +407,7 @@ function scoresheet(...deliveries: ScoresheetDelivery[]): MatchScoresheetRespons
 
 function scoresheetWithInnings(...inningsList: ScoresheetInnings[]): MatchScoresheetResponse {
   return {
-    context: {publicMatchId: 1_000_010_101, sourceMatchId: 1001, fileName: 'match.json', team1: 'England', team2: 'India'},
+    context: {publicMatchId: 1_000_010_101, fileName: 'match.json', team1: 'England', team2: 'India'},
     completeness: inningsList.some((current) => current.deliveries.length > 0) ? 'COMPLETE' : 'EMPTY',
     missingData: inningsList.some((current) => current.deliveries.length > 0) ? [] : ['deliveries'],
     innings: inningsList

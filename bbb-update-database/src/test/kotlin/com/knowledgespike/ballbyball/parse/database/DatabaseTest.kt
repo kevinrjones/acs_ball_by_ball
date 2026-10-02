@@ -1,15 +1,18 @@
 package com.knowledgespike.ballbyball.parse.database
 
 import com.knowledgespike.ballbyball.clishared.identity.CanonicalMatchEnvelope
-import com.knowledgespike.ballbyball.clishared.identity.CanonicalMatchId
+import com.knowledgespike.ballbyball.identity.CanonicalMatchId
 import com.knowledgespike.ballbyball.clishared.identity.MergeEvidence
-import com.knowledgespike.ballbyball.clishared.identity.ProviderId
-import com.knowledgespike.ballbyball.clishared.identity.Sha256Digest
-import com.knowledgespike.ballbyball.clishared.identity.SourceRecordId
+import com.knowledgespike.ballbyball.identity.ProviderId
+import com.knowledgespike.ballbyball.identity.Sha256Digest
+import com.knowledgespike.ballbyball.identity.SourceRecordId
 import com.knowledgespike.ballbyball.clishared.identity.SourceReference
 
 import com.knowledgespike.ballbyball.parse.database.adapter.sqlite.SqlScriptOutputAdapter
 import com.knowledgespike.ballbyball.parse.database.adapter.sqlite.SqlOutputAdapter
+import com.knowledgespike.ballbyball.parse.database.adapter.DeliveryRecord
+import com.knowledgespike.ballbyball.parse.database.adapter.MatchRecord
+import com.knowledgespike.ballbyball.parse.database.adapter.OutputAdapter
 import com.knowledgespike.ballbyball.clishared.schema.BbbMatchData
 import com.knowledgespike.ballbyball.clishared.schema.By
 import com.knowledgespike.ballbyball.clishared.schema.Delivery
@@ -39,6 +42,19 @@ import java.sql.DriverManager
 import java.util.UUID
 
 class DatabaseTest {
+    @Test
+    fun `given a failed match write when writing then the adapter rolls back`() {
+        val adapter = FailingMatchOutputAdapter()
+
+        assertThrows<IllegalStateException> {
+            Database(adapter).writeMatch("/new/root/12345.json", cricSheetWithFielder())
+        }
+
+        expectThat(adapter.matchStarted).isEqualTo(true)
+        expectThat(adapter.rollbackRequested).isEqualTo(true)
+        expectThat(adapter.commitRequested).isEqualTo(false)
+    }
+
     private fun Database.writeMatch(fileName: String, cricSheet: BbbMatchData) {
         val sourceRecordId = SourceRecordId.from(UUID.fromString("c61f62bd-7b02-5c3f-ae44-572d533b5877"))
         writeMatch(
@@ -291,6 +307,55 @@ class DatabaseTest {
             cricSheet
         )
         expectThat(officials.firstOrNull()?.id).isEqualTo("non-striker-id")
+    }
+
+    private class FailingMatchOutputAdapter : OutputAdapter {
+        var matchStarted = false
+        var rollbackRequested = false
+        var commitRequested = false
+        private val teams = mutableMapOf<String, Team>()
+
+        override fun findMatchKey(canonicalMatchId: CanonicalMatchId): Long? = null
+        override fun ensurePublicMatchId(
+            canonicalMatchId: CanonicalMatchId,
+            publicMatchId: com.knowledgespike.ballbyball.types.values.PublicMatchId
+        ) = Unit
+        override fun upsertPerson(sourceId: String, fullName: String, caId: Int): Long = 1
+        override fun upsertTeam(name: String): Team = teams.getOrPut(name) { Team(teams.size + 1L, name) }
+        override fun upsertGround(name: String): Location = throw IllegalStateException("Simulated match write failure")
+        override fun upsertDate(date: java.time.LocalDate): Int = 20240101
+        override fun insertMatch(match: MatchRecord): WarehouseMatch = WarehouseMatch(1, match.publicMatchId)
+        override fun insertSourceReferences(matchKey: Long, sources: List<SourceReference>) = Unit
+        override fun insertMatchFact(
+            matchKey: Long,
+            matchDateKey: Int?,
+            groundKey: Long,
+            durationDays: Int,
+            margin: Int
+        ) = Unit
+        override fun upsertInnings(
+            matchKey: Long,
+            inningsNumber: Int,
+            battingTeamKey: Long,
+            bowlingTeamKey: Long
+        ): WarehouseInnings = WarehouseInnings(1)
+        override fun findDeliveryKey(matchKey: Long, inningsKey: Long, inningsOrder: Int): Long? = null
+        override fun insertDelivery(delivery: DeliveryRecord): Long = 1
+        override fun insertWicket(kind: String): Long = 1
+        override fun insertDeliveryWicket(deliveryKey: Long, wicketKey: Long) = Unit
+        override fun insertDeliveryFielder(deliveryKey: Long, wicketKey: Long, personKey: Long) = Unit
+        override fun insertMatchPerson(matchKey: Long, personKey: Long, roleCode: String) = Unit
+        override fun writeAllPeople(people: Sequence<PersonRegistryEntity>) = Unit
+        override fun beginMatch() {
+            matchStarted = true
+        }
+        override fun commit() {
+            commitRequested = true
+        }
+        override fun rollback() {
+            rollbackRequested = true
+        }
+        override fun close() = Unit
     }
 
     private fun writeMatchAndReadSql(cricSheet: BbbMatchData, competitionName: String = "match"): String {

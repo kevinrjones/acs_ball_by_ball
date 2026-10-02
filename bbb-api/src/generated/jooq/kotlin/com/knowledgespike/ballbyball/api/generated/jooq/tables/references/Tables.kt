@@ -17,6 +17,7 @@ import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimTeam
 import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimWicket
 import com.knowledgespike.ballbyball.api.generated.jooq.tables.FactDelivery
 import com.knowledgespike.ballbyball.api.generated.jooq.tables.FactMatch
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.MatchSourceReference
 
 
 
@@ -79,3 +80,8 @@ val FACT_DELIVERY: FactDelivery = FactDelivery.FACT_DELIVERY
  * The table <code>acs_ball_by_ball.fact_match</code>.
  */
 val FACT_MATCH: FactMatch = FactMatch.FACT_MATCH
+
+/**
+ * The table <code>acs_ball_by_ball.match_source_reference</code>.
+ */
+val MATCH_SOURCE_REFERENCE: MatchSourceReference = MatchSourceReference.MATCH_SOURCE_REFERENCE

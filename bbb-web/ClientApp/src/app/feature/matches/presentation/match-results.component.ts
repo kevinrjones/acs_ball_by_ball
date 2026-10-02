@@ -2,15 +2,15 @@ import {CommonModule} from '@angular/common';
 import {Component, inject, OnDestroy, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router, RouterLink} from '@angular/router';
 import {Subscription} from 'rxjs';
-import {MatchSearchQuery, MatchSearchResult} from '../../../models/match.model';
+import {MatchSearchQuery, MatchSearchResult} from '../domain/match.model';
 import {
   MATCH_RESULT_OPTIONS,
   MATCH_TYPE_OPTIONS,
   parseMatchSearchQuery,
   serializeMatchSearchQuery,
   VENUE_OPTIONS
-} from '../../../models/match-search-query.codec';
-import {MatchService} from '../../../services/match.service';
+} from '../domain/match-search-query.codec';
+import {MatchService} from '../data/match.service';
 
 export type MatchSearchState = 'idle' | 'loading' | 'results' | 'no-results' | 'error';
 

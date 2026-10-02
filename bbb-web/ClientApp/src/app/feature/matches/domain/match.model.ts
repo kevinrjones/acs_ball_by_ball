@@ -1,6 +1,5 @@
 export interface MatchSummary {
   publicMatchId: number;
-  sourceMatchId: number;
   fileName: string;
   matchType: string;
   season: string;
@@ -45,7 +44,6 @@ export interface MatchSearchQuery extends MatchSearchFilters {
 
 export interface MatchSearchResult {
   readonly publicMatchId: number;
-  readonly sourceMatchId: number;
   readonly fileName: string;
   readonly matchType?: string | null;
   readonly season?: string | null;
@@ -110,7 +108,6 @@ export interface ScoresheetInnings {
 
 export interface MatchScoresheetContext {
   readonly publicMatchId: number;
-  readonly sourceMatchId: number;
   readonly fileName: string;
   readonly matchType?: string | null;
   readonly season?: string | null;

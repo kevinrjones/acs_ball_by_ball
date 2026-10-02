@@ -153,3 +153,23 @@ The existing deterministic public-ID contract is widened consistently so current
 - Update all API, updater, generated jOOQ, web-client, migration, and documentation references that encode the public-ID contract.
 - Add regression coverage proving ten-digit validation and preserving deterministic reuse and unique-constraint collision behavior.
 - Run focused checks and the full validation commands, reporting the known live MariaDB integration limitation separately.
+
+# Structural Review Follow-up
+
+### ✓ Step 1: Unify warehouse write policy
+Extract shared pure row values and collision/idempotency policy so JDBC, SQL, and CSV adapters focus on sink encoding and IO.
+
+### ✓ Step 2: Align generated jOOQ with identity-era schema
+Represent `match_key`, `canonical_match_id`, and source references accurately in committed generated models and queries.
+
+### ✓ Step 3: Split match read queries and remove the empty service hop
+Extract focused match read/query responsibilities and route the repository directly where no service policy exists.
+
+### ✓ Step 4: Consolidate identity ownership
+Move identity types and deterministic generation beside the shared public ID while keeping envelope DTOs in `bbb-cli-shared`.
+
+### ✓ Step 5: Normalize optional contracts and make bowling inference explicit
+Use nullable display fields consistently, name the opposing-team rule, and colocate the Angular match-search codec.
+
+### ✓ Step 6: Verify and update project memory
+Run focused and broader checks for changed modules, clean touched imports, and record outcomes in project memory.

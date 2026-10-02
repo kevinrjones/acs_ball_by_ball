@@ -1,6 +1,6 @@
 package com.knowledgespike.ballbyball.parse.database
 
-import com.knowledgespike.ballbyball.clishared.identity.CanonicalMatchId
+import com.knowledgespike.ballbyball.identity.CanonicalMatchId
 import com.knowledgespike.ballbyball.types.values.PublicMatchId
 
 import com.knowledgespike.cricketarchive.InvalidStateException
@@ -74,10 +74,19 @@ class SqlScriptOutputAdapterTest {
 
         val sql = Files.readString(output)
         expectThat(
-            Regex("(?m)^\\s+match_key\\s+BIGINT UNSIGNED NOT NULL(?: PRIMARY KEY)?,")
+            Regex("(?m)^\\s+match_key\\s+BIGINT NOT NULL(?: PRIMARY KEY)?,")
                 .findAll(sql)
                 .count()
         ).isEqualTo(5)
+        expectThat(sql).contains("match_key            BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,")
+        expectThat(sql).contains("canonical_match_id   CHAR(36) NULL,")
+        expectThat(sql).contains("public_match_id      BIGINT NULL,")
+        expectThat(sql).contains("CONSTRAINT uq_dim_match_canonical_id UNIQUE (canonical_match_id)")
+        expectThat(sql).contains("CONSTRAINT uq_dim_match_public_match_id UNIQUE (public_match_id)")
+        expectThat(sql).contains("CREATE TABLE match_source_reference")
+        expectThat(sql).contains("source_record_id   CHAR(36) NOT NULL")
+        expectThat(sql).contains("added_timestamp      DATETIME NOT NULL")
+        expectThat(sql).contains("match_count     TINYINT UNSIGNED NOT NULL DEFAULT 1")
     }
 
     @Test

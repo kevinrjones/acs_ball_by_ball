@@ -11,7 +11,6 @@ import com.knowledgespike.ballbyball.types.values.PageSize
 import com.knowledgespike.ballbyball.types.values.SearchDate
 import com.knowledgespike.ballbyball.types.values.SearchTeam
 import com.knowledgespike.ballbyball.types.values.Season
-import com.knowledgespike.ballbyball.types.values.SourceMatchId
 import com.knowledgespike.ballbyball.types.values.VenueFilter
 
 data class MatchSearchCriteria(
@@ -46,7 +45,6 @@ data class MatchSearchCriteria(
 
 data class MatchSearchMatch(
     val publicMatchId: PublicMatchId,
-    val sourceMatchId: SourceMatchId,
     val fileName: String,
     val matchType: MatchType?,
     val season: Season?,

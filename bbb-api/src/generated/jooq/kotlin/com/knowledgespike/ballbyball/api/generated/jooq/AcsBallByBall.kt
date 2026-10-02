@@ -16,6 +16,7 @@ import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimTeam
 import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimWicket
 import com.knowledgespike.ballbyball.api.generated.jooq.tables.FactDelivery
 import com.knowledgespike.ballbyball.api.generated.jooq.tables.FactMatch
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.MatchSourceReference
 
 import kotlin.collections.List
 
@@ -98,6 +99,11 @@ open class AcsBallByBall : SchemaImpl(DSL.name("acs_ball_by_ball"), DefaultCatal
      */
     val FACT_MATCH: FactMatch get() = FactMatch.FACT_MATCH
 
+    /**
+     * The table <code>acs_ball_by_ball.match_source_reference</code>.
+     */
+    val MATCH_SOURCE_REFERENCE: MatchSourceReference get() = MatchSourceReference.MATCH_SOURCE_REFERENCE
+
     override fun getCatalog(): Catalog = DefaultCatalog.DEFAULT_CATALOG
 
     override fun getTables(): List<Table<*>> = listOf(
@@ -112,6 +118,7 @@ open class AcsBallByBall : SchemaImpl(DSL.name("acs_ball_by_ball"), DefaultCatal
         DimTeam.DIM_TEAM,
         DimWicket.DIM_WICKET,
         FactDelivery.FACT_DELIVERY,
-        FactMatch.FACT_MATCH
+        FactMatch.FACT_MATCH,
+        MatchSourceReference.MATCH_SOURCE_REFERENCE
     )
 }

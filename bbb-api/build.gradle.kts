@@ -95,6 +95,10 @@ val jooqDatabaseUser = providers.environmentVariable("JOOQ_DATABASE_USER")
     .orElse("ballbyball")
 val jooqDatabasePassword = providers.environmentVariable("JOOQ_DATABASE_PASSWORD")
     .orElse("p4ssw0rd")
+val jooqDatabaseSchema = providers.environmentVariable("JOOQ_DATABASE_SCHEMA")
+    .orElse("acs_ball_by_ball")
+val jooqOutputSchema = providers.environmentVariable("JOOQ_OUTPUT_SCHEMA")
+    .orElse("acs_ball_by_ball")
 
 jooq {
     configuration {
@@ -109,12 +113,13 @@ jooq {
                     name = "org.jooq.codegen.KotlinGenerator"
                     database {
                         name = "org.jooq.meta.mariadb.MariaDBDatabase"
-                        inputSchema = "acs_ball_by_ball"
+                        inputSchema = jooqDatabaseSchema.get()
+                        outputSchema = jooqOutputSchema.get()
 //                        includes = "(?i:(dim_match|dim_date|dim_team|dim_ground|fact_match|dim_innings|fact_delivery|dim_person|dim_wicket|bridge_delivery_wicket|bridge_delivery_fielder))"
                         forcedTypes {
                             forcedType {
                                 name = "BIGINT"
-                                includeExpression = "(?i:.*\\.(team1_key|team2_key|ground_key|toss_team_key|winner_team_key|loser_team_key|team_key|person_key|innings_key|delivery_key|wicket_key|batter_key|non_striker_key|bowler_key|batting_team_key|bowling_team_key))"
+                                includeExpression = "(?i:.*\\.(match_key|team1_key|team2_key|ground_key|toss_team_key|winner_team_key|loser_team_key|team_key|person_key|innings_key|delivery_key|wicket_key|batter_key|non_striker_key|bowler_key|batting_team_key|bowling_team_key))"
                             }
                         }
                     }

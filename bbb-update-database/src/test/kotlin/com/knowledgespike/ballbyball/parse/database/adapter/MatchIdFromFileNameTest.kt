@@ -1,6 +1,6 @@
 package com.knowledgespike.ballbyball.parse.database.adapter
 
-import com.knowledgespike.ballbyball.clishared.identity.CanonicalMatchId
+import com.knowledgespike.ballbyball.identity.CanonicalMatchId
 import org.junit.jupiter.api.Test
 import strikt.api.expectThat
 import strikt.assertions.isEqualTo

@@ -27,7 +27,6 @@ import com.knowledgespike.ballbyball.types.values.MatchTypeFilter
 import com.knowledgespike.ballbyball.types.values.PageNumber
 import com.knowledgespike.ballbyball.types.values.PageSize
 import com.knowledgespike.ballbyball.types.values.SearchTeam
-import com.knowledgespike.ballbyball.types.values.SourceMatchId
 import com.knowledgespike.ballbyball.types.values.VenueFilter
 import com.knowledgespike.feature.kbff.data.repository.InMemoryKbffSessionStorage
 import com.knowledgespike.feature.kbff.domain.model.KbffClaim
@@ -87,7 +86,7 @@ class WebModuleTest {
                     respond(
                         content = Json.encodeToString(
                             Envelope.success(
-                                RecentMatchesResponse(listOf(MatchSummary.of(1_000_000_001, 10, "match.json", "TEST", "2026")))
+                                RecentMatchesResponse(listOf(MatchSummary.of(1_000_000_001, "match.json", "TEST", "2026")))
                             )
                         ),
                         status = HttpStatusCode.OK,
@@ -253,7 +252,6 @@ class WebModuleTest {
             matches = listOf(
                 MatchSearchResult(
                     publicMatchId = PublicMatchId.from(1_000_000_100),
-                    sourceMatchId = SourceMatchId.from(200),
                     fileName = "historic.json",
                     matchType = null,
                     season = null

@@ -4,9 +4,9 @@ import {provideRouter} from '@angular/router';
 import {NEVER, of, throwError} from 'rxjs';
 import {HomeComponent} from './home.component';
 import {AuthenticationService, Session} from '../../../services/authentication.service';
-import {MatchService} from '../../../services/match.service';
+import {MatchService} from '../../matches/data/match.service';
 import {ApplicationMetadataService} from '../../../services/application-metadata.service';
-import {RecentMatchesResponse} from '../../../models/match.model';
+import {RecentMatchesResponse} from '../../matches/domain/match.model';
 
 describe('HomeComponent', () => {
   let matchService: jasmine.SpyObj<MatchService>;
@@ -75,6 +75,29 @@ describe('HomeComponent', () => {
     expect(fixture.componentInstance.isLoading()).toBeFalse();
   });
 
+  it('should render a neutral placeholder for empty match summary fields', () => {
+    matchService.getRecentMatches.and.returnValue(of({
+      result: {matches: [{
+        ...recentMatch(),
+        competition: '',
+        date: '',
+        team1: '',
+        score1: '',
+        team2: '',
+        score2: '',
+        result: '',
+        format: ''
+      }]},
+      errorMessage: '',
+      timeGenerated: new Date().toISOString()
+    }));
+    const fixture = TestBed.createComponent(HomeComponent);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('—');
+    expect(fixture.nativeElement.textContent).not.toContain('MISSING');
+  });
+
   it('should render no matches when the API returns an empty list', () => {
     matchService.getRecentMatches.and.returnValue(of({
       result: {matches: []} as RecentMatchesResponse,
@@ -91,7 +114,6 @@ describe('HomeComponent', () => {
 function recentMatch(): RecentMatchesResponse['matches'][number] {
   return {
     publicMatchId: 1_000_010_101,
-    sourceMatchId: 1001,
     matchType: 'T20',
     season: '2026',
     fileName: 't20-match-1.json',

@@ -31,11 +31,11 @@ class JooqMatchRepositoryIntegrationTest {
 
             expectThat(matches).isNotEmpty()
             val first = matches.first()
-            expectThat(first.competition).isNotBlank()
-            expectThat(first.team1).isNotBlank()
-            expectThat(first.team2).isNotBlank()
-            expectThat(first.score1).isNotBlank()
-            expectThat(first.score2).isNotBlank()
+            expectThat(first.competition).isNotNull().get { this!! }.isNotBlank()
+            expectThat(first.team1).isNotNull().get { this!! }.isNotBlank()
+            expectThat(first.team2).isNotNull().get { this!! }.isNotBlank()
+            expectThat(first.score1).isNotNull().get { this!! }.isNotBlank()
+            expectThat(first.score2).isNotNull().get { this!! }.isNotBlank()
         }
     }
 

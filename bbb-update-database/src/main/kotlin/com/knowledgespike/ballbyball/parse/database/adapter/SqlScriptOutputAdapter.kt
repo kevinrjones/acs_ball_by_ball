@@ -1,10 +1,8 @@
 package com.knowledgespike.ballbyball.parse.database.adapter
 
-import com.knowledgespike.ballbyball.clishared.identity.CanonicalMatchId
+import com.knowledgespike.ballbyball.identity.CanonicalMatchId
 import com.knowledgespike.ballbyball.clishared.identity.SourceReference
 import com.knowledgespike.ballbyball.types.values.PublicMatchId
-
-import com.knowledgespike.cricketarchive.InvalidStateException
 
 import com.knowledgespike.cricketarchive.LoggerDelegate
 import com.knowledgespike.ballbyball.parse.database.*
@@ -14,8 +12,6 @@ import java.nio.file.Path
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneOffset
-import java.time.temporal.WeekFields
-import java.util.*
 
 /** Writes an executable dialect-specific SQL script while keeping warehouse keys stable within the script. */
 abstract class SqlScriptOutputAdapter(
@@ -56,9 +52,7 @@ abstract class SqlScriptOutputAdapter(
     override fun findMatchKey(canonicalMatchId: CanonicalMatchId): Long? = matches[canonicalMatchId]
 
     override fun ensurePublicMatchId(canonicalMatchId: CanonicalMatchId, publicMatchId: PublicMatchId) {
-        if (matches.containsKey(canonicalMatchId)) {
-            validatePublicMatchId(canonicalMatchId, publicMatchId)
-        }
+        decideMatchWrite(canonicalMatchId, publicMatchId)
     }
 
     override fun upsertPerson(sourceId: String, fullName: String, caId: Int): Long {
@@ -66,7 +60,7 @@ abstract class SqlScriptOutputAdapter(
         val key = nextPersonKey++
         val (sortNamePart, otherNamePart) = getNameParts(fullName)
         write(
-            "INSERT INTO dim_person (person_key, source_person_id, full_name, sort_name_part, other_name_part, ca_id) VALUES (?, ?, ?, ?, ?, ?)",
+            WarehouseWriteSupport.insertSql("dim_person", WarehouseWriteSupport.PERSON_COLUMNS),
             key,
             sourceId,
             fullName,
@@ -82,7 +76,7 @@ abstract class SqlScriptOutputAdapter(
         teams[name]?.let { return it }
         val team = Team(nextTeamKey++, name)
         write(
-            "INSERT INTO dim_team (team_key, source_team_id, team_name) VALUES (?, ?, ?)",
+            WarehouseWriteSupport.insertSql("dim_team", WarehouseWriteSupport.TEAM_COLUMNS),
             team.id,
             nextTeamSourceId++,
             team.name
@@ -95,7 +89,7 @@ abstract class SqlScriptOutputAdapter(
         grounds[name]?.let { return it }
         val ground = Location(nextGroundKey++, name)
         write(
-            "INSERT INTO dim_ground (ground_key, source_ground_id, ground_name) VALUES (?, ?, ?)",
+            WarehouseWriteSupport.insertSql("dim_ground", WarehouseWriteSupport.GROUND_COLUMNS),
             ground.id,
             nextGroundSourceId++,
             ground.name
@@ -106,61 +100,27 @@ abstract class SqlScriptOutputAdapter(
 
     override fun upsertDate(date: LocalDate): Int {
         dates[date]?.let { return it }
-        val dateKey = date.year * 10000 + date.monthValue * 100 + date.dayOfMonth
-        val weekFields = WeekFields.ISO
+        val dimensions = WarehouseWriteSupport.dateDimensions(date)
         write(
-            "INSERT INTO dim_date (date_key, calendar_date, calendar_year, calendar_quarter, calendar_month, " +
-                    "month_name, week_of_year, day_of_month, day_of_week, day_name, is_weekend) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            dateKey,
-            date,
-            date.year,
-            (date.monthValue - 1) / 3 + 1,
-            date.monthValue,
-            date.month.getDisplayName(java.time.format.TextStyle.FULL, Locale.ENGLISH),
-            date.get(weekFields.weekOfYear()),
-            date.dayOfMonth,
-            date.dayOfWeek.value,
-            date.dayOfWeek.getDisplayName(java.time.format.TextStyle.FULL, Locale.ENGLISH),
-            date.dayOfWeek.value >= 6
+            WarehouseWriteSupport.insertSql("dim_date", WarehouseWriteSupport.DATE_COLUMNS),
+            *dimensions.values().toTypedArray()
         )
-        dates[date] = dateKey
-        return dateKey
+        dates[date] = dimensions.dateKey
+        return dimensions.dateKey
     }
 
     override fun insertMatch(match: MatchRecord): WarehouseMatch {
-        matches[match.canonicalMatchId]?.let {
-            ensurePublicMatchId(match.canonicalMatchId, match.publicMatchId)
-            return WarehouseMatch(it, match.publicMatchId)
+        val key = when (val decision = decideMatchWrite(match.canonicalMatchId, match.publicMatchId)) {
+            is MatchWriteDecision.Reuse -> return WarehouseMatch(decision.matchKey, match.publicMatchId)
+            MatchWriteDecision.Insert -> nextMatchKey++
         }
-        validatePublicMatchId(match.canonicalMatchId, match.publicMatchId)
-        val key = nextMatchKey++
         write(
-            "INSERT INTO dim_match (match_key, canonical_match_id, public_match_id, source_ca_id, file_name, match_in_series, match_type, event_name, " +
-                    "match_date_text, season, match_start_year, match_start_date_key, balls_per_over, added_timestamp, " +
-                    "team1_key, team2_key, ground_key, toss_team_key, toss_decision, victory_type, winner_team_key, loser_team_key) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            key,
-            match.canonicalMatchId.value.toString(),
-            match.publicMatchId.value,
-            null,
-            match.fileName,
-            match.matchInSeries,
-            match.matchType,
-            match.eventName,
-            match.matchDateText,
-            match.season,
-            match.matchStartYear,
-            match.matchStartDateKey,
-            match.ballsPerOver,
-            LocalDateTime.now(ZoneOffset.UTC),
-            match.team1Key,
-            match.team2Key,
-            match.groundKey,
-            match.tossTeamKey,
-            match.tossDecision,
-            match.victoryType,
-            match.winnerTeamKey,
-            match.loserTeamKey
+            WarehouseWriteSupport.insertSql("dim_match", WarehouseWriteSupport.MATCH_COLUMNS),
+            *WarehouseWriteSupport.matchValues(
+                key,
+                match,
+                LocalDateTime.now(ZoneOffset.UTC)
+            ).toTypedArray()
         )
         matches[match.canonicalMatchId] = key
         matchPublicIds[match.canonicalMatchId] = match.publicMatchId
@@ -171,13 +131,11 @@ abstract class SqlScriptOutputAdapter(
     override fun insertSourceReferences(matchKey: Long, sources: List<SourceReference>) {
         sources.forEach { source ->
             write(
-                "INSERT INTO match_source_reference (match_key, provider, provider_record_key, source_record_id, raw_content_digest) " +
-                    "VALUES (?, ?, ?, ?, ?)",
-                matchKey,
-                source.provider.value,
-                source.providerRecordKey,
-                source.sourceRecordId.value.toString(),
-                source.rawContentDigest.value
+                WarehouseWriteSupport.insertSql(
+                    "match_source_reference",
+                    WarehouseWriteSupport.SOURCE_REFERENCE_COLUMNS
+                ),
+                *WarehouseWriteSupport.sourceReferenceValues(matchKey, source).toTypedArray()
             )
         }
     }
@@ -190,7 +148,11 @@ abstract class SqlScriptOutputAdapter(
         margin: Int
     ) {
         write(
-            "INSERT INTO fact_match (match_key, match_date_key, ground_key, duration_days, margin, match_count) VALUES (?, ?, ?, ?, ?, 1)",
+            WarehouseWriteSupport.insertSql(
+                "fact_match",
+                WarehouseWriteSupport.MATCH_FACT_COLUMNS,
+                values = listOf("?", "?", "?", "?", "?", "1")
+            ),
             matchKey,
             matchDateKey,
             groundKey,
@@ -209,7 +171,7 @@ abstract class SqlScriptOutputAdapter(
         innings[lookup]?.let { return it }
         val result = WarehouseInnings(nextInningsKey++)
         write(
-            "INSERT INTO dim_innings (innings_key, match_key, innings_number, batting_team_key, bowling_team_key) VALUES (?, ?, ?, ?, ?)",
+            WarehouseWriteSupport.insertSql("dim_innings", WarehouseWriteSupport.INNINGS_COLUMNS),
             result.key,
             matchKey,
             inningsNumber,
@@ -226,34 +188,8 @@ abstract class SqlScriptOutputAdapter(
     override fun insertDelivery(delivery: DeliveryRecord): Long {
         val key = nextDeliveryKey++
         write(
-            "INSERT INTO fact_delivery (delivery_key, source_ball_id, match_key, match_date_key, innings_key, batting_team_key, " +
-                    "bowling_team_key, batter_key, non_striker_key, bowler_key, over_number, ball_number, ball_in_over, " +
-                    "innings_order, batter_runs, extra_runs, total_runs, no_balls, wides, byes, leg_byes, non_boundary, " +
-                    "powerplay, wicket_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            key,
-            nextBallSourceId++,
-            delivery.matchKey,
-            delivery.matchDateKey,
-            delivery.inningsKey,
-            delivery.battingTeamKey,
-            delivery.bowlingTeamKey,
-            delivery.batterKey,
-            delivery.nonStrikerKey,
-            delivery.bowlerKey,
-            delivery.overNumber,
-            delivery.ballNumber,
-            delivery.ballInOver,
-            delivery.inningsOrder,
-            delivery.delivery.runs.batter,
-            delivery.delivery.runs.extras,
-            delivery.delivery.runs.total,
-            delivery.delivery.extras?.noballs ?: 0,
-            delivery.delivery.extras?.wides ?: 0,
-            delivery.delivery.extras?.byes ?: 0,
-            delivery.delivery.extras?.legbyes ?: 0,
-            delivery.delivery.runs.nonBoundary?.let { if (it) 1 else 0 },
-            delivery.powerplay,
-            delivery.delivery.wickets.orEmpty().size
+            WarehouseWriteSupport.insertSql("fact_delivery", WarehouseWriteSupport.DELIVERY_COLUMNS),
+            *WarehouseWriteSupport.deliveryValues(key, nextBallSourceId++, delivery).toTypedArray()
         )
         deliveries[Triple(delivery.matchKey, delivery.inningsKey, delivery.inningsOrder)] = key
         return key
@@ -262,7 +198,7 @@ abstract class SqlScriptOutputAdapter(
     override fun insertWicket(kind: String): Long {
         val key = nextWicketKey++
         write(
-            "INSERT INTO dim_wicket (wicket_key, source_wicket_id, wicket_kind) VALUES (?, ?, ?)",
+            WarehouseWriteSupport.insertSql("dim_wicket", WarehouseWriteSupport.WICKET_COLUMNS),
             key,
             nextWicketSourceId++,
             kind
@@ -271,7 +207,11 @@ abstract class SqlScriptOutputAdapter(
     }
 
     override fun insertDeliveryWicket(deliveryKey: Long, wicketKey: Long) {
-        write("INSERT INTO bridge_delivery_wicket (delivery_key, wicket_key) VALUES (?, ?)", deliveryKey, wicketKey)
+        write(
+            WarehouseWriteSupport.insertSql("bridge_delivery_wicket", WarehouseWriteSupport.DELIVERY_WICKET_COLUMNS),
+            deliveryKey,
+            wicketKey
+        )
     }
 
     override fun insertDeliveryFielder(deliveryKey: Long, wicketKey: Long, personKey: Long) {
@@ -286,8 +226,10 @@ abstract class SqlScriptOutputAdapter(
             return
         }
         write(
-            "INSERT INTO bridge_delivery_fielder (delivery_key, wicket_key, person_key) VALUES (?, ?, ?) " +
-                    dialect.duplicateDeliveryFielderClause,
+            WarehouseWriteSupport.insertSql(
+                "bridge_delivery_fielder",
+                WarehouseWriteSupport.DELIVERY_FIELDER_COLUMNS
+            ) + " " + dialect.duplicateDeliveryFielderClause,
             deliveryKey,
             wicketKey,
             personKey
@@ -296,8 +238,10 @@ abstract class SqlScriptOutputAdapter(
 
     override fun insertMatchPerson(matchKey: Long, personKey: Long, roleCode: String) {
         write(
-            "INSERT INTO bridge_match_person (match_key, person_key, role_code) VALUES (?, ?, ?) " +
-                    dialect.duplicateMatchPersonClause,
+            WarehouseWriteSupport.insertSql(
+                "bridge_match_person",
+                WarehouseWriteSupport.MATCH_PERSON_INSERT_COLUMNS
+            ) + " " + dialect.duplicateMatchPersonClause,
             matchKey,
             personKey,
             roleCode
@@ -318,24 +262,14 @@ abstract class SqlScriptOutputAdapter(
         }
     }
 
-    private fun validatePublicMatchId(canonicalMatchId: CanonicalMatchId, publicMatchId: PublicMatchId) {
-        publicMatches[publicMatchId]?.let { existingCanonicalMatchId ->
-            if (existingCanonicalMatchId != canonicalMatchId) {
-                throw InvalidStateException(
-                    "Deterministic publicMatchId ${publicMatchId.value} collides for " +
-                        "canonical matches ${existingCanonicalMatchId.value} and ${canonicalMatchId.value}"
-                )
-            }
-        }
-        matchPublicIds[canonicalMatchId]?.let { existingPublicMatchId ->
-            if (existingPublicMatchId != publicMatchId) {
-                throw InvalidStateException(
-                    "Canonical match ${canonicalMatchId.value} already has publicMatchId " +
-                        existingPublicMatchId.value
-                )
-            }
-        }
-    }
+    private fun decideMatchWrite(canonicalMatchId: CanonicalMatchId, publicMatchId: PublicMatchId) =
+        WarehouseWriteSupport.matchWriteDecision(
+            canonicalMatchId = canonicalMatchId,
+            publicMatchId = publicMatchId,
+            existingMatchKey = matches[canonicalMatchId],
+            existingPublicMatchId = matchPublicIds[canonicalMatchId]?.value,
+            publicIdOwnedByAnotherMatch = publicMatches[publicMatchId]?.let { it != canonicalMatchId } ?: false
+        )
 
     private fun write(sql: String, vararg values: Any?) {
         var statement = sql

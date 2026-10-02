@@ -10,7 +10,6 @@ import com.knowledgespike.ballbyball.types.values.PageSize
 import com.knowledgespike.ballbyball.types.values.SearchDate
 import com.knowledgespike.ballbyball.types.values.SearchTeam
 import com.knowledgespike.ballbyball.types.values.Season
-import com.knowledgespike.ballbyball.types.values.SourceMatchId
 import com.knowledgespike.ballbyball.types.values.VenueFilter
 import kotlinx.serialization.Serializable
 
@@ -28,45 +27,42 @@ data class HeartbeatResponse(
 @Serializable
 data class MatchSummary(
     val publicMatchId: PublicMatchId,
-    val sourceMatchId: SourceMatchId,
     val fileName: String,
     val matchType: MatchType,
     val season: Season,
-    val competition: String = "MISSING",
-    val date: String = "MISSING",
-    val team1: String = "MISSING",
-    val score1: String = "MISSING",
+    val competition: String? = null,
+    val date: String? = null,
+    val team1: String? = null,
+    val score1: String? = null,
     val overs1: String? = null,
     val isTeam1Winner: Boolean = false,
-    val team2: String = "MISSING",
-    val score2: String = "MISSING",
+    val team2: String? = null,
+    val score2: String? = null,
     val overs2: String? = null,
     val isTeam2Winner: Boolean = false,
-    val result: String = "MISSING",
-    val format: String = "MISSING"
+    val result: String? = null,
+    val format: String? = null
 ) {
     companion object {
         fun of(
             publicMatchId: Long,
-            sourceMatchId: Int,
             fileName: String,
             matchType: String,
             season: String,
-            competition: String = "MISSING",
-            date: String = "MISSING",
-            team1: String = "MISSING",
-            score1: String = "MISSING",
+            competition: String? = null,
+            date: String? = null,
+            team1: String? = null,
+            score1: String? = null,
             overs1: String? = null,
             isTeam1Winner: Boolean = false,
-            team2: String = "MISSING",
-            score2: String = "MISSING",
+            team2: String? = null,
+            score2: String? = null,
             overs2: String? = null,
             isTeam2Winner: Boolean = false,
-            result: String = "MISSING",
-            format: String = "MISSING"
+            result: String? = null,
+            format: String? = null
         ): MatchSummary = MatchSummary(
             PublicMatchId.from(publicMatchId),
-            SourceMatchId.from(sourceMatchId),
             fileName,
             MatchType.from(matchType),
             Season.from(season),
@@ -109,7 +105,6 @@ data class MatchSearchRequest(
 @Serializable
 data class MatchSearchResult(
     val publicMatchId: PublicMatchId,
-    val sourceMatchId: SourceMatchId,
     val fileName: String,
     val matchType: MatchType?,
     val season: Season?,
@@ -146,7 +141,6 @@ enum class ScoresheetCompleteness {
 @Serializable
 data class MatchScoresheetContext(
     val publicMatchId: PublicMatchId,
-    val sourceMatchId: SourceMatchId,
     val fileName: String,
     val matchType: MatchType?,
     val season: Season?,

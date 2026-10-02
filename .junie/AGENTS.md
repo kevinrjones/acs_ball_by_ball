@@ -135,7 +135,7 @@ functional boundary validation via **Arrow** (`Either`, `Raise`, and `zipOrAccum
 ### Core Principles
 
 1. **Zero-Allocation Strong Typing**: Domain concepts that wrap primitives (such as IDs, limits, codes, seasons, and
-   user identifiers) must be defined as `@JvmInline value class` (e.g. `Limit`, `MatchKey`, `SourceMatchId`,
+   user identifiers) must be defined as `@JvmInline value class` (e.g. `Limit`, `MatchKey`, `PublicMatchId`,
    `MatchType`, `Season`, `UserId`). On the JVM they compile to raw primitives, incurring zero runtime object allocation
    overhead.
 2. **Serialization Transparency**: Value classes annotated with `@Serializable` serialize directly as their underlying

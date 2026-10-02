@@ -1,8 +1,8 @@
 import {CommonModule} from '@angular/common';
 import {Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, RouterLink} from '@angular/router';
-import {parseMatchSearchQuery, serializeMatchSearchQuery} from '../../../models/match-search-query.codec';
-import {MatchService} from '../../../services/match.service';
+import {parseMatchSearchQuery, serializeMatchSearchQuery} from '../domain/match-search-query.codec';
+import {MatchService} from '../data/match.service';
 import {presentScoresheet, PresentedScoresheet} from './scoresheet-presenter';
 
 export type ScoresheetState = 'loading' | 'results' | 'not-found' | 'error';

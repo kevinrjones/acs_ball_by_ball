@@ -37,9 +37,10 @@ match search and scoresheet APIs through a Ktor backend and Angular web UI.
 
 - Command-line tools to download Cricsheet archives and player registers
 - A Cricsheet adapter that emits source and canonical match envelopes
-- A warehouse loader that writes SQL scripts, CSV files, or JDBC inserts
+- A warehouse loader that writes SQL scripts, CSV files, or JDBC inserts, with
+  transactional JDBC match writes
 - A read-only Ktor REST API over the warehouse
-- A Ktor-hosted Angular SPA with OIDC BFF login and API proxying
+- A Ktor-hosted, feature-sliced Angular SPA with OIDC BFF login and API proxying
 - Shared contracts, tiny types, Flyway migrations, and architecture docs
 
 ## Data pipeline
@@ -85,7 +86,7 @@ reconciliation is intentionally a separate future application.
 | `bbb-update-database` | CLI | Load canonical envelopes into SQL, CSV, or JDBC warehouse output |
 | `bbb-shared` | Library | Shared HTTP contracts and validated tiny types |
 | `bbb-api` | Service | Read-only warehouse REST API (default port `8081`) |
-| `bbb-web` | Service | Angular SPA host, OIDC BFF, and API proxy (default port `8080`) |
+| `bbb-web` | Service | Feature-sliced Angular SPA, OIDC BFF, and API proxy (default port `8080`) |
 
 Module registration lives in `settings.gradle.kts`. Dependency versions live in
 `gradle/libs.versions.toml`.

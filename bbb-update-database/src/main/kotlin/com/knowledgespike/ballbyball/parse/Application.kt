@@ -17,6 +17,16 @@ import com.knowledgespike.ballbyball.parse.database.adapter.sqlite.SqlScriptOutp
 import org.apache.commons.cli.*
 import java.nio.file.Path
 
+private sealed interface OutputTarget {
+    data class DatabaseTarget(
+        val connectionString: String,
+        val userName: String?,
+        val password: String?
+    ) : OutputTarget
+
+    data class ScriptTarget(val databaseType: String, val output: Path) : OutputTarget
+    data class CsvTarget(val directory: Path) : OutputTarget
+}
 
 class Application {
 
@@ -26,8 +36,6 @@ class Application {
         @JvmStatic
         fun main(args: Array<String>) {
             try {
-
-                val exceptions = emptyList<String>()
 
                 val options = createCommandLineOptions()
 
@@ -61,17 +69,8 @@ class Application {
                     return
                 }
 
-                val outputType = cmd.getOptionValue("ot", "SQL").uppercase()
-                val outputFile = cmd.getOptionValue("o") ?: cmd.getOptionValue("sf")
-                val csvDirectory = cmd.getOptionValue("cd")
-                val databaseType = cmd.getOptionValue("db", "mariadb").lowercase()
                 val input = UpdateDatabaseArguments.from(cmd)
-                val outputPath = outputFile?.let {
-                    UpdateDatabaseArguments.resolveOutputPath(input.baseDirectory, it, "--outputFile")
-                }
-                val csvPath = csvDirectory?.let {
-                    UpdateDatabaseArguments.resolveOutputPath(input.baseDirectory, it, "--csvDir")
-                }
+                val outputTarget = resolveOutputTarget(cmd, input)
 
                 val playerRegistryParser = PlayerRegistryParser()
                 val players = playerRegistryParser.parse(input.playerRegistry.toFile())
@@ -79,50 +78,75 @@ class Application {
                     PersonRegistryEntity(it.id, it.name, it.caId.toIntOrNull() ?: 0)
                 }.toList()
 
-                when (outputType) {
-                    "SQL_FILE" -> {
-                        require(!outputFile.isNullOrBlank()) { "--outputFile is required when --outputType SQL_FILE is selected" }
-                        createScriptOutputAdapter(databaseType, requireNotNull(outputPath)).use { adapter ->
-                            runImport(adapter, input, people, exceptions)
+                when (outputTarget) {
+                    is OutputTarget.ScriptTarget -> {
+                        createScriptOutputAdapter(outputTarget.databaseType, outputTarget.output).use { adapter ->
+                            runImport(adapter, input, people)
                         }
                     }
 
-                    "SQL", "DATABASE" -> {
-                        if (outputType == "SQL" && !outputFile.isNullOrBlank()) {
-                            createScriptOutputAdapter(databaseType, requireNotNull(outputPath)).use { adapter ->
-                                runImport(adapter, input, people, exceptions)
-                            }
-                            return
-                        }
-                        val connectionString = cmd.getOptionValue("c")
-                            ?: throw IllegalArgumentException("--connectionString is required for DATABASE output")
+                    is OutputTarget.DatabaseTarget -> {
                         val dbConnection = DatabaseConnection(
-                            connectionString,
-                            cmd.getOptionValue("u"),
-                            cmd.getOptionValue("p")
+                            outputTarget.connectionString,
+                            outputTarget.userName,
+                            outputTarget.password
                         )
                         dbConnection.connect.use { db ->
-                            createSqlOutputAdapter(connectionString, db.connection).use { adapter ->
-                                runImport(adapter, input, people, exceptions)
+                            createSqlOutputAdapter(outputTarget.connectionString, db.connection).use { adapter ->
+                                runImport(adapter, input, people)
                             }
                         }
                     }
 
-                    "CSV" -> {
-                        require(!csvDirectory.isNullOrBlank()) {
-                            "--csvDir is required when --outputType CSV is selected"
-                        }
-                        CsvOutputAdapter(requireNotNull(csvPath)).use { adapter ->
-                            runImport(adapter, input, people, exceptions)
+                    is OutputTarget.CsvTarget -> {
+                        CsvOutputAdapter(outputTarget.directory).use { adapter ->
+                            runImport(adapter, input, people)
                         }
                     }
-
-                    else -> throw IllegalArgumentException("Unsupported output type: $outputType")
                 }
             } catch (e: Exception) {
                 log.error("Unable to parse cricsheet data", e)
             }
             log.info("finished")
+        }
+
+        private fun resolveOutputTarget(cmd: CommandLine, input: UpdateDatabaseInput): OutputTarget {
+            val outputType = cmd.getOptionValue("ot", "SQL").uppercase()
+            val outputFile = cmd.getOptionValue("o") ?: cmd.getOptionValue("sf")
+            val csvDirectory = cmd.getOptionValue("cd")
+            val databaseType = cmd.getOptionValue("db", "mariadb").lowercase()
+            val outputPath = outputFile?.let {
+                UpdateDatabaseArguments.resolveOutputPath(input.baseDirectory, it, "--outputFile")
+            }
+            val csvPath = csvDirectory?.let {
+                UpdateDatabaseArguments.resolveOutputPath(input.baseDirectory, it, "--csvDir")
+            }
+
+            return when (outputType) {
+                "SQL_FILE" -> {
+                    require(!outputFile.isNullOrBlank()) {
+                        "--outputFile is required when --outputType SQL_FILE is selected"
+                    }
+                    OutputTarget.ScriptTarget(databaseType, requireNotNull(outputPath))
+                }
+
+                "SQL", "DATABASE" -> if (outputType == "SQL" && !outputFile.isNullOrBlank()) {
+                    OutputTarget.ScriptTarget(databaseType, requireNotNull(outputPath))
+                } else {
+                    val connectionString = cmd.getOptionValue("c")
+                        ?: throw IllegalArgumentException("--connectionString is required for DATABASE output")
+                    OutputTarget.DatabaseTarget(connectionString, cmd.getOptionValue("u"), cmd.getOptionValue("p"))
+                }
+
+                "CSV" -> {
+                    require(!csvDirectory.isNullOrBlank()) {
+                        "--csvDir is required when --outputType CSV is selected"
+                    }
+                    OutputTarget.CsvTarget(requireNotNull(csvPath))
+                }
+
+                else -> throw IllegalArgumentException("Unsupported output type: $outputType")
+            }
         }
 
         private fun createScriptOutputAdapter(databaseType: String, output: Path): OutputAdapter = when (databaseType) {
@@ -174,34 +198,30 @@ class Application {
         private fun runImport(
             adapter: OutputAdapter,
             input: UpdateDatabaseInput,
-            people: List<PersonRegistryEntity>,
-            exceptions: List<String>
+            people: List<PersonRegistryEntity>
         ) {
             val database = Database(adapter)
             database.writeAllPeople(people.stream())
             val ballByBallParser = BallByBallParser()
-            importMatches(database, ballByBallParser, input.dataDirectory, exceptions)
+            importMatches(database, ballByBallParser, input.dataDirectory)
         }
 
         private fun importMatches(
             database: Database,
             parser: BallByBallParser,
-            dataDirectory: Path,
-            exceptions: List<String>
+            dataDirectory: Path
         ) {
             log.info("Inserting matches from {}", dataDirectory)
             matchFiles(dataDirectory).forEach { file ->
                 val sourceFile = file.toAbsolutePath().normalize()
-                if (!exceptions.contains(file.fileName.toString())) {
-                    val envelope = parser.parse(file.toFile())
-                    log.debug(
-                        "Parsing match: {}, {}, {}",
-                        file.fileName,
-                        envelope.match.match.event?.name ?: "Unknown",
-                        envelope.match.match.matchType
-                    )
-                    database.writeMatch(sourceFile.toString(), envelope)
-                }
+                val envelope = parser.parse(file.toFile())
+                log.debug(
+                    "Parsing match: {}, {}, {}",
+                    file.fileName,
+                    envelope.match.match.event?.name ?: "Unknown",
+                    envelope.match.match.matchType
+                )
+                database.writeMatch(sourceFile.toString(), envelope)
             }
         }
 

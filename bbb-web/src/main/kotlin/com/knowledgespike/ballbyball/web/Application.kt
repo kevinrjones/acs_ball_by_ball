@@ -1,9 +1,7 @@
 package com.knowledgespike.ballbyball.web
 
 import io.github.cdimascio.dotenv.dotenv
-import io.ktor.server.config.MapApplicationConfig
 import io.ktor.server.netty.EngineMain
-import org.slf4j.LoggerFactory
 import java.io.File
 
 /**

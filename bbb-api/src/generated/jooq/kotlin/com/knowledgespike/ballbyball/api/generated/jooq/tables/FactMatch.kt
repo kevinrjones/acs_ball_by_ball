@@ -41,6 +41,7 @@ import org.jooq.impl.DSL
 import org.jooq.impl.Internal
 import org.jooq.impl.SQLDataType
 import org.jooq.impl.TableImpl
+import org.jooq.types.UByte
 
 
 /**
@@ -108,7 +109,7 @@ open class FactMatch(
     /**
      * The column <code>acs_ball_by_ball.fact_match.match_count</code>.
      */
-    val MATCH_COUNT: TableField<FactMatchRecord, Byte?> = createField(DSL.name("match_count"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.field(DSL.raw("1"), SQLDataType.TINYINT)), this, "")
+    val MATCH_COUNT: TableField<FactMatchRecord, UByte?> = createField(DSL.name("match_count"), SQLDataType.TINYINTUNSIGNED.nullable(false).defaultValue(DSL.field(DSL.raw("1"), SQLDataType.TINYINTUNSIGNED)), this, "")
 
     private constructor(alias: Name, aliased: Table<FactMatchRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<FactMatchRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)

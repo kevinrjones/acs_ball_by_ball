@@ -272,7 +272,7 @@ an error response.
 The application enforces strong typing at compile-time with zero runtime overhead using Kotlin value classes (`@JvmInline value class`):
 - `Limit`: Encapsulates query limit bounds (`1..100`, default `10`).
 - `MatchKey`: Encapsulates unique match surrogate keys (`> 0`).
-- `SourceMatchId`: Encapsulates external match identifiers (`>= 0`).
+- `PublicMatchId`: Encapsulates public match identifiers used by API routes and contracts.
 - `MatchType`: Encapsulates non-blank cricket match types (e.g. `Test`, `ODI`, `T20`).
 - `Season`: Encapsulates non-blank cricket seasons (e.g. `2023/24`, `1992`).
 

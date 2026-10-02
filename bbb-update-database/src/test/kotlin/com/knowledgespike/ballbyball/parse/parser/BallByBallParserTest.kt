@@ -1,11 +1,11 @@
 package com.knowledgespike.ballbyball.parse.parser
 
 import com.knowledgespike.ballbyball.clishared.identity.CanonicalMatchEnvelope
-import com.knowledgespike.ballbyball.clishared.identity.CanonicalMatchId
+import com.knowledgespike.ballbyball.identity.CanonicalMatchId
 import com.knowledgespike.ballbyball.clishared.identity.MergeEvidence
-import com.knowledgespike.ballbyball.clishared.identity.ProviderId
-import com.knowledgespike.ballbyball.clishared.identity.Sha256Digest
-import com.knowledgespike.ballbyball.clishared.identity.SourceRecordId
+import com.knowledgespike.ballbyball.identity.ProviderId
+import com.knowledgespike.ballbyball.identity.Sha256Digest
+import com.knowledgespike.ballbyball.identity.SourceRecordId
 import com.knowledgespike.ballbyball.clishared.identity.SourceReference
 
 import com.knowledgespike.ballbyball.clishared.schema.BbbMatchData

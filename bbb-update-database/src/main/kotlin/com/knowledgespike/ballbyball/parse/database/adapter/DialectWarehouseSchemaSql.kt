@@ -46,9 +46,13 @@ internal object WarehouseSchemaSql {
 
     private fun createStatements(dialect: SqlDialect): List<String> {
         val key = keyType(dialect)
+        val matchKey = matchKeyType(dialect)
         val integer = if (dialect == SqlDialect.SQLITE) "INTEGER" else "INT"
         val smallInteger = if (dialect == SqlDialect.POSTGRES) "SMALLINT" else "TINYINT"
+        val matchCount = if (dialect == SqlDialect.MARIADB) "TINYINT UNSIGNED" else smallInteger
+        val timestamp = if (dialect == SqlDialect.MARIADB) "DATETIME" else "TIMESTAMP"
         val identity = identityKeyType(dialect)
+        val matchIdentity = identityMatchKeyType(dialect)
 
         return listOf(
             """
@@ -107,9 +111,8 @@ internal object WarehouseSchemaSql {
             """
             CREATE TABLE dim_match
             (
-                match_key            $identity,
-                canonical_match_id   VARCHAR(36) NOT NULL,
-                public_match_id      $key NULL,
+                match_key            $matchIdentity,
+                canonical_match_id   CHAR(36) NULL,
                 source_ca_id         VARCHAR(10) NULL,
                 file_name            VARCHAR(120) NOT NULL,
                 match_in_series      $integer NOT NULL,
@@ -120,7 +123,7 @@ internal object WarehouseSchemaSql {
                 match_start_year     VARCHAR(200) NOT NULL,
                 match_start_date_key $integer NULL,
                 balls_per_over       $integer NOT NULL,
-                added_timestamp      TIMESTAMP NOT NULL,
+                added_timestamp      $timestamp NOT NULL,
                 team1_key            $key NOT NULL,
                 team2_key            $key NOT NULL,
                 ground_key           $key NOT NULL,
@@ -129,6 +132,7 @@ internal object WarehouseSchemaSql {
                 victory_type         VARCHAR(15) NOT NULL,
                 winner_team_key      $key NULL,
                 loser_team_key       $key NULL,
+                public_match_id      $matchKey NULL,
                 CONSTRAINT uq_dim_match_canonical_id UNIQUE (canonical_match_id),
                 CONSTRAINT uq_dim_match_public_match_id UNIQUE (public_match_id),
                 CONSTRAINT fk_dim_match_start_date FOREIGN KEY (match_start_date_key) REFERENCES dim_date (date_key),
@@ -152,10 +156,10 @@ internal object WarehouseSchemaSql {
             """
             CREATE TABLE match_source_reference
             (
-                match_key          $key NOT NULL,
+                match_key          $matchKey NOT NULL,
                 provider           VARCHAR(100) NOT NULL,
                 provider_record_key VARCHAR(255) NOT NULL,
-                source_record_id   VARCHAR(36) NOT NULL,
+                source_record_id   CHAR(36) NOT NULL,
                 raw_content_digest CHAR(64) NOT NULL,
                 CONSTRAINT pk_match_source_reference PRIMARY KEY (match_key, provider, source_record_id),
                 CONSTRAINT uq_match_source_provider_record UNIQUE (provider, source_record_id),
@@ -167,7 +171,7 @@ internal object WarehouseSchemaSql {
             CREATE TABLE dim_innings
             (
                 innings_key      $identity,
-                match_key        $key NOT NULL,
+                match_key        $matchKey NOT NULL,
                 innings_number   $integer NOT NULL,
                 batting_team_key $key NOT NULL,
                 bowling_team_key $key NOT NULL,
@@ -192,12 +196,12 @@ internal object WarehouseSchemaSql {
             """
             CREATE TABLE fact_match
             (
-                match_key       $key NOT NULL PRIMARY KEY,
+                match_key       $matchKey NOT NULL PRIMARY KEY,
                 match_date_key  $integer NULL,
                 ground_key       $key NOT NULL,
                 duration_days   $integer NOT NULL,
                 margin           $integer NOT NULL,
-                match_count     $smallInteger NOT NULL DEFAULT 1,
+                match_count     $matchCount NOT NULL DEFAULT 1,
                 CONSTRAINT fk_fact_match_match FOREIGN KEY (match_key) REFERENCES dim_match (match_key),
                 CONSTRAINT fk_fact_match_date FOREIGN KEY (match_date_key) REFERENCES dim_date (date_key),
                 CONSTRAINT fk_fact_match_ground FOREIGN KEY (ground_key) REFERENCES dim_ground (ground_key)
@@ -210,7 +214,7 @@ internal object WarehouseSchemaSql {
             (
                 delivery_key       $identity,
                 source_ball_id     $integer NOT NULL,
-                match_key          $key NOT NULL,
+                match_key          $matchKey NOT NULL,
                 match_date_key     $integer NULL,
                 innings_key        $key NOT NULL,
                 batting_team_key   $key NOT NULL,
@@ -259,7 +263,7 @@ internal object WarehouseSchemaSql {
             CREATE TABLE bridge_match_person
             (
                 match_person_key $identity,
-                match_key         $key NOT NULL,
+                match_key         $matchKey NOT NULL,
                 person_key        $key NOT NULL,
                 role_code         VARCHAR(32) NOT NULL,
                 CONSTRAINT uq_bridge_match_person_role UNIQUE (match_key, person_key, role_code),
@@ -303,8 +307,20 @@ internal object WarehouseSchemaSql {
         SqlDialect.SQLITE -> "INTEGER"
     }
 
+    private fun matchKeyType(dialect: SqlDialect): String = when (dialect) {
+        SqlDialect.MARIADB -> "BIGINT"
+        SqlDialect.POSTGRES -> "BIGINT"
+        SqlDialect.SQLITE -> "INTEGER"
+    }
+
     private fun identityKeyType(dialect: SqlDialect): String = when (dialect) {
         SqlDialect.MARIADB -> "BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY"
+        SqlDialect.POSTGRES -> "BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY"
+        SqlDialect.SQLITE -> "INTEGER PRIMARY KEY AUTOINCREMENT"
+    }
+
+    private fun identityMatchKeyType(dialect: SqlDialect): String = when (dialect) {
+        SqlDialect.MARIADB -> "BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY"
         SqlDialect.POSTGRES -> "BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY"
         SqlDialect.SQLITE -> "INTEGER PRIMARY KEY AUTOINCREMENT"
     }

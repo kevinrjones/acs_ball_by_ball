@@ -1,7 +1,7 @@
 import {CommonModule} from '@angular/common';
 import {Component, inject, OnInit, signal} from '@angular/core';
 import {ActivatedRoute, Router} from '@angular/router';
-import {MatchSearchFilters, MatchSearchQuery} from '../../../models/match.model';
+import {MatchSearchFilters, MatchSearchQuery} from '../domain/match.model';
 import {
   EMPTY_MATCH_SEARCH_FILTERS,
   MATCH_RESULT_OPTIONS,
@@ -12,7 +12,7 @@ import {
   serializeMatchSearchQuery,
   validateMatchSearchQuery,
   VENUE_OPTIONS
-} from '../../../models/match-search-query.codec';
+} from '../domain/match-search-query.codec';
 
 interface SearchPreset {
   readonly id: string;

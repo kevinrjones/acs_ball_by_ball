@@ -1,8 +1,8 @@
 package com.knowledgespike.ballbyball.parsecricsheet
 
-import com.knowledgespike.ballbyball.clishared.identity.DeterministicIdentity
-import com.knowledgespike.ballbyball.clishared.identity.ProviderId
-import com.knowledgespike.ballbyball.clishared.identity.ProviderNamespaces
+import com.knowledgespike.ballbyball.identity.DeterministicIdentity
+import com.knowledgespike.ballbyball.identity.ProviderId
+import com.knowledgespike.ballbyball.identity.ProviderNamespaces
 import com.knowledgespike.ballbyball.clishared.identity.SourceMatchEnvelope
 import com.knowledgespike.ballbyball.clishared.identity.SourceReference
 import com.knowledgespike.ballbyball.clishared.schema.BbbMatchData

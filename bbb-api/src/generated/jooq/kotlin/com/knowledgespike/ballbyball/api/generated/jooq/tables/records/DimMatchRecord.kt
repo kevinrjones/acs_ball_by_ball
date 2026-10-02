@@ -18,13 +18,13 @@ import org.jooq.impl.UpdatableRecordImpl
 @Suppress("warnings")
 open class DimMatchRecord() : UpdatableRecordImpl<DimMatchRecord>(DimMatch.DIM_MATCH) {
 
-    open var id: Long?
+    open var matchKey: Long?
         set(value): Unit = set(0, value)
         get(): Long? = get(0) as Long?
 
-    open var publicMatchId: Long?
+    open var canonicalMatchId: String?
         set(value): Unit = set(1, value)
-        get(): Long? = get(1) as Long?
+        get(): String? = get(1) as String?
 
     open var sourceCaId: String?
         set(value): Unit = set(2, value)
@@ -102,6 +102,10 @@ open class DimMatchRecord() : UpdatableRecordImpl<DimMatchRecord>(DimMatch.DIM_M
         set(value): Unit = set(20, value)
         get(): Long? = get(20) as Long?
 
+    open var publicMatchId: Long?
+        set(value): Unit = set(21, value)
+        get(): Long? = get(21) as Long?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -111,9 +115,9 @@ open class DimMatchRecord() : UpdatableRecordImpl<DimMatchRecord>(DimMatch.DIM_M
     /**
      * Create a detached, initialised DimMatchRecord
      */
-    constructor(id: Long? = null, publicMatchId: Long? = null, sourceCaId: String? = null, fileName: String? = null, matchInSeries: Int? = null, matchType: String? = null, eventName: String? = null, matchDateText: String? = null, season: String? = null, matchStartYear: String? = null, matchStartDateKey: Int? = null, ballsPerOver: Int? = null, addedTimestamp: LocalDateTime? = null, team1Key: Long? = null, team2Key: Long? = null, groundKey: Long? = null, tossTeamKey: Long? = null, tossDecision: String? = null, victoryType: String? = null, winnerTeamKey: Long? = null, loserTeamKey: Long? = null): this() {
-        this.id = id
-        this.publicMatchId = publicMatchId
+    constructor(matchKey: Long? = null, canonicalMatchId: String? = null, sourceCaId: String? = null, fileName: String? = null, matchInSeries: Int? = null, matchType: String? = null, eventName: String? = null, matchDateText: String? = null, season: String? = null, matchStartYear: String? = null, matchStartDateKey: Int? = null, ballsPerOver: Int? = null, addedTimestamp: LocalDateTime? = null, team1Key: Long? = null, team2Key: Long? = null, groundKey: Long? = null, tossTeamKey: Long? = null, tossDecision: String? = null, victoryType: String? = null, winnerTeamKey: Long? = null, loserTeamKey: Long? = null, publicMatchId: Long? = null): this() {
+        this.matchKey = matchKey
+        this.canonicalMatchId = canonicalMatchId
         this.sourceCaId = sourceCaId
         this.fileName = fileName
         this.matchInSeries = matchInSeries
@@ -133,6 +137,7 @@ open class DimMatchRecord() : UpdatableRecordImpl<DimMatchRecord>(DimMatch.DIM_M
         this.victoryType = victoryType
         this.winnerTeamKey = winnerTeamKey
         this.loserTeamKey = loserTeamKey
+        this.publicMatchId = publicMatchId
         resetTouchedOnNotNull()
     }
 }

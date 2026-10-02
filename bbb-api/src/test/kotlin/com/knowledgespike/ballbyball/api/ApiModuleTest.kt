@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test
 import strikt.api.expectThat
 import strikt.assertions.contains
 import strikt.assertions.isEqualTo
+import strikt.assertions.isFalse
 
 class ApiModuleTest {
     private val algorithm = Algorithm.HMAC256("test-secret-key-for-jwt-verification")
@@ -134,7 +135,6 @@ class ApiModuleTest {
             matches = listOf(
                 MatchSearchMatch(
                     publicMatchId = PublicMatchId.from(1_000_000_123),
-                    sourceMatchId = SourceMatchId.from(456),
                     fileName = "historic-match.json",
                     matchType = MatchType.from("TEST"),
                     season = Season.from("2024"),
@@ -166,7 +166,7 @@ class ApiModuleTest {
     fun `matches serializes repository results with machine token`() = testApplication {
         application {
             moduleWithDependencies(
-                FakeMatchRepository(matches = listOf(MatchSummary.of(1_000_000_001, 10, "match.json", "TEST", "2026"))),
+                FakeMatchRepository(matches = listOf(MatchSummary.of(1_000_000_001, "match.json", "TEST", "2026"))),
                 FakeDatabaseHealth(healthy = true),
                 jwtVerifier = testVerifier
             )
@@ -189,7 +189,7 @@ class ApiModuleTest {
     fun `matches serializes repository results with machine token having acs-bbb audience and bbb api read scope`() = testApplication {
         application {
             moduleWithDependencies(
-                FakeMatchRepository(matches = listOf(MatchSummary.of(1_000_000_001, 10, "match.json", "TEST", "2026"))),
+                FakeMatchRepository(matches = listOf(MatchSummary.of(1_000_000_001, "match.json", "TEST", "2026"))),
                 FakeDatabaseHealth(healthy = true),
                 jwtVerifier = testVerifier
             )
@@ -207,7 +207,6 @@ class ApiModuleTest {
     fun `matches endpoint serializes full match details and supports days parameter`() = testApplication {
         val sampleMatch = MatchSummary.of(
             publicMatchId = 2_025_100_000,
-            sourceMatchId = 20251,
             fileName = "1548895.json",
             matchType = "witt",
             season = "2026",
@@ -245,6 +244,8 @@ class ApiModuleTest {
         expectThat(body).contains("\"score2\": \"84-8\"")
         expectThat(body).contains("\"result\": \"Pakistan won by 35 runs\"")
         expectThat(body).contains("\"format\": \"women's t20i\"")
+        expectThat(body.contains("sourceMatchId")).isFalse()
+        expectThat(body.contains("matchKey")).isFalse()
     }
 
     @Test

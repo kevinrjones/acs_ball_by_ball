@@ -8,6 +8,7 @@ import com.knowledgespike.ballbyball.api.generated.jooq.tables.FactMatch
 
 import org.jooq.Record1
 import org.jooq.impl.UpdatableRecordImpl
+import org.jooq.types.UByte
 
 
 /**
@@ -36,9 +37,9 @@ open class FactMatchRecord() : UpdatableRecordImpl<FactMatchRecord>(FactMatch.FA
         set(value): Unit = set(4, value)
         get(): Int? = get(4) as Int?
 
-    open var matchCount: Byte?
+    open var matchCount: UByte?
         set(value): Unit = set(5, value)
-        get(): Byte? = get(5) as Byte?
+        get(): UByte? = get(5) as UByte?
 
     // -------------------------------------------------------------------------
     // Primary key information
@@ -49,7 +50,7 @@ open class FactMatchRecord() : UpdatableRecordImpl<FactMatchRecord>(FactMatch.FA
     /**
      * Create a detached, initialised FactMatchRecord
      */
-    constructor(matchKey: Long? = null, matchDateKey: Int? = null, groundKey: Long? = null, durationDays: Int? = null, margin: Int? = null, matchCount: Byte? = null): this() {
+    constructor(matchKey: Long? = null, matchDateKey: Int? = null, groundKey: Long? = null, durationDays: Int? = null, margin: Int? = null, matchCount: UByte? = null): this() {
         this.matchKey = matchKey
         this.matchDateKey = matchDateKey
         this.groundKey = groundKey

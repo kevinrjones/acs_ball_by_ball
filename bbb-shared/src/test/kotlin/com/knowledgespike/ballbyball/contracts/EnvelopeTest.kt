@@ -5,10 +5,8 @@ import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Test
 import strikt.api.expectThat
 import strikt.assertions.isEqualTo
-import strikt.assertions.isNotEmpty
 import strikt.assertions.isTrue
 import kotlin.time.Clock
-import kotlin.time.Instant
 
 class EnvelopeTest {
 

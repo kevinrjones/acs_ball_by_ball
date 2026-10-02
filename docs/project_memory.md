@@ -1,5 +1,325 @@
 # Project Memory
 
+## Overall
+
+### What was shipped
+
+- Second thermo-nuclear structural pass finished warehouse write policy, identity-era
+  jOOQ models, match read decomposition, shared identity ownership, nullable match
+  summary contracts, explicit opposing-team bowling, and Angular codec colocation.
+- Public contracts no longer expose warehouse keys as `sourceMatchId`.
+- Warehouse writers share row values and collision decisions; JDBC match loads are
+  transactional.
+- Fresh Compose MariaDB init and committed jOOQ include identity-era warehouse columns
+  (`match_key`, `canonical_match_id`, `public_match_id`, `match_source_reference`).
+- Identity IDs and deterministic generation live in `bbb-shared`; envelopes remain in
+  `bbb-cli-shared`.
+- Match repository formatting lives in `MatchResponseMapper`; scoresheet loading is a
+  dedicated loader; the empty `MatchService` hop is gone.
+- Scoresheet presenter is split and the Angular match feature is colocated under
+  `feature/matches`.
+
+### Key decisions
+
+- Hash-and-reject public IDs and internal `matchKey` joins remain unchanged.
+- `MatchSummary` optional display fields are nullable `String?`, aligned with search and
+  scoresheet contracts.
+- Schema migrations stay immutable history; Compose init, SQL generators, and jOOQ
+  codegen carry the current end-state warehouse shape.
+- jOOQ generation maps `match_key` to `MATCH_KEY` (not `ID`) and can regenerate from a
+  temporary identity-era schema while emitting the production schema name.
+
+### Gotchas
+
+- Detekt/Ktlint/cyclomatic Gradle tasks are not configured on these modules.
+- `bbb-shared` Pitest still lacks a JUnit 5 plugin (pre-existing).
+- Live MariaDB integration tests still depend on a migrated local database when
+  not using the refreshed Compose init volume.
+- Existing Compose volumes need `docker compose down -v` to pick up identity-era init.
+
+## Task: Thermo-nuclear structural follow-up
+
+### Title
+
+Finish warehouse write unification, identity-era jOOQ, match read split, and shared identity
+
+### Date/time completed
+
+2026-10-02 13:59
+
+### What was shipped
+
+- Shared `matchWriteDecision` plus ordered match/delivery/source-reference value lists
+  in `WarehouseWriteSupport`; JDBC/SQL/CSV adapters encode only.
+- Regenerated committed jOOQ with `MATCH_KEY`, `CANONICAL_MATCH_ID`, and
+  `MatchSourceReference`; forced `match_key` to BIGINT and stable output schema name.
+- Extracted `JooqMatchScoresheetLoader`; removed pass-through `MatchService`; routes use
+  `MatchRepository`.
+- Moved identity IDs and `DeterministicIdentity` into `bbb-shared`; cli-shared exposes
+  shared as `api`.
+- Nullable `MatchSummary` display fields; named `requireOpposingTeam`; Angular
+  `match-search-query.codec` under `feature/matches/domain`.
+
+### Key decisions
+
+- Keep envelope DTOs in `bbb-cli-shared` next to `BbbMatchData`.
+- Prefer nullable optional display fields over empty-string sentinels on match summaries.
+- Document two-team warehouse bowling as an explicit opposing-team rule.
+
+### Gotchas
+
+- jOOQ regeneration against a temporary schema requires `outputSchema=acs_ball_by_ball`
+  so generated catalog names stay stable for API imports.
+- Temporary codegen database was dropped after regeneration.
+
+### Test coverage areas
+
+- `WarehouseWriteSupportTest` collision and ordered value lists.
+- Updater, shared, cli-shared, parse-cricsheet, API, and web checks.
+- Full `./gradlew clean check --no-daemon` green, including 70 Angular tests.
+
+## Task: Split match repository mapping and clear unused imports
+
+### Title
+
+Match response mapper extraction and unused-import cleanup
+
+### Date/time completed
+
+2026-10-02 13:10
+
+### What was shipped
+
+- Extracted `MatchResponseMapper` for score/result/date/format/completeness
+  formatting from `JooqMatchRepository`.
+- Collapsed repeated repository try/log/rethrow wrappers into `withMatchQuery`.
+- Removed unused imports in API/web entry points, shared tests, and the loader
+  `Database` class.
+- Confirmed full `./gradlew clean check --no-daemon` green after the combined
+  thermo-nuclear fixes.
+
+### Key decisions
+
+- Mapping lives next to data reads rather than inside a 670-line companion object;
+  the later structural pass removed the empty service hop entirely.
+- Leave `matchKey` private to repository joins.
+
+### Gotchas
+
+- Labeled early returns inside `withMatchQuery` lambdas are local to the lambda
+  and do not require `inline`.
+
+### Test coverage areas
+
+- `:bbb-api:test` including mapper unit tests and API module tests.
+- Full multi-module `clean check` after import cleanup.
+
+
+## Task: Unify warehouse output writers and make JDBC match writes atomic
+
+### Title
+
+Shared warehouse output policy and JDBC match transactions
+
+### Date/time completed
+
+2026-10-02
+
+### What was shipped
+
+- Added `WarehouseWriteSupport` for warehouse column contracts, insert SQL
+  generation, date-dimension values, and shared public-match-ID collision policy.
+- Updated JDBC, SQL-script, and CSV adapters to consume the shared contracts
+  while retaining their binding, literal, and CSV-cell serialization behavior.
+- Wrapped each `Database.writeMatch` operation in begin/commit/rollback hooks;
+  JDBC adapters disable auto-commit for the match and restore its prior state.
+- Replaced output-selection branching with sealed database, script, and CSV
+  targets, and removed the unused empty exception-filter plumbing.
+- Documented transactional JDBC writes in the root README.
+
+### Key decisions
+
+- Kept transaction hooks default no-ops so CSV and generated-script adapters
+  preserve their output lifecycle while JDBC owns its actual transaction.
+- Canonical re-import and public-ID backfill both finish through the commit path;
+  a failed match write rolls back and preserves the original exception.
+- Shared insert columns include explicit generated keys for file output and
+  derive JDBC insert subsets by dropping generated-key columns.
+
+### Gotchas
+
+- The MariaDB schema test's original count pattern excluded `fact_match` because
+  its `match_key` is declared as a primary key; the assertion now includes that
+  form while still checking all five match-key tables.
+- `bbb-update-database/build.gradle.kts` does not apply Kover, so no module
+  coverage report is configured for this task.
+
+### Test coverage areas
+
+- `./gradlew :bbb-update-database:test --no-daemon`: 40 tests passed.
+- `./gradlew clean check --no-daemon`: passed all modules; Angular client tests
+  completed with 70 successes.
+- Covers JDBC match rollback, SQLite transaction rollback, canonical import
+  idempotency/public-ID backfill, collision rejection, CSV output, and MariaDB,
+  PostgreSQL, and SQLite SQL-script generation.
+
+## Task: Remove false `sourceMatchId` response contract
+
+### Title
+
+Remove the internal source identifier from public match contracts
+
+### Date/time completed
+
+2026-10-02 12:53
+
+### What was shipped
+
+- Removed `sourceMatchId` from the shared recent-match, historical-search, and
+  scoresheet-context contracts, API domain models, and route/repository mapping.
+- Removed the unused `SourceMatchIdError`; the `SourceMatchId` value-class
+  source was already absent from the current tree.
+- Changed missing recent-summary display strings to empty values and updated
+  repository formatting/fallbacks to return empty strings or null as appropriate.
+- Replaced home and historical-results `MISSING` labels with an em dash while
+  keeping `publicMatchId` public and `match_key` internal.
+
+### Key decisions
+
+- Required `MatchSummary` display strings remain non-nullable and default to
+  `""` to keep serialization stable; optional search and scoresheet fields stay
+  nullable.
+- Database `match_key` remains available only for internal joins, ordering, and
+  scoresheet access.
+
+### Gotchas
+
+- Earlier full-check reds in updater rollback/schema tests were resolved by the
+  concurrent warehouse-writer unification work; later full checks are green.
+
+### Test coverage areas
+
+- `:bbb-shared:test`: passed contract serialization and empty summary-default
+  assertions.
+- `:bbb-api:test`: passed API and repository tests; `:bbb-api:compileKotlin`
+  passed.
+- Angular `:bbb-web:check`: all 70 browser tests passed during the full check.
+
+## Task: Colocate match web contracts and split scoresheet presentation
+
+### Title
+
+Feature-sliced match data and scoresheet helpers
+
+### Date/time completed
+
+2026-10-02 12:52
+
+### What was shipped
+
+- Removed `sourceMatchId` from the Angular match models and affected fixtures.
+- Moved the match model to `feature/matches/domain` and the service/spec to
+  `feature/matches/data`, updating all ClientApp imports.
+- Split scoresheet calculations into formatting, batting-lane, bowling, ledger,
+  and orchestration modules; retained `scoresheet-presenter.ts` as a façade.
+- Left the Kotlin `WebModuleTest` contract unchanged because its
+  `MatchSearchResult` is a separate server-side type.
+
+### Key decisions
+
+- Preserved the existing presentation function and output types through the
+  `scoresheet-presenter.ts` compatibility façade.
+- Kept the change inside the Angular feature slice; no API contract was changed.
+
+### Gotchas
+
+- The match search query codec remains in `models` and now imports match types
+  from the feature domain.
+
+### Test coverage areas
+
+- Angular match/home fixtures and services, query behavior, selected-match UI,
+  scoresheet batting lanes, bowling figures, extras ledger, formatting, and
+  wicket attribution.
+- `npm test -- --watch=false --browsers=ChromeHeadless`: 70 tests passed.
+- `./gradlew :bbb-web:check --no-daemon`: passed.
+
+## Task: Align fresh and generated warehouse schemas
+
+### Title
+
+One current warehouse shape for MariaDB
+
+### Date/time completed
+
+2026-10-02 12:44
+
+### What was shipped
+
+- Updated Compose's fresh-install warehouse DDL to include the signed `BIGINT`
+  match key, nullable unique canonical/public IDs, `match_source_reference`, and
+  signed match foreign keys.
+- Aligned the generated schema with the same key and identity shape, plus the
+  MariaDB `DATETIME` and unsigned `match_count` types from migrations 2–5.
+- Documented that these identity columns are initialized for fresh Compose
+  volumes without requiring Flyway.
+
+### Key decisions
+
+- Kept Flyway migrations 1–5 immutable and folded the end-state into the
+  existing Compose warehouse init script.
+- Kept the general warehouse surrogate keys unsigned while modeling match keys
+  separately as signed values, matching the MySQL migration contract.
+
+### Gotchas
+
+- Compose init scripts run only for an empty MariaDB volume; existing volumes
+  still require normal migration handling.
+- The post-change `:bbb-update-database:test` run is blocked before test
+  execution by an unrelated `bbb-shared:compileKotlin` error: its
+  `SourceMatchId.kt` source is missing (an earlier attempt reported unresolved
+  `SourceMatchIdError`). The schema regression test was observed failing against
+  the old generated SQL before the schema fix.
+
+### Test coverage areas
+
+- Generated MariaDB schema assertions for nullable unique canonical/public IDs,
+  fixed-width source references, signed match keys, and MySQL timestamp/count
+  types.
+
+## Task: Split match identity declarations by concern
+
+### Title
+
+Separate match identity types, algorithms, and envelopes
+
+### Date/time completed
+
+2026-10-02 12:45
+
+### What was shipped
+
+- Split the shared match identity source into `IdentityIds.kt`,
+  `DeterministicIdentity.kt`, and `Envelopes.kt` in the same package.
+- Preserved the existing value types, serializers, namespace constants, UUIDv5
+  derivation, public match ID mapping, SHA-256 hashing, and envelope contracts.
+- Removed the original combined `MatchIdentity.kt` source after extraction.
+
+### Key decisions
+
+- Kept public names and package unchanged so existing module imports remain valid.
+- Kept algorithm implementations and serialization contracts unchanged; added no
+  pass-through wrapper types.
+
+### Gotchas
+
+- `Envelopes.kt` retains its file-level serialization opt-in for `@EncodeDefault`.
+
+### Test coverage areas
+
+- Existing golden vectors for UUIDv5, public match IDs, unsigned mapping, and
+  SHA-256; envelope serialization round trips; tiny-type input validation.
+
 ## Task: Widen deterministic public match identifiers
 
 ### Title

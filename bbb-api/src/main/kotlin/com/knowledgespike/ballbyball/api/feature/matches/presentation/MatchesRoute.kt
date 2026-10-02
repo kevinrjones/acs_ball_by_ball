@@ -3,7 +3,7 @@ package com.knowledgespike.ballbyball.api.feature.matches.presentation
 import arrow.core.raise.fold
 import com.knowledgespike.ballbyball.api.bootstrap.AUTH_JWT
 import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchSearchCriteria
-import com.knowledgespike.ballbyball.api.feature.matches.domain.service.MatchService
+import com.knowledgespike.ballbyball.api.feature.matches.domain.repository.MatchRepository
 import com.knowledgespike.ballbyball.api.routing.respondBadRequest
 import com.knowledgespike.ballbyball.api.routing.respondOk
 import com.knowledgespike.ballbyball.contracts.*
@@ -14,7 +14,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.slf4j.LoggerFactory
 
-fun Route.routeMatches(matchService: MatchService) {
+fun Route.routeMatches(matchRepository: MatchRepository) {
     authenticate(AUTH_JWT) {
         route("/api") {
             get("/matches") {
@@ -22,7 +22,7 @@ fun Route.routeMatches(matchService: MatchService) {
                     block = { Limit(call.request.queryParameters["days"] ?: call.request.queryParameters["limit"]) },
                     recover = { error -> call.respondBadRequest(error.message) },
                     transform = { limit ->
-                        val matches = matchService.recentMatches(limit)
+                        val matches = matchRepository.recentMatches(limit)
                         call.respondOk(RecentMatchesResponse(matches = matches))
                     }
                 )
@@ -31,7 +31,7 @@ fun Route.routeMatches(matchService: MatchService) {
                 parseMatchSearchRequest(call.request.queryParameters::get).fold(
                     ifLeft = { errors -> call.respondBadRequest(errors) },
                     ifRight = { request ->
-                        val page = matchService.searchMatches(MatchSearchCriteria.from(request))
+                        val page = matchRepository.searchMatches(MatchSearchCriteria.from(request))
                         call.respondOk(page.toResponse())
                     }
                 )
@@ -47,7 +47,7 @@ fun Route.routeMatches(matchService: MatchService) {
                     ifLeft = { errors -> call.respondBadRequest(errors) },
                     ifRight = { request ->
                         try {
-                            val scoresheet = matchService.scoresheet(
+                            val scoresheet = matchRepository.scoresheet(
                                 request.publicMatchId
                             )
                             if (scoresheet == null) {
@@ -81,7 +81,6 @@ private fun com.knowledgespike.ballbyball.api.feature.matches.domain.model.Match
         matches = matches.map {
             MatchSearchResult(
                 publicMatchId = it.publicMatchId,
-                sourceMatchId = it.sourceMatchId,
                 fileName = it.fileName,
                 matchType = it.matchType,
                 season = it.season,
@@ -100,7 +99,6 @@ private fun com.knowledgespike.ballbyball.api.feature.matches.domain.model.Match
     MatchScoresheetResponse(
         context = MatchScoresheetContext(
             publicMatchId = context.publicMatchId,
-            sourceMatchId = context.sourceMatchId,
             fileName = context.fileName,
             matchType = context.matchType,
             season = context.season,

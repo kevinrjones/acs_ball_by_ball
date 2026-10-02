@@ -1,7 +1,7 @@
 package com.knowledgespike.ballbyball.parse.database.adapter
 
-import com.knowledgespike.ballbyball.clishared.identity.CanonicalMatchId
-import com.knowledgespike.ballbyball.clishared.identity.DeterministicIdentity
+import com.knowledgespike.ballbyball.identity.CanonicalMatchId
+import com.knowledgespike.ballbyball.identity.DeterministicIdentity
 import com.knowledgespike.ballbyball.clishared.identity.SourceReference
 import com.knowledgespike.ballbyball.clishared.schema.Delivery
 import com.knowledgespike.ballbyball.parse.database.Location
@@ -55,7 +55,11 @@ interface OutputAdapter : AutoCloseable {
 
     fun writeAllPeople(people: Sequence<PersonRegistryEntity>)
 
+    fun beginMatch() = Unit
+
     fun commit()
+
+    fun rollback() = Unit
 
     override fun close()
 }

@@ -1,4 +1,4 @@
-import {MatchScoresheetResponse, ScoresheetDelivery} from '../../../models/match.model';
+import {MatchScoresheetResponse, ScoresheetDelivery} from '../domain/match.model';
 import {presentScoresheet} from './scoresheet-presenter';
 
 describe('presentScoresheet', () => {
@@ -268,7 +268,7 @@ describe('presentScoresheet', () => {
 
 function scoresheet(...deliveries: ScoresheetDelivery[]): MatchScoresheetResponse {
   return {
-    context: {publicMatchId: 1_000_010_101, sourceMatchId: 1001, fileName: 'match.json', team1: 'England', team2: 'India'},
+    context: {publicMatchId: 1_000_010_101, fileName: 'match.json', team1: 'England', team2: 'India'},
     completeness: 'COMPLETE',
     missingData: [],
     innings: [{inningsNumber: 1, battingTeam: 'England', bowlingTeam: 'India', deliveries}]

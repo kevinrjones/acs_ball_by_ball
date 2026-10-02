@@ -1,8 +1,8 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { MatchScoresheetResponse, MatchSearchQuery, MatchSearchResponse, RecentMatchesResponse } from '../models/match.model';
-import { Envelope } from '../models/envelope.model';
+import { MatchScoresheetResponse, MatchSearchQuery, MatchSearchResponse, RecentMatchesResponse } from '../domain/match.model';
+import { Envelope } from '../../../models/envelope.model';
 
 @Injectable({
   providedIn: 'root'

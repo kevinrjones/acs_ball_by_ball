@@ -1,13 +1,12 @@
 package com.knowledgespike.ballbyball.parse.database
 
 import com.knowledgespike.ballbyball.clishared.identity.CanonicalMatchEnvelope
-import com.knowledgespike.ballbyball.clishared.identity.CanonicalMatchId
-import com.knowledgespike.ballbyball.clishared.identity.DeterministicIdentity
+import com.knowledgespike.ballbyball.identity.CanonicalMatchId
+import com.knowledgespike.ballbyball.identity.DeterministicIdentity
 
 import com.knowledgespike.cricketarchive.InvalidStateException
 import com.knowledgespike.cricketarchive.LoggerDelegate
 import com.knowledgespike.ballbyball.clishared.schema.BbbMatchData
-import com.knowledgespike.ballbyball.clishared.schema.By
 import com.knowledgespike.ballbyball.clishared.schema.Delivery
 import com.knowledgespike.ballbyball.clishared.schema.Outcome
 import com.knowledgespike.ballbyball.clishared.schema.PowerPlays
@@ -33,39 +32,50 @@ class Database(private val outputAdapter: OutputAdapter) {
 
 
     fun writeMatch(fileName: String, envelope: CanonicalMatchEnvelope) {
-        log.debug("Parsing match: {}", fileName)
-        val publicMatchId = DeterministicIdentity.publicMatchId(envelope.canonicalMatchId)
-        if (!shouldParse(envelope.canonicalMatchId)) {
-            outputAdapter.ensurePublicMatchId(envelope.canonicalMatchId, publicMatchId)
-            log.info("Match already exists: {}", envelope.canonicalMatchId.value)
-            return
+        outputAdapter.beginMatch()
+        try {
+            log.debug("Parsing match: {}", fileName)
+            val publicMatchId = DeterministicIdentity.publicMatchId(envelope.canonicalMatchId)
+            if (!shouldParse(envelope.canonicalMatchId)) {
+                outputAdapter.ensurePublicMatchId(envelope.canonicalMatchId, publicMatchId)
+                log.info("Match already exists: {}", envelope.canonicalMatchId.value)
+                outputAdapter.commit()
+                return
+            }
+            val cricSheet = envelope.match
+
+            val teams = upsertTeams(
+                cricSheet.match.teams.map { teamNameForMatch(it, cricSheet) }
+            )
+            Translate.getPeople(cricSheet).forEach { person ->
+                upsertPerson(person.id, person.name, 0)
+            }
+
+            val players = Translate.getPlayers(cricSheet.match.players, cricSheet)
+            val umpires = Translate.getOfficials(cricSheet.match.officials?.umpires, cricSheet)
+            val tvUmpires = Translate.getOfficials(cricSheet.match.officials?.tvUmpires, cricSheet)
+            val reserveUmpires = Translate.getOfficials(cricSheet.match.officials?.reserveUmpires, cricSheet)
+            val matchReferees = Translate.getOfficials(cricSheet.match.officials?.matchReferees, cricSheet)
+            val ground = upsertGround(cricSheet.match.venue ?: "")
+            val match = addMatchToDatabase(fileName, envelope.canonicalMatchId, publicMatchId, teams, ground, cricSheet)
+            outputAdapter.insertSourceReferences(match.key, envelope.sources)
+
+            addMatchPeople(match, players.values.flatten(), "PLAYER")
+            addMatchPeople(match, umpires, "UMPIRE")
+            addMatchPeople(match, tvUmpires, "TV_UMPIRE")
+            addMatchPeople(match, reserveUmpires, "RESERVE_UMPIRE")
+            addMatchPeople(match, matchReferees, "MATCH_REFEREE")
+            addBallByBall(fileName, match, teams, cricSheet)
+
+            outputAdapter.commit()
+        } catch (failure: Exception) {
+            try {
+                outputAdapter.rollback()
+            } catch (rollbackFailure: Exception) {
+                failure.addSuppressed(rollbackFailure)
+            }
+            throw failure
         }
-        val cricSheet = envelope.match
-
-        val teams = upsertTeams(
-            cricSheet.match.teams.map { teamNameForMatch(it, cricSheet) }
-        )
-        Translate.getPeople(cricSheet).forEach { person ->
-            upsertPerson(person.id, person.name, 0)
-        }
-
-        val players = Translate.getPlayers(cricSheet.match.players, cricSheet)
-        val umpires = Translate.getOfficials(cricSheet.match.officials?.umpires, cricSheet)
-        val tvUmpires = Translate.getOfficials(cricSheet.match.officials?.tvUmpires, cricSheet)
-        val reserveUmpires = Translate.getOfficials(cricSheet.match.officials?.reserveUmpires, cricSheet)
-        val matchReferees = Translate.getOfficials(cricSheet.match.officials?.matchReferees, cricSheet)
-        val ground = upsertGround(cricSheet.match.venue ?: "")
-        val match = addMatchToDatabase(fileName, envelope.canonicalMatchId, publicMatchId, teams, ground, cricSheet)
-        outputAdapter.insertSourceReferences(match.key, envelope.sources)
-
-        addMatchPeople(match, players.values.flatten(), "PLAYER")
-        addMatchPeople(match, umpires, "UMPIRE")
-        addMatchPeople(match, tvUmpires, "TV_UMPIRE")
-        addMatchPeople(match, reserveUmpires, "RESERVE_UMPIRE")
-        addMatchPeople(match, matchReferees, "MATCH_REFEREE")
-        addBallByBall(fileName, match, teams, cricSheet)
-
-        outputAdapter.commit()
     }
 
     private fun addBallByBall(
@@ -82,8 +92,7 @@ class Database(private val outputAdapter: OutputAdapter) {
             log.debug("Parsing innings: {}, {}", inning.team, inningsIndex)
             val battingTeam = teams.find { it.name == teamNameForMatch(inning.team, cricSheet) }
                 ?: throw InvalidStateException("Unknown batting team: ${inning.team}")
-            val bowlingTeam = teams.firstOrNull { it.id != battingTeam.id }
-                ?: throw InvalidStateException("Could not determine bowling team for ${inning.team}")
+            val bowlingTeam = requireOpposingTeam(teams, battingTeam)
             val innings = upsertInnings(match.key, inningsIndex + 1, battingTeam.id, bowlingTeam.id)
             val powerplays = calculatePowerplays(inning.powerplays, cricSheet.match.ballsPerOver)
             var deliveryNumber = 0
@@ -244,7 +253,7 @@ class Database(private val outputAdapter: OutputAdapter) {
         val winner = cricSheet.match.outcome.winner?.let { winnerName ->
             teamsWithId.find { it.name == teamNameForMatch(winnerName, cricSheet) }
         }
-        val loser = winner?.let { winningTeam -> teamsWithId.firstOrNull { it.id != winningTeam.id } }
+        val loser = winner?.let { winningTeam -> requireOpposingTeam(teamsWithId, winningTeam) }
 
         val match = outputAdapter.insertMatch(
             MatchRecord(
@@ -348,6 +357,15 @@ class Database(private val outputAdapter: OutputAdapter) {
     fun shouldParse(canonicalMatchId: CanonicalMatchId): Boolean {
         return outputAdapter.findMatchKey(canonicalMatchId) == null
     }
+
+    /**
+     * Warehouse matches are modeled as exactly two sides. The bowling (or losing) side is
+     * the other registered team for the match, not a free-form third participant.
+     */
+    private fun requireOpposingTeam(teams: List<Team>, selected: Team): Team =
+        teams.firstOrNull { it.id != selected.id }
+            ?: error("Match must include an opposing team for ${selected.name}")
+
 }
 
 fun getNameParts(personName: String): Pair<String, String> {
@@ -400,6 +418,7 @@ fun getNameParts(personName: String): Pair<String, String> {
         }
     }
     return Pair(sortNamePart, otherNamePart)
+
 
 }
 

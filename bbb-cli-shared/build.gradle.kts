@@ -1,6 +1,7 @@
 import org.gradle.api.tasks.testing.Test
 
 plugins {
+    `java-library`
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
 }
@@ -9,7 +10,7 @@ group = "com.knowledgespike"
 version = "1.0"
 
 dependencies {
-    implementation(project(":bbb-shared"))
+    api(project(":bbb-shared"))
     implementation(libs.arrow.core)
     implementation(libs.kotlinx.serialization)
 

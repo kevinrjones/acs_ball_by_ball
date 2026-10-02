@@ -8,8 +8,6 @@ import com.knowledgespike.ballbyball.api.feature.health.domain.DatabaseHealth
 import com.knowledgespike.ballbyball.api.feature.health.presentation.routeHealth
 import com.knowledgespike.ballbyball.api.feature.heartbeat.presentation.routeHeartbeat
 import com.knowledgespike.ballbyball.api.feature.matches.domain.repository.MatchRepository
-import com.knowledgespike.ballbyball.api.feature.matches.domain.service.DefaultMatchService
-import com.knowledgespike.ballbyball.api.feature.matches.domain.service.MatchService
 import com.knowledgespike.ballbyball.api.feature.matches.presentation.routeMatches
 import com.knowledgespike.ballbyball.contracts.Envelope
 import io.ktor.http.*
@@ -59,11 +57,11 @@ fun Application.moduleWithDependencies(
                 realm = "Access to BallByBall API"
             )
         }
-    moduleWithServices(DefaultMatchService(matchRepository), databaseHealth, settings, jwtVerifier)
+    moduleWithServices(matchRepository, databaseHealth, settings, jwtVerifier)
 }
 
 fun Application.moduleWithServices(
-    matchService: MatchService,
+    matchRepository: MatchRepository,
     databaseHealth: DatabaseHealth,
     jwtSettings: JwtSettings,
     jwtVerifier: JWTVerifier? = null
@@ -100,6 +98,6 @@ fun Application.moduleWithServices(
     routing {
         routeHeartbeat()
         routeHealth(databaseHealth)
-        routeMatches(matchService)
+        routeMatches(matchRepository)
     }
 }

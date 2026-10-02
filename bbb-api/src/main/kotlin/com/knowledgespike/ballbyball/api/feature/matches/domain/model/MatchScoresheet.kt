@@ -4,11 +4,9 @@ import com.knowledgespike.ballbyball.contracts.ScoresheetCompleteness
 import com.knowledgespike.ballbyball.types.values.PublicMatchId
 import com.knowledgespike.ballbyball.types.values.MatchType
 import com.knowledgespike.ballbyball.types.values.Season
-import com.knowledgespike.ballbyball.types.values.SourceMatchId
 
 data class MatchScoresheetContext(
     val publicMatchId: PublicMatchId,
-    val sourceMatchId: SourceMatchId,
     val fileName: String,
     val matchType: MatchType?,
     val season: Season?,

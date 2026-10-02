@@ -642,11 +642,15 @@ Gateway`. The complete database container setup remains in
 
 A full development environment is available using Docker Compose in `compose.yaml`. This brings up:
 
-- **MariaDB 11.4** database configured with database `acs_ball_by_ball`, user `ballbyball`, password `p4ssw0rd`, and
+- **MariaDB 12.3.2** database configured with database `acs_ball_by_ball`, user `ballbyball`, password `p4ssw0rd`, and
   auto-initializes relational and dimensional warehouse schemas from `docker/mariadb/init/`.
 - **bbb-api** listening on port `8081` connected to the database.
 - **bbb-web** listening on port `8080` connected to `bbb-api`.
 - **bbb-update-database** container runnable on demand with the `tools` profile.
+
+On a fresh MariaDB volume, the init scripts create the complete post-migration-5
+warehouse schema, including `canonical_match_id`, `public_match_id`, and
+`match_source_reference`; Flyway is not required for that first initialization.
 
 ### Start the development stack (MariaDB, API, Web)
 

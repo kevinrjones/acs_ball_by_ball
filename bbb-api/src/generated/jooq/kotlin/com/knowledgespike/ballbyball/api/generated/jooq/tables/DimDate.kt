@@ -5,7 +5,6 @@ package com.knowledgespike.ballbyball.api.generated.jooq.tables
 
 
 import com.knowledgespike.ballbyball.api.generated.jooq.AcsBallByBall
-import com.knowledgespike.ballbyball.api.generated.jooq.indexes.DIM_DATE_IDX_DIM_DATE_CALENDAR_DATE
 import com.knowledgespike.ballbyball.api.generated.jooq.keys.FK_DIM_MATCH_START_DATE
 import com.knowledgespike.ballbyball.api.generated.jooq.keys.FK_FACT_DELIVERY_DATE
 import com.knowledgespike.ballbyball.api.generated.jooq.keys.FK_FACT_MATCH_DATE
@@ -24,7 +23,6 @@ import kotlin.collections.List
 import org.jooq.Condition
 import org.jooq.Field
 import org.jooq.ForeignKey
-import org.jooq.Index
 import org.jooq.InverseForeignKey
 import org.jooq.Name
 import org.jooq.Path
@@ -169,7 +167,6 @@ open class DimDate(
         override fun `as`(alias: Table<*>): DimDatePath = DimDatePath(alias.qualifiedName, this)
     }
     override fun getSchema(): Schema? = if (aliased()) null else AcsBallByBall.ACS_BALL_BY_BALL
-    override fun getIndexes(): List<Index> = listOf(DIM_DATE_IDX_DIM_DATE_CALENDAR_DATE)
     override fun getPrimaryKey(): UniqueKey<DimDateRecord> = KEY_DIM_DATE_PRIMARY
     override fun getUniqueKeys(): List<UniqueKey<DimDateRecord>> = listOf(KEY_DIM_DATE_UQ_DIM_DATE_CALENDAR_DATE)
 

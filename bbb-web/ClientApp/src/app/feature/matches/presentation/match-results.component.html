@@ -41,10 +41,10 @@
                 <tbody>
                   @for (match of matches(); track match.publicMatchId) {
                     <tr>
-                      <td><span class="match-date"><svg class="inline-icon" aria-hidden="true" fill="none" viewBox="0 0 24 24"><path d="M7 4v3m10-3v3M5 9h14M5 6h14a2 2 0 0 1 2 2v11H3V8a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" /></svg>{{ match.date || 'MISSING' }}</span></td>
-                      <td><a class="tournament-link" [routerLink]="['/matches', match.publicMatchId, 'scoresheet']" [queryParams]="queryParams()">{{ match.competition || 'MISSING' }}</a></td>
-                      <td><a class="match-teams-link" [routerLink]="['/matches', match.publicMatchId, 'scoresheet']" [queryParams]="queryParams()">{{ match.team1 || 'MISSING' }} <span>v</span> {{ match.team2 || 'MISSING' }}</a><span class="visually-hidden">{{ match.result || 'MISSING' }}</span></td>
-                      <td><span class="match-ground"><svg class="inline-icon" aria-hidden="true" fill="none" viewBox="0 0 24 24"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.8" /><circle cx="12" cy="10" r="2.5" stroke="currentColor" stroke-width="1.8" /></svg> at {{ match.ground || 'MISSING' }}</span></td>
+                      <td><span class="match-date"><svg class="inline-icon" aria-hidden="true" fill="none" viewBox="0 0 24 24"><path d="M7 4v3m10-3v3M5 9h14M5 6h14a2 2 0 0 1 2 2v11H3V8a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" /></svg>{{ match.date || '—' }}</span></td>
+                      <td><a class="tournament-link" [routerLink]="['/matches', match.publicMatchId, 'scoresheet']" [queryParams]="queryParams()">{{ match.competition || '—' }}</a></td>
+                      <td><a class="match-teams-link" [routerLink]="['/matches', match.publicMatchId, 'scoresheet']" [queryParams]="queryParams()">{{ match.team1 || '—' }} <span>v</span> {{ match.team2 || '—' }}</a><span class="visually-hidden">{{ match.result || '—' }}</span></td>
+                      <td><span class="match-ground"><svg class="inline-icon" aria-hidden="true" fill="none" viewBox="0 0 24 24"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.8" /><circle cx="12" cy="10" r="2.5" stroke="currentColor" stroke-width="1.8" /></svg> at {{ match.ground || '—' }}</span></td>
                       <td class="results-action-cell"><a data-result-action class="scorecard-link" [routerLink]="['/matches', match.publicMatchId, 'scoresheet']" [queryParams]="queryParams()" [attr.aria-label]="'View match card ' + match.publicMatchId">Scorecard →</a></td>
                     </tr>
                   }

@@ -1,9 +1,9 @@
 package com.knowledgespike.ballbyball.parse.database
 
-import com.knowledgespike.ballbyball.clishared.identity.CanonicalMatchId
-import com.knowledgespike.ballbyball.clishared.identity.ProviderId
-import com.knowledgespike.ballbyball.clishared.identity.Sha256Digest
-import com.knowledgespike.ballbyball.clishared.identity.SourceRecordId
+import com.knowledgespike.ballbyball.identity.CanonicalMatchId
+import com.knowledgespike.ballbyball.identity.ProviderId
+import com.knowledgespike.ballbyball.identity.Sha256Digest
+import com.knowledgespike.ballbyball.identity.SourceRecordId
 import com.knowledgespike.ballbyball.clishared.identity.SourceReference
 
 import com.knowledgespike.ballbyball.parse.database.adapter.csv.CsvOutputAdapter

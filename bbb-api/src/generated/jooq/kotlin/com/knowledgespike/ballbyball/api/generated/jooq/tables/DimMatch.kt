@@ -25,7 +25,10 @@ import com.knowledgespike.ballbyball.api.generated.jooq.keys.FK_DIM_MATCH_TOSS_T
 import com.knowledgespike.ballbyball.api.generated.jooq.keys.FK_DIM_MATCH_WINNER_TEAM
 import com.knowledgespike.ballbyball.api.generated.jooq.keys.FK_FACT_DELIVERY_MATCH
 import com.knowledgespike.ballbyball.api.generated.jooq.keys.FK_FACT_MATCH_MATCH
+import com.knowledgespike.ballbyball.api.generated.jooq.keys.FK_MATCH_SOURCE_MATCH
 import com.knowledgespike.ballbyball.api.generated.jooq.keys.KEY_DIM_MATCH_PRIMARY
+import com.knowledgespike.ballbyball.api.generated.jooq.keys.KEY_DIM_MATCH_UQ_DIM_MATCH_CANONICAL_ID
+import com.knowledgespike.ballbyball.api.generated.jooq.keys.KEY_DIM_MATCH_UQ_DIM_MATCH_PUBLIC_MATCH_ID
 import com.knowledgespike.ballbyball.api.generated.jooq.tables.BridgeMatchPerson.BridgeMatchPersonPath
 import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimDate.DimDatePath
 import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimGround.DimGroundPath
@@ -33,6 +36,7 @@ import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimInnings.DimInn
 import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimTeam.DimTeamPath
 import com.knowledgespike.ballbyball.api.generated.jooq.tables.FactDelivery.FactDeliveryPath
 import com.knowledgespike.ballbyball.api.generated.jooq.tables.FactMatch.FactMatchPath
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.MatchSourceReference.MatchSourceReferencePath
 import com.knowledgespike.ballbyball.api.generated.jooq.tables.records.DimMatchRecord
 
 import java.time.LocalDateTime
@@ -43,6 +47,7 @@ import kotlin.collections.List
 import org.jooq.Condition
 import org.jooq.Field
 import org.jooq.ForeignKey
+import org.jooq.Identity
 import org.jooq.Index
 import org.jooq.InverseForeignKey
 import org.jooq.Name
@@ -104,12 +109,12 @@ open class DimMatch(
     /**
      * The column <code>acs_ball_by_ball.dim_match.match_key</code>.
      */
-    val ID: TableField<DimMatchRecord, Long?> = createField(DSL.name("match_key"), SQLDataType.BIGINT.nullable(false), this, "")
+    val MATCH_KEY: TableField<DimMatchRecord, Long?> = createField(DSL.name("match_key"), SQLDataType.BIGINT.nullable(false).generatedByDefaultAsIdentity(), this, "")
 
     /**
-     * The column <code>acs_ball_by_ball.dim_match.public_match_id</code>.
+     * The column <code>acs_ball_by_ball.dim_match.canonical_match_id</code>.
      */
-    val PUBLIC_MATCH_ID: TableField<DimMatchRecord, Long?> = createField(DSL.name("public_match_id"), SQLDataType.BIGINT, this, "")
+    val CANONICAL_MATCH_ID: TableField<DimMatchRecord, String?> = createField(DSL.name("canonical_match_id"), SQLDataType.CHAR(36).defaultValue(DSL.field(DSL.raw("NULL"), SQLDataType.CHAR)), this, "")
 
     /**
      * The column <code>acs_ball_by_ball.dim_match.source_ca_id</code>.
@@ -206,6 +211,11 @@ open class DimMatch(
      */
     val LOSER_TEAM_KEY: TableField<DimMatchRecord, Long?> = createField(DSL.name("loser_team_key"), SQLDataType.BIGINT.defaultValue(DSL.field(DSL.raw("NULL"), SQLDataType.BIGINT)), this, "")
 
+    /**
+     * The column <code>acs_ball_by_ball.dim_match.public_match_id</code>.
+     */
+    val PUBLIC_MATCH_ID: TableField<DimMatchRecord, Long?> = createField(DSL.name("public_match_id"), SQLDataType.BIGINT.defaultValue(DSL.field(DSL.raw("NULL"), SQLDataType.BIGINT)), this, "")
+
     private constructor(alias: Name, aliased: Table<DimMatchRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<DimMatchRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<DimMatchRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
@@ -239,7 +249,9 @@ open class DimMatch(
     }
     override fun getSchema(): Schema? = if (aliased()) null else AcsBallByBall.ACS_BALL_BY_BALL
     override fun getIndexes(): List<Index> = listOf(DIM_MATCH_IDX_DIM_MATCH_FILE_NAME, DIM_MATCH_IDX_DIM_MATCH_GROUND, DIM_MATCH_IDX_DIM_MATCH_SEASON, DIM_MATCH_IDX_DIM_MATCH_START_DATE, DIM_MATCH_IDX_DIM_MATCH_TEAM1, DIM_MATCH_IDX_DIM_MATCH_TEAM2, DIM_MATCH_IDX_DIM_MATCH_TEAMS_TYPE, DIM_MATCH_IDX_DIM_MATCH_TYPE, DIM_MATCH_IDX_DIM_MATCH_TYPE_YEAR)
+    override fun getIdentity(): Identity<DimMatchRecord, Long?> = super.getIdentity() as Identity<DimMatchRecord, Long?>
     override fun getPrimaryKey(): UniqueKey<DimMatchRecord> = KEY_DIM_MATCH_PRIMARY
+    override fun getUniqueKeys(): List<UniqueKey<DimMatchRecord>> = listOf(KEY_DIM_MATCH_UQ_DIM_MATCH_CANONICAL_ID, KEY_DIM_MATCH_UQ_DIM_MATCH_PUBLIC_MATCH_ID)
     override fun getReferences(): List<ForeignKey<DimMatchRecord, *>> = listOf(FK_DIM_MATCH_GROUND, FK_DIM_MATCH_LOSER_TEAM, FK_DIM_MATCH_START_DATE, FK_DIM_MATCH_TEAM1, FK_DIM_MATCH_TEAM2, FK_DIM_MATCH_TOSS_TEAM, FK_DIM_MATCH_WINNER_TEAM)
 
     /**
@@ -354,6 +366,22 @@ open class DimMatch(
 
     val factMatch: FactMatchPath
         get(): FactMatchPath = factMatch()
+
+    private lateinit var _matchSourceReference: MatchSourceReferencePath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>acs_ball_by_ball.match_source_reference</code> table
+     */
+    fun matchSourceReference(): MatchSourceReferencePath {
+        if (!this::_matchSourceReference.isInitialized)
+            _matchSourceReference = MatchSourceReferencePath(this, null, FK_MATCH_SOURCE_MATCH.inverseKey)
+
+        return _matchSourceReference;
+    }
+
+    val matchSourceReference: MatchSourceReferencePath
+        get(): MatchSourceReferencePath = matchSourceReference()
     override fun `as`(alias: String): DimMatch = DimMatch(DSL.name(alias), this)
     override fun `as`(alias: Name): DimMatch = DimMatch(alias, this)
     override fun `as`(alias: Table<*>): DimMatch = DimMatch(alias.qualifiedName, this)

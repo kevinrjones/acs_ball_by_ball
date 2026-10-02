@@ -87,9 +87,9 @@
                 class="bg-white rounded-xl p-4 border border-slate-200/90 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
                 <div class="flex items-center justify-between gap-3 text-xs mb-2">
                   <span class="font-semibold px-2 py-0.5 rounded border"
-                        [ngClass]="getBadgeClass(match.format)">{{ match.competition || 'MISSING' }}</span>
+                        [ngClass]="getBadgeClass(match.format)">{{ match.competition || '—' }}</span>
                   <div class="flex items-center gap-1.5 text-slate-400 group-hover:text-emerald-700 transition-colors">
-                    <span class="text-xs text-slate-400">{{ match.date || 'MISSING' }}</span>
+                    <span class="text-xs text-slate-400">{{ match.date || '—' }}</span>
                     @if (authService.isAuthenticated()) {
                       <a class="match-card__link cursor-pointer hover:text-slate-700 inline-flex items-center"
                          [routerLink]="['/matches', match.publicMatchId, 'scoresheet']"
@@ -107,26 +107,26 @@
                   <div class="flex justify-between items-center text-sm">
                     <span [class.font-bold]="match.isTeam1Winner" [class.font-medium]="!match.isTeam1Winner"
                           [class.text-slate-900]="match.isTeam1Winner"
-                          [class.text-slate-700]="!match.isTeam1Winner">{{ match.team1 || 'MISSING' }}</span>
+                          [class.text-slate-700]="!match.isTeam1Winner">{{ match.team1 || '—' }}</span>
                     <span class="text-slate-900 tracking-tight" [class.font-bold]="match.isTeam1Winner"
-                          [class.font-semibold]="!match.isTeam1Winner">{{ match.score1 || 'MISSING' }} @if (match.overs1) {
+                          [class.font-semibold]="!match.isTeam1Winner">{{ match.score1 || '—' }} @if (match.overs1) {
                       <span class="text-xs text-slate-500 font-normal ml-1">{{ match.overs1 }}</span>
                     }</span>
                   </div>
                   <div class="flex justify-between items-center text-sm">
                     <span [class.font-bold]="match.isTeam2Winner" [class.font-medium]="!match.isTeam2Winner"
                           [class.text-slate-900]="match.isTeam2Winner"
-                          [class.text-slate-700]="!match.isTeam2Winner">{{ match.team2 || 'MISSING' }}</span>
+                          [class.text-slate-700]="!match.isTeam2Winner">{{ match.team2 || '—' }}</span>
                     <span class="text-slate-900 tracking-tight" [class.font-bold]="match.isTeam2Winner"
-                          [class.font-semibold]="!match.isTeam2Winner">{{ match.score2 || 'MISSING' }} @if (match.overs2) {
+                          [class.font-semibold]="!match.isTeam2Winner">{{ match.score2 || '—' }} @if (match.overs2) {
                       <span class="text-xs text-slate-500 font-normal ml-1">{{ match.overs2 }}</span>
                     }</span>
                   </div>
                 </div>
                 <div class="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-                  <p class="font-semibold text-emerald-700">{{ match.result || 'MISSING' }}</p>
+                  <p class="font-semibold text-emerald-700">{{ match.result || '—' }}</p>
                   <span
-                    class="text-slate-400 uppercase text-[10px] font-medium tracking-wider">{{ match.format || 'MISSING' }}</span>
+                    class="text-slate-400 uppercase text-[10px] font-medium tracking-wider">{{ match.format || '—' }}</span>
                 </div>
               </article>
             }

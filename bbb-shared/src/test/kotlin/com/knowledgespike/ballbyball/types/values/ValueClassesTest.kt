@@ -10,7 +10,6 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Test
 import strikt.api.expectThat
-import strikt.api.expectThrows
 import strikt.assertions.isEqualTo
 import strikt.assertions.isFalse
 import strikt.assertions.isTrue
@@ -72,17 +71,6 @@ class ValueClassesTest {
         expectThat(zero.isLeft()).isTrue()
     }
 
-    @Test
-    fun `SourceMatchId validates non negative integers`() {
-        val valid = SourceMatchId.of(0)
-        expectThat((valid as Either.Right).value.value).isEqualTo(0)
-
-        val invalid = SourceMatchId.fromRaw("-1")
-        expectThat(invalid.isLeft()).isTrue()
-
-        val negative = SourceMatchId.of(-1)
-        expectThat(negative.isLeft()).isTrue()
-    }
 
     @Test
     fun `MatchType and Season reject blank strings`() {
@@ -101,10 +89,9 @@ class ValueClassesTest {
 
 
     @Test
-    fun `MatchSummary serializes with value classes as primitive JSON values`() {
+    fun `MatchSummary serializes public identifier and omits missing optional display fields`() {
         val summary = MatchSummary.of(
             publicMatchId = 1_001_001_001L,
-            sourceMatchId = 42,
             fileName = "match_1001.json",
             matchType = "ODI",
             season = "2024"
@@ -112,12 +99,20 @@ class ValueClassesTest {
 
         val jsonString = json.encodeToString(summary)
         expectThat(jsonString).isEqualTo(
-            """{"publicMatchId":1001001001,"sourceMatchId":42,"fileName":"match_1001.json","matchType":"ODI","season":"2024"}"""
+            """{"publicMatchId":1001001001,"fileName":"match_1001.json","matchType":"ODI","season":"2024"}"""
         )
+        expectThat(jsonString.contains("sourceMatchId")).isFalse()
+        expectThat(summary.competition).isEqualTo(null)
+        expectThat(summary.date).isEqualTo(null)
+        expectThat(summary.team1).isEqualTo(null)
+        expectThat(summary.score1).isEqualTo(null)
+        expectThat(summary.team2).isEqualTo(null)
+        expectThat(summary.score2).isEqualTo(null)
+        expectThat(summary.result).isEqualTo(null)
+        expectThat(summary.format).isEqualTo(null)
 
         val deserialized = json.decodeFromString<MatchSummary>(jsonString)
         expectThat(deserialized.publicMatchId.value).isEqualTo(1_001_001_001L)
-        expectThat(deserialized.sourceMatchId.value).isEqualTo(42)
         expectThat(deserialized.matchType.value).isEqualTo("ODI")
         expectThat(deserialized.season.value).isEqualTo("2024")
     }

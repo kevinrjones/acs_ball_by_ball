@@ -54,7 +54,6 @@ class MatchSearchContractsTest {
             matches = listOf(
                 MatchSearchResult(
                     publicMatchId = PublicMatchId.from(1_000_000_009),
-                    sourceMatchId = SourceMatchId.from(42),
                     fileName = "match.json",
                     matchType = null,
                     season = null,
@@ -74,7 +73,7 @@ class MatchSearchContractsTest {
         val encoded = json.encodeToString(response)
 
         expectThat(encoded).isEqualTo(
-            """{"matches":[{"publicMatchId":1000000009,"sourceMatchId":42,"fileName":"match.json","matchType":null,"season":null,"competition":null,"date":null,"team1":"South Africa","team2":"India","ground":null,"result":null}],"pagination":{"page":2,"pageSize":1,"totalResults":2,"hasNext":false,"nextPage":null}}"""
+            """{"matches":[{"publicMatchId":1000000009,"fileName":"match.json","matchType":null,"season":null,"competition":null,"date":null,"team1":"South Africa","team2":"India","ground":null,"result":null}],"pagination":{"page":2,"pageSize":1,"totalResults":2,"hasNext":false,"nextPage":null}}"""
         )
     }
 
@@ -115,7 +114,6 @@ class MatchSearchContractsTest {
         val response = MatchScoresheetResponse(
             context = MatchScoresheetContext(
                 publicMatchId = PublicMatchId.from(1_000_000_009),
-                sourceMatchId = SourceMatchId.from(42),
                 fileName = "match.json",
                 matchType = null,
                 season = null,

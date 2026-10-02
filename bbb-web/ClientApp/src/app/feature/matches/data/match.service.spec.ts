@@ -2,8 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { MatchService } from './match.service';
-import { MatchSearchResponse, RecentMatchesResponse } from '../models/match.model';
-import { Envelope } from '../models/envelope.model';
+import { MatchSearchResponse, RecentMatchesResponse } from '../domain/match.model';
+import { Envelope } from '../../../models/envelope.model';
 
 describe('MatchService', () => {
   let service: MatchService;
@@ -35,7 +35,6 @@ describe('MatchService', () => {
         matches: [
           {
             publicMatchId: 1_000_000_001,
-            sourceMatchId: 101,
             matchType: 'T20',
             season: '2026',
             fileName: 'match1.json',

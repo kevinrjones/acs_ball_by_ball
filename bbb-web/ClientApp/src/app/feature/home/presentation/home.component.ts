@@ -1,10 +1,10 @@
 import {CommonModule} from '@angular/common';
 import {Component, inject, OnInit, signal} from '@angular/core';
 import {RouterLink} from '@angular/router';
-import {MatchSummary} from '../../../models/match.model';
+import {MatchSummary} from '../../matches/domain/match.model';
 import {AuthenticationService} from '../../../services/authentication.service';
 import {ApplicationMetadataService} from '../../../services/application-metadata.service';
-import {MatchService} from '../../../services/match.service';
+import {MatchService} from '../../matches/data/match.service';
 
 @Component({
   selector: 'app-home',
@@ -58,7 +58,7 @@ export class HomeComponent implements OnInit {
   get latestDateRange(): string {
     const dates = this.matches()
       .map((match) => match.date)
-      .filter((date): date is string => typeof date === 'string' && date.length > 0 && date !== 'MISSING');
+      .filter((date): date is string => typeof date === 'string' && date.length > 0);
     if (this.hasLoaded() && dates.length > 0) {
       const first = dates[0];
       const last = dates[dates.length - 1];

@@ -8,7 +8,6 @@ package com.knowledgespike.ballbyball.api.generated.jooq.indexes
 import com.knowledgespike.ballbyball.api.generated.jooq.tables.BridgeDeliveryFielder
 import com.knowledgespike.ballbyball.api.generated.jooq.tables.BridgeDeliveryWicket
 import com.knowledgespike.ballbyball.api.generated.jooq.tables.BridgeMatchPerson
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimDate
 import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimGround
 import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimInnings
 import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimMatch
@@ -17,6 +16,7 @@ import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimTeam
 import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimWicket
 import com.knowledgespike.ballbyball.api.generated.jooq.tables.FactDelivery
 import com.knowledgespike.ballbyball.api.generated.jooq.tables.FactMatch
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.MatchSourceReference
 
 import org.jooq.Index
 import org.jooq.impl.DSL
@@ -33,7 +33,6 @@ val BRIDGE_DELIVERY_FIELDER_IDX_BRIDGE_DELIVERY_FIELDER_WICKET: Index = Internal
 val BRIDGE_DELIVERY_WICKET_IDX_BRIDGE_DELIVERY_WICKET_WICKET: Index = Internal.createIndex(DSL.name("idx_bridge_delivery_wicket_wicket"), BridgeDeliveryWicket.BRIDGE_DELIVERY_WICKET, arrayOf(BridgeDeliveryWicket.BRIDGE_DELIVERY_WICKET.WICKET_KEY), false)
 val BRIDGE_MATCH_PERSON_IDX_BRIDGE_MATCH_PERSON_PERSON: Index = Internal.createIndex(DSL.name("idx_bridge_match_person_person"), BridgeMatchPerson.BRIDGE_MATCH_PERSON, arrayOf(BridgeMatchPerson.BRIDGE_MATCH_PERSON.PERSON_KEY), false)
 val BRIDGE_MATCH_PERSON_IDX_BRIDGE_MATCH_PERSON_ROLE: Index = Internal.createIndex(DSL.name("idx_bridge_match_person_role"), BridgeMatchPerson.BRIDGE_MATCH_PERSON, arrayOf(BridgeMatchPerson.BRIDGE_MATCH_PERSON.ROLE_CODE), false)
-val DIM_DATE_IDX_DIM_DATE_CALENDAR_DATE: Index = Internal.createIndex(DSL.name("idx_dim_date_calendar_date"), DimDate.DIM_DATE, arrayOf(DimDate.DIM_DATE.CALENDAR_DATE), false)
 val DIM_GROUND_IDX_DIM_GROUND_NAME: Index = Internal.createIndex(DSL.name("idx_dim_ground_name"), DimGround.DIM_GROUND, arrayOf(DimGround.DIM_GROUND.GROUND_NAME), false)
 val DIM_INNINGS_IDX_DIM_INNINGS_BATTING_TEAM: Index = Internal.createIndex(DSL.name("idx_dim_innings_batting_team"), DimInnings.DIM_INNINGS, arrayOf(DimInnings.DIM_INNINGS.BATTING_TEAM_KEY), false)
 val DIM_INNINGS_IDX_DIM_INNINGS_BOWLING_TEAM: Index = Internal.createIndex(DSL.name("idx_dim_innings_bowling_team"), DimInnings.DIM_INNINGS, arrayOf(DimInnings.DIM_INNINGS.BOWLING_TEAM_KEY), false)
@@ -65,3 +64,4 @@ val FACT_DELIVERY_IDX_FACT_DELIVERY_OVER: Index = Internal.createIndex(DSL.name(
 val FACT_DELIVERY_IDX_FACT_DELIVERY_POWERPLAY: Index = Internal.createIndex(DSL.name("idx_fact_delivery_powerplay"), FactDelivery.FACT_DELIVERY, arrayOf(FactDelivery.FACT_DELIVERY.POWERPLAY), false)
 val FACT_MATCH_IDX_FACT_MATCH_DATE: Index = Internal.createIndex(DSL.name("idx_fact_match_date"), FactMatch.FACT_MATCH, arrayOf(FactMatch.FACT_MATCH.MATCH_DATE_KEY), false)
 val FACT_MATCH_IDX_FACT_MATCH_GROUND: Index = Internal.createIndex(DSL.name("idx_fact_match_ground"), FactMatch.FACT_MATCH, arrayOf(FactMatch.FACT_MATCH.GROUND_KEY), false)
+val MATCH_SOURCE_REFERENCE_IDX_MATCH_SOURCE_RECORD: Index = Internal.createIndex(DSL.name("idx_match_source_record"), MatchSourceReference.MATCH_SOURCE_REFERENCE, arrayOf(MatchSourceReference.MATCH_SOURCE_REFERENCE.SOURCE_RECORD_ID), false)

@@ -2,8 +2,8 @@ import {TestBed} from '@angular/core/testing';
 import {ActivatedRoute, convertToParamMap, Router, UrlTree} from '@angular/router';
 import {NEVER, of, throwError} from 'rxjs';
 import {MatchResultsComponent} from './match-results.component';
-import {MatchService} from '../../../services/match.service';
-import {MatchSearchResponse} from '../../../models/match.model';
+import {MatchService} from '../data/match.service';
+import {MatchSearchResponse} from '../domain/match.model';
 
 describe('MatchResultsComponent', () => {
   let matchService: jasmine.SpyObj<MatchService>;
@@ -59,7 +59,6 @@ describe('MatchResultsComponent', () => {
   it('should render deterministic match fields and a real selection link', () => {
     matchService.searchMatches.and.returnValue(of(response([{
       publicMatchId: 1_000_010_101,
-      sourceMatchId: 1001,
       fileName: 'india-match.json',
       matchType: 'T20',
       season: '2026',
@@ -88,6 +87,18 @@ describe('MatchResultsComponent', () => {
       team: 'India', teamExactMatch: 'true', opponents: 'Pakistan', opponentsExactMatch: 'true',
       venue: '0', startDate: '', endDate: '', matchType: 'all', matchResult: '0', page: '1', pageSize: '20'
     });
+  });
+
+  it('should render neutral placeholders for empty search result fields', () => {
+    matchService.searchMatches.and.returnValue(of(response([{
+      publicMatchId: 1_000_010_102,
+      fileName: 'incomplete-match.json'
+    }])));
+    const fixture = TestBed.createComponent(MatchResultsComponent);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('—');
+    expect(fixture.nativeElement.textContent).not.toContain('MISSING');
   });
 
   it('should render no-results and error states', () => {
