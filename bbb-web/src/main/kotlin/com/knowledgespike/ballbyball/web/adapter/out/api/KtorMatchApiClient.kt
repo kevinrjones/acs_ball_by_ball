@@ -10,7 +10,7 @@ import com.knowledgespike.ballbyball.web.application.MatchScoresheetResult
 import com.knowledgespike.ballbyball.web.application.RecentMatchesResult
 import com.knowledgespike.ballbyball.web.application.SearchMatchesResult
 import com.knowledgespike.ballbyball.web.domain.service.TokenService
-import com.knowledgespike.ballbyball.types.values.MatchKey
+import com.knowledgespike.ballbyball.types.values.PublicMatchId
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -81,10 +81,10 @@ class KtorMatchApiClient(
     }
 
     override suspend fun scoresheet(
-        matchKey: MatchKey
+        publicMatchId: PublicMatchId
     ): MatchScoresheetResult = try {
         val token = tokenService?.getAccessToken()
-        val response = httpClient.get("$baseUrl/api/matches/${matchKey.value}/scoresheet") {
+        val response = httpClient.get("$baseUrl/api/matches/${publicMatchId.value}/scoresheet") {
             if (!token.isNullOrBlank()) {
                 header(HttpHeaders.Authorization, "Bearer $token")
             }

@@ -1,5 +1,11 @@
 package com.knowledgespike.ballbyball.parse.database.adapter.csv
 
+import com.knowledgespike.ballbyball.clishared.identity.CanonicalMatchId
+import com.knowledgespike.ballbyball.clishared.identity.SourceReference
+import com.knowledgespike.ballbyball.types.values.PublicMatchId
+
+import com.knowledgespike.cricketarchive.InvalidStateException
+
 import com.knowledgespike.cricketarchive.LoggerDelegate
 import com.knowledgespike.ballbyball.parse.database.Location
 import com.knowledgespike.ballbyball.parse.database.PersonRegistryEntity
@@ -9,7 +15,6 @@ import com.knowledgespike.ballbyball.parse.database.WarehouseMatch
 import com.knowledgespike.ballbyball.parse.database.adapter.OutputAdapter
 import com.knowledgespike.ballbyball.parse.database.adapter.DeliveryRecord
 import com.knowledgespike.ballbyball.parse.database.adapter.MatchRecord
-import com.knowledgespike.ballbyball.parse.database.adapter.matchIdFromFileName
 import com.knowledgespike.ballbyball.parse.database.getNameParts
 import java.io.BufferedWriter
 import java.nio.charset.StandardCharsets
@@ -30,7 +35,9 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
     private val teams = mutableMapOf<String, Team>()
     private val grounds = mutableMapOf<String, Location>()
     private val dates = mutableMapOf<LocalDate, Int>()
-    private val matches = mutableMapOf<Int, Long>()
+    private val matches = mutableMapOf<CanonicalMatchId, Long>()
+    private val matchPublicIds = mutableMapOf<CanonicalMatchId, PublicMatchId>()
+    private val publicMatches = mutableMapOf<PublicMatchId, CanonicalMatchId>()
     private val innings = mutableMapOf<Pair<Long, Int>, WarehouseInnings>()
     private val deliveries = mutableMapOf<Triple<Long, Long, Int>, Long>()
     private val matchPeople = mutableSetOf<Triple<Long, Long, String>>()
@@ -42,13 +49,20 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
     private var nextPersonKey = 1L
     private var nextTeamKey = 1L
     private var nextGroundKey = 1L
+    private var nextMatchKey = 1L
     private var nextInningsKey = 1L
     private var nextDeliveryKey = 1L
     private var nextWicketKey = 1L
     private var closed = false
     private val path: Path = prepareOutput(output)
 
-    override fun findMatchKey(fileName: String): Long? = matches[matchIdFromFileName(fileName)]
+    override fun findMatchKey(canonicalMatchId: CanonicalMatchId): Long? = matches[canonicalMatchId]
+
+    override fun ensurePublicMatchId(canonicalMatchId: CanonicalMatchId, publicMatchId: PublicMatchId) {
+        if (matches.containsKey(canonicalMatchId)) {
+            validatePublicMatchId(canonicalMatchId, publicMatchId)
+        }
+    }
 
     override fun upsertPerson(sourceId: String, fullName: String, caId: Int): Long {
         people[sourceId]?.let { return it }
@@ -105,13 +119,19 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
     }
 
     override fun insertMatch(match: MatchRecord): WarehouseMatch {
-        matches[match.id]?.let { return WarehouseMatch(it) }
-        val key = match.id.toLong()
+        matches[match.canonicalMatchId]?.let {
+            ensurePublicMatchId(match.canonicalMatchId, match.publicMatchId)
+            return WarehouseMatch(it, match.publicMatchId)
+        }
+        validatePublicMatchId(match.canonicalMatchId, match.publicMatchId)
+        val key = nextMatchKey++
         writeRow(
             "dim_match",
             MATCH_HEADERS,
             listOf(
-                match.id,
+                key,
+                match.canonicalMatchId.value.toString(),
+                match.publicMatchId.value,
                 null,
                 match.fileName,
                 match.matchInSeries,
@@ -133,8 +153,26 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
                 match.loserTeamKey
             )
         )
-        matches[match.id] = key
-        return WarehouseMatch(key)
+        matches[match.canonicalMatchId] = key
+        matchPublicIds[match.canonicalMatchId] = match.publicMatchId
+        publicMatches[match.publicMatchId] = match.canonicalMatchId
+        return WarehouseMatch(key, match.publicMatchId)
+    }
+
+    override fun insertSourceReferences(matchKey: Long, sources: List<SourceReference>) {
+        sources.forEach { source ->
+            writeRow(
+                "match_source_reference",
+                SOURCE_REFERENCE_HEADERS,
+                listOf(
+                    matchKey,
+                    source.provider.value,
+                    source.providerRecordKey,
+                    source.sourceRecordId.value.toString(),
+                    source.rawContentDigest.value
+                )
+            )
+        }
     }
 
     override fun insertMatchFact(
@@ -254,6 +292,25 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
         writers.clear()
     }
 
+    private fun validatePublicMatchId(canonicalMatchId: CanonicalMatchId, publicMatchId: PublicMatchId) {
+        publicMatches[publicMatchId]?.let { existingCanonicalMatchId ->
+            if (existingCanonicalMatchId != canonicalMatchId) {
+                throw InvalidStateException(
+                    "Deterministic publicMatchId ${publicMatchId.value} collides for " +
+                        "canonical matches ${existingCanonicalMatchId.value} and ${canonicalMatchId.value}"
+                )
+            }
+        }
+        matchPublicIds[canonicalMatchId]?.let { existingPublicMatchId ->
+            if (existingPublicMatchId != publicMatchId) {
+                throw InvalidStateException(
+                    "Canonical match ${canonicalMatchId.value} already has publicMatchId " +
+                        existingPublicMatchId.value
+                )
+            }
+        }
+    }
+
     private fun writeRow(tableName: String, headers: List<String>, values: List<Any?>) {
         check(!closed) { "Cannot write to a closed CSV output adapter" }
         val writer = writers.getOrPut(tableName) {
@@ -302,9 +359,12 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
         val PERSON_HEADERS = listOf("person_key", "source_person_id", "full_name", "sort_name_part", "other_name_part", "ca_id")
         val GROUND_HEADERS = listOf("ground_key", "source_ground_id", "ground_name")
         val MATCH_HEADERS = listOf(
-            "id", "source_ca_id", "file_name", "match_in_series", "match_type", "event_name",
+            "match_key", "canonical_match_id", "public_match_id", "source_ca_id", "file_name", "match_in_series", "match_type", "event_name",
             "match_date_text", "season", "match_start_year", "match_start_date_key", "balls_per_over", "added_timestamp",
             "team1_key", "team2_key", "ground_key", "toss_team_key", "toss_decision", "victory_type", "winner_team_key", "loser_team_key"
+        )
+        val SOURCE_REFERENCE_HEADERS = listOf(
+            "match_key", "provider", "provider_record_key", "source_record_id", "raw_content_digest"
         )
         val INNINGS_HEADERS = listOf("innings_key", "match_key", "innings_number", "batting_team_key", "bowling_team_key")
         val WICKET_HEADERS = listOf("wicket_key", "source_wicket_id", "wicket_kind")

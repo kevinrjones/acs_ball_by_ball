@@ -133,7 +133,7 @@ class ApiModuleTest {
             nextPage = null,
             matches = listOf(
                 MatchSearchMatch(
-                    matchKey = MatchKey.from(123),
+                    publicMatchId = PublicMatchId.from(1_000_000_123),
                     sourceMatchId = SourceMatchId.from(456),
                     fileName = "historic-match.json",
                     matchType = MatchType.from("TEST"),
@@ -166,7 +166,7 @@ class ApiModuleTest {
     fun `matches serializes repository results with machine token`() = testApplication {
         application {
             moduleWithDependencies(
-                FakeMatchRepository(matches = listOf(MatchSummary.of(1, 10, "match.json", "TEST", "2026"))),
+                FakeMatchRepository(matches = listOf(MatchSummary.of(1_000_000_001, 10, "match.json", "TEST", "2026"))),
                 FakeDatabaseHealth(healthy = true),
                 jwtVerifier = testVerifier
             )
@@ -189,7 +189,7 @@ class ApiModuleTest {
     fun `matches serializes repository results with machine token having acs-bbb audience and bbb api read scope`() = testApplication {
         application {
             moduleWithDependencies(
-                FakeMatchRepository(matches = listOf(MatchSummary.of(1, 10, "match.json", "TEST", "2026"))),
+                FakeMatchRepository(matches = listOf(MatchSummary.of(1_000_000_001, 10, "match.json", "TEST", "2026"))),
                 FakeDatabaseHealth(healthy = true),
                 jwtVerifier = testVerifier
             )
@@ -206,7 +206,7 @@ class ApiModuleTest {
     @Test
     fun `matches endpoint serializes full match details and supports days parameter`() = testApplication {
         val sampleMatch = MatchSummary.of(
-            matchKey = 20251,
+            publicMatchId = 2_025_100_000,
             sourceMatchId = 20251,
             fileName = "1548895.json",
             matchType = "witt",
@@ -248,7 +248,7 @@ class ApiModuleTest {
     }
 
     @Test
-    fun `scoresheet rejects malformed match key before repository access`() = testApplication {
+    fun `scoresheet rejects malformed public match ID before repository access`() = testApplication {
         application {
             moduleWithDependencies(FakeMatchRepository(), FakeDatabaseHealth(healthy = true), jwtVerifier = testVerifier)
         }
@@ -261,12 +261,12 @@ class ApiModuleTest {
     }
 
     @Test
-    fun `scoresheet ignores pagination parameters and returns not found for an unknown match`() = testApplication {
+    fun `scoresheet ignores pagination parameters and returns not found for an unknown public match ID`() = testApplication {
         application {
             moduleWithDependencies(FakeMatchRepository(), FakeDatabaseHealth(healthy = true), jwtVerifier = testVerifier)
         }
 
-        val response = client.get("/api/matches/999/scoresheet?page=0&pageSize=not-a-number") {
+        val response = client.get("/api/matches/9999999999/scoresheet?page=0&pageSize=not-a-number") {
             header(HttpHeaders.Authorization, "Bearer ${createMachineToken()}")
         }
 
@@ -290,7 +290,7 @@ class ApiModuleTest {
 
         override suspend fun searchMatches(criteria: MatchSearchCriteria): MatchSearchPage = searchPage
 
-        override suspend fun scoresheet(matchKey: MatchKey): MatchScoresheetPage? = null
+        override suspend fun scoresheet(publicMatchId: PublicMatchId): MatchScoresheetPage? = null
     }
 
     private data class FakeDatabaseHealth(val healthy: Boolean) : DatabaseHealth {

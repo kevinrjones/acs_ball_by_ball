@@ -1,6 +1,6 @@
 package com.knowledgespike.ballbyball.parsecricsheet
 
-import com.knowledgespike.ballbyball.parsecricsheet.source.CricSheet
+import com.knowledgespike.ballbyball.clishared.identity.SingleSourceCanonicalizer
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
@@ -9,9 +9,9 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
-import java.util.UUID
 import kotlin.io.path.extension
 import kotlin.io.path.name
+import kotlin.io.path.nameWithoutExtension
 
 data class ParseFailure(val input: Path, val message: String)
 
@@ -42,10 +42,14 @@ class CricSheetParser(
             val output = outputDirectory.resolve(inputDirectory.relativize(input))
             try {
                 log.debug("Parsing {} into {}", input, output)
-                val matchData = converter.convert(sourceJson.decodeFromString<CricSheet>(Files.readString(input)))
+                val sourceEnvelope = converter.convert(
+                    rawBytes = Files.readAllBytes(input),
+                    providerRecordKey = input.nameWithoutExtension
+                )
+                val canonicalEnvelope = SingleSourceCanonicalizer.canonicalize(sourceEnvelope)
                 writeAtomically(
                     output,
-                    outputJson.encodeToString(matchData)
+                    outputJson.encodeToString(canonicalEnvelope)
                 )
                 log.debug("Wrote normalized match data to {}", output)
             } catch (exception: Exception) {

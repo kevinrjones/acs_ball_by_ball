@@ -21,9 +21,9 @@ open class BridgeMatchPersonRecord() : UpdatableRecordImpl<BridgeMatchPersonReco
         set(value): Unit = set(0, value)
         get(): ULong? = get(0) as ULong?
 
-    open var matchKey: Int?
+    open var matchKey: Long?
         set(value): Unit = set(1, value)
-        get(): Int? = get(1) as Int?
+        get(): Long? = get(1) as Long?
 
     open var personKey: Long?
         set(value): Unit = set(2, value)
@@ -42,7 +42,7 @@ open class BridgeMatchPersonRecord() : UpdatableRecordImpl<BridgeMatchPersonReco
     /**
      * Create a detached, initialised BridgeMatchPersonRecord
      */
-    constructor(matchPersonKey: ULong? = null, matchKey: Int? = null, personKey: Long? = null, roleCode: String? = null): this() {
+    constructor(matchPersonKey: ULong? = null, matchKey: Long? = null, personKey: Long? = null, roleCode: String? = null): this() {
         this.matchPersonKey = matchPersonKey
         this.matchKey = matchKey
         this.personKey = personKey

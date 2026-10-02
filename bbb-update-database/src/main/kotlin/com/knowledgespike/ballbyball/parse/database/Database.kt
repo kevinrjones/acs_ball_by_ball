@@ -1,5 +1,9 @@
 package com.knowledgespike.ballbyball.parse.database
 
+import com.knowledgespike.ballbyball.clishared.identity.CanonicalMatchEnvelope
+import com.knowledgespike.ballbyball.clishared.identity.CanonicalMatchId
+import com.knowledgespike.ballbyball.clishared.identity.DeterministicIdentity
+
 import com.knowledgespike.cricketarchive.InvalidStateException
 import com.knowledgespike.cricketarchive.LoggerDelegate
 import com.knowledgespike.ballbyball.clishared.schema.BbbMatchData
@@ -28,12 +32,15 @@ class Database(private val outputAdapter: OutputAdapter) {
     }
 
 
-    fun writeMatch(fileName: String, cricSheet: BbbMatchData) {
+    fun writeMatch(fileName: String, envelope: CanonicalMatchEnvelope) {
         log.debug("Parsing match: {}", fileName)
-        if (!shouldParse(fileName)) {
-            log.info("Match already exists: {}", fileName)
+        val publicMatchId = DeterministicIdentity.publicMatchId(envelope.canonicalMatchId)
+        if (!shouldParse(envelope.canonicalMatchId)) {
+            outputAdapter.ensurePublicMatchId(envelope.canonicalMatchId, publicMatchId)
+            log.info("Match already exists: {}", envelope.canonicalMatchId.value)
             return
         }
+        val cricSheet = envelope.match
 
         val teams = upsertTeams(
             cricSheet.match.teams.map { teamNameForMatch(it, cricSheet) }
@@ -48,7 +55,8 @@ class Database(private val outputAdapter: OutputAdapter) {
         val reserveUmpires = Translate.getOfficials(cricSheet.match.officials?.reserveUmpires, cricSheet)
         val matchReferees = Translate.getOfficials(cricSheet.match.officials?.matchReferees, cricSheet)
         val ground = upsertGround(cricSheet.match.venue ?: "")
-        val match = addMatchToDatabase(fileName, teams, ground, cricSheet)
+        val match = addMatchToDatabase(fileName, envelope.canonicalMatchId, publicMatchId, teams, ground, cricSheet)
+        outputAdapter.insertSourceReferences(match.key, envelope.sources)
 
         addMatchPeople(match, players.values.flatten(), "PLAYER")
         addMatchPeople(match, umpires, "UMPIRE")
@@ -207,6 +215,8 @@ class Database(private val outputAdapter: OutputAdapter) {
 
     private fun addMatchToDatabase(
         fileName: String,
+        canonicalMatchId: CanonicalMatchId,
+        publicMatchId: com.knowledgespike.ballbyball.types.values.PublicMatchId,
         teamsWithId: List<Team>,
         location: Location,
         cricSheet: BbbMatchData
@@ -238,6 +248,8 @@ class Database(private val outputAdapter: OutputAdapter) {
 
         val match = outputAdapter.insertMatch(
             MatchRecord(
+                canonicalMatchId = canonicalMatchId,
+                publicMatchId = publicMatchId,
                 fileName = fileName,
                 matchInSeries = eventMatch,
                 matchType = matchType,
@@ -333,8 +345,8 @@ class Database(private val outputAdapter: OutputAdapter) {
 
     private fun parseDate(value: String): LocalDate = LocalDate.parse(value)
 
-    fun shouldParse(fileName: String): Boolean {
-        return outputAdapter.findMatchKey(fileName) == null
+    fun shouldParse(canonicalMatchId: CanonicalMatchId): Boolean {
+        return outputAdapter.findMatchKey(canonicalMatchId) == null
     }
 }
 

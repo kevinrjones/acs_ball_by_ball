@@ -1,5 +1,10 @@
 package com.knowledgespike.ballbyball.parsecricsheet
 
+import com.knowledgespike.ballbyball.clishared.identity.DeterministicIdentity
+import com.knowledgespike.ballbyball.clishared.identity.ProviderId
+import com.knowledgespike.ballbyball.clishared.identity.ProviderNamespaces
+import com.knowledgespike.ballbyball.clishared.identity.SourceMatchEnvelope
+import com.knowledgespike.ballbyball.clishared.identity.SourceReference
 import com.knowledgespike.ballbyball.clishared.schema.BbbMatchData
 import com.knowledgespike.ballbyball.parsecricsheet.source.CricSheet
 import kotlinx.serialization.json.Json
@@ -13,6 +18,26 @@ import kotlinx.serialization.json.jsonObject
 class CricSheetConverter(
     private val json: Json = Json { ignoreUnknownKeys = true; isLenient = true; prettyPrint = true }
 ) {
+    fun convert(rawBytes: ByteArray, providerRecordKey: String): SourceMatchEnvelope {
+        require(PROVIDER_RECORD_KEY.matches(providerRecordKey)) {
+            "Cricsheet provider record key must be a safe basename stem: $providerRecordKey"
+        }
+        val rawContentDigest = DeterministicIdentity.rawContentDigest(rawBytes)
+        val cricSheet = json.decodeFromString<CricSheet>(rawBytes.decodeToString())
+        return SourceMatchEnvelope(
+            source = SourceReference(
+                provider = CRICSHEET_PROVIDER,
+                providerRecordKey = providerRecordKey,
+                sourceRecordId = DeterministicIdentity.sourceRecordId(
+                    namespace = ProviderNamespaces.CRICSHEET,
+                    providerRecordKey = providerRecordKey
+                ),
+                rawContentDigest = rawContentDigest
+            ),
+            match = convert(cricSheet)
+        )
+    }
+
     fun convert(cricSheet: CricSheet): BbbMatchData {
         val source = json.encodeToJsonElement(CricSheet.serializer(), cricSheet).jsonObject
         val normalized = normalizeKeys(source).jsonObject.toMutableMap()
@@ -59,6 +84,8 @@ class CricSheetConverter(
         }
 
     private companion object {
+        val CRICSHEET_PROVIDER = ProviderId.from("cricsheet")
+        val PROVIDER_RECORD_KEY = Regex("^[A-Za-z0-9][A-Za-z0-9_-]*$")
         val SOURCE_KEYS = mapOf(
             "data_version" to "dataVersion",
             "balls_per_over" to "ballsPerOver",

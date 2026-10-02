@@ -8,7 +8,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 @JvmInline
-value class SourceMatchId private constructor(val value: Int) {
+value class SourceMatchId private constructor(val value: Long) {
     init {
         require(value >= 0) { "sourceMatchId must not be negative" }
     }
@@ -17,14 +17,14 @@ value class SourceMatchId private constructor(val value: Int) {
         context(raise: Raise<SourceMatchIdError>)
         operator fun invoke(value: Int?): SourceMatchId {
             if (value == null || value < 0) {
-                raise.raise(SourceMatchIdError("sourceMatchId must not be negative", value))
+                raise.raise(SourceMatchIdError("sourceMatchId must not be negative", value?.toLong()))
             }
-            return SourceMatchId(value)
+            return SourceMatchId(value.toLong())
         }
 
         context(raise: Raise<SourceMatchIdError>)
         operator fun invoke(value: String?): SourceMatchId {
-            val parsed = value?.toIntOrNull()
+            val parsed = value?.toLongOrNull()
             if (parsed == null || parsed < 0) {
                 raise.raise(SourceMatchIdError("sourceMatchId must be a non-negative integer", parsed))
             }
@@ -40,6 +40,11 @@ value class SourceMatchId private constructor(val value: Int) {
         }
 
         fun from(value: Int): SourceMatchId {
+            require(value >= 0) { "sourceMatchId must not be negative" }
+            return SourceMatchId(value.toLong())
+        }
+
+        fun from(value: Long): SourceMatchId {
             require(value >= 0) { "sourceMatchId must not be negative" }
             return SourceMatchId(value)
         }

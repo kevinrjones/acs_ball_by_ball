@@ -53,7 +53,7 @@ class MatchSearchContractsTest {
         val response = MatchSearchResponse(
             matches = listOf(
                 MatchSearchResult(
-                    matchKey = MatchKey.from(9),
+                    publicMatchId = PublicMatchId.from(1_000_000_009),
                     sourceMatchId = SourceMatchId.from(42),
                     fileName = "match.json",
                     matchType = null,
@@ -74,7 +74,7 @@ class MatchSearchContractsTest {
         val encoded = json.encodeToString(response)
 
         expectThat(encoded).isEqualTo(
-            """{"matches":[{"matchKey":9,"sourceMatchId":42,"fileName":"match.json","matchType":null,"season":null,"competition":null,"date":null,"team1":"South Africa","team2":"India","ground":null,"result":null}],"pagination":{"page":2,"pageSize":1,"totalResults":2,"hasNext":false,"nextPage":null}}"""
+            """{"matches":[{"publicMatchId":1000000009,"sourceMatchId":42,"fileName":"match.json","matchType":null,"season":null,"competition":null,"date":null,"team1":"South Africa","team2":"India","ground":null,"result":null}],"pagination":{"page":2,"pageSize":1,"totalResults":2,"hasNext":false,"nextPage":null}}"""
         )
     }
 
@@ -103,7 +103,7 @@ class MatchSearchContractsTest {
     @Test
     fun `scoresheet parser validates the path key`() {
         val result = parseMatchScoresheetRequest { parameter ->
-            mapOf("matchKey" to "not-a-key")[parameter]
+            mapOf("publicMatchId" to "not-a-key")[parameter]
         }
 
         expectThat(result.isLeft()).isTrue()
@@ -114,7 +114,7 @@ class MatchSearchContractsTest {
     fun `scoresheet response serializes nullable context and nested wicket associations`() {
         val response = MatchScoresheetResponse(
             context = MatchScoresheetContext(
-                matchKey = MatchKey.from(9),
+                publicMatchId = PublicMatchId.from(1_000_000_009),
                 sourceMatchId = SourceMatchId.from(42),
                 fileName = "match.json",
                 matchType = null,

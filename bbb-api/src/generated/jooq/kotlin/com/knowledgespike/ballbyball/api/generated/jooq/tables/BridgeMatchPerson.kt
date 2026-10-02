@@ -91,7 +91,7 @@ open class BridgeMatchPerson(
     /**
      * The column <code>acs_ball_by_ball.bridge_match_person.match_key</code>.
      */
-    val MATCH_KEY: TableField<BridgeMatchPersonRecord, Int?> = createField(DSL.name("match_key"), SQLDataType.INTEGER.nullable(false), this, "")
+    val MATCH_KEY: TableField<BridgeMatchPersonRecord, Long?> = createField(DSL.name("match_key"), SQLDataType.BIGINT.nullable(false), this, "")
 
     /**
      * The column <code>acs_ball_by_ball.bridge_match_person.person_key</code>.

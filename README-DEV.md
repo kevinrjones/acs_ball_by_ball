@@ -99,15 +99,15 @@ nightly mode.
 
 The retrieval options are:
 
-| Option | Required | Description |
-|---|---|---|
-| `-h`, `--help` | No | Print command-line help. |
-| `--version` | No | Print the application version. |
-| `-bd`, `--base-directory` | Yes | Absolute root directory for the download. |
-| `-dd`, `--data-directory` | Yes | Relative directory for JSON match data and downloaded ZIPs. |
-| `-nd`, `--names-directory` | No | Deprecated compatibility option; registers are always stored directly in the base directory. |
-| `-f`, `--force` | No | Reuse existing target directories and overwrite managed files without deleting unrelated files. |
-| `-n`, `--nightly` | No | Download the two fixed recent archives directly into the configured data directory; registers remain in the base directory. |
+| Option                     | Required | Description                                                                                                                 |
+|----------------------------|----------|-----------------------------------------------------------------------------------------------------------------------------|
+| `-h`, `--help`             | No       | Print command-line help.                                                                                                    |
+| `--version`                | No       | Print the application version.                                                                                              |
+| `-bd`, `--base-directory`  | Yes      | Absolute root directory for the download.                                                                                   |
+| `-dd`, `--data-directory`  | Yes      | Relative directory for JSON match data and downloaded ZIPs.                                                                 |
+| `-nd`, `--names-directory` | No       | Deprecated compatibility option; registers are always stored directly in the base directory.                                |
+| `-f`, `--force`            | No       | Reuse existing target directories and overwrite managed files without deleting unrelated files.                             |
+| `-n`, `--nightly`          | No       | Download the two fixed recent archives directly into the configured data directory; registers remain in the base directory. |
 
 ## IDE Gradle run configuration examples
 
@@ -204,10 +204,13 @@ Normalize the full downloaded Cricsheet JSON into the shared schema:
 ## Normalize Cricsheet data
 
 `bbb-parse-cricsheet` is the Cricsheet source adapter. It reads raw Cricsheet
-JSON and writes one `BbbMatchData` JSON document per input file. The shared
-schema uses Kotlin-compatible camelCase names, exposes match details under
-`match`, and omits Cricsheet-only `meta`; the parser maps supported Cricsheet
-formats to warehouse values such as `tt`, `wtt`, `a`, and `wa`.
+JSON and writes one versioned `CanonicalMatchEnvelope` per input file. Each
+envelope contains the source-neutral `BbbMatchData`, a provider-scoped UUIDv5,
+an exact-byte SHA-256 digest, and explicit single-source merge evidence. The
+safe basename stem is the Cricsheet provider key, so names such as
+`wi_201706.json` are supported; parent directories do not affect identity. The
+parser maps supported formats to warehouse values such as `tt`, `wtt`, `a`, and
+`wa`.
 
 ```bash
 ./gradlew :bbb-parse-cricsheet:run --no-daemon \
@@ -269,9 +272,23 @@ export FLYWAY_URL="jdbc:sqlite:/path/to/cricsheet.db"
 For a new MySQL or PostgreSQL database, ensure the `cricsheet` database exists
 before running the migrations. Each dialect directory includes the original
 schema `1__initial_tables.sql`, the complete warehouse schema
-`2__initial_warehouse.sql`. Match identity is stored as the integer `id` formed
-from the numeric characters in the JSON filename, for example
-`wi_201706_revised.json` becomes `id = 201706`.
+`2__initial_warehouse.sql`, and deterministic identity migration
+`3__deterministic_match_identity.sql`, and public URL migration
+`4__public_match_id.sql`, and the widening migration
+`5__widen_public_match_id.sql`. `dim_match.match_key` remains a generated
+numeric join key; `canonical_match_id` remains unique; and `public_match_id` is
+a separate unique ten-digit URL identifier derived from the canonical UUID.
+`match_source_reference` retains provider UUIDs, keys, and raw digests. Legacy
+rows with canonical identity are backfilled when their canonical envelopes are
+replayed; rows without canonical identity remain null and the migration never
+invents identity from stored filenames.
+
+The API and web client use `/api/matches/{publicMatchId}/scoresheet`. The
+repository resolves that value to `match_key` before executing existing fact
+joins. A deterministic ten-digit collision fails rather than probing for a
+different URL. Migration 5 clears old seven-digit values; replay canonical
+envelopes to assign the new URLs. The known full-check limitation is the live
+MariaDB schema until migrations 4 and 5 have been applied.
 
 ```bash
 mariadb --host="$DB_HOST" --port="$DB_PORT" \
@@ -287,24 +304,24 @@ All parser runs use the Gradle application task:
 ./gradlew :bbb-update-database:run --no-daemon --args="<options>"
 ```
 
-| Option                     | Required            | Description                                                                   |
-|----------------------------|---------------------|-------------------------------------------------------------------------------|
-| `-h`, `--help`             | No                  | Print the command-line help.                                                  |
-| `-bd`, `--base-directory`  | Yes                 | Absolute root directory containing scorecards and register data.              |
-| `-dd`, `--data-directory`  | Yes                 | Relative match-data directory below `baseDirectory`.                          |
-| `-nd`, `--names-directory` | No                  | Deprecated compatibility option; the register is read from `baseDirectory`.  |
-| `-pr`, `--player-registry` | Yes                 | Player-registry filename relative to `baseDirectory`.                         |
+| Option                     | Required            | Description                                                                                                  |
+|----------------------------|---------------------|--------------------------------------------------------------------------------------------------------------|
+| `-h`, `--help`             | No                  | Print the command-line help.                                                                                 |
+| `-bd`, `--base-directory`  | Yes                 | Absolute root directory containing scorecards and register data.                                             |
+| `-dd`, `--data-directory`  | Yes                 | Relative match-data directory below `baseDirectory`.                                                         |
+| `-nd`, `--names-directory` | No                  | Deprecated compatibility option; the register is read from `baseDirectory`.                                  |
+| `-pr`, `--player-registry` | Yes                 | Player-registry filename relative to `baseDirectory`.                                                        |
 | `-n`, `--nightly`          | No                  | Read JSON files from the configured data directory using the same discovery and metadata rules as full mode. |
-| `-ot`, `--outputType`      | No                  | `SQL` (default), `DATABASE`, `SQL_FILE`, or `CSV`.                            |
-| `-c`, `--connectionString` | For database output | JDBC connection string.                                                       |
-| `-u`, `--userName`         | For database output | Database username.                                                            |
-| `-p`, `--password`         | No                  | Database password. Prefer an environment variable or protected shell history. |
-| `--database`               | For SQL files       | SQL dialect: `mariadb`, `postgres`, or `sqlite` (default: `mariadb`).         |
-| `-o`, `--outputFile`       | For SQL files       | SQL script path relative to `baseDirectory`; with `SQL`, selects file output. |
-| `-sf`, `--sqlFile`         | For SQL files       | Alias for `--outputFile`; the path is relative to `baseDirectory`.            |
-| `-cd`, `--csvDir`          | For CSV output      | CSV directory relative to `baseDirectory`.                                   |
+| `-ot`, `--outputType`      | No                  | `SQL` (default), `DATABASE`, `SQL_FILE`, or `CSV`.                                                           |
+| `-c`, `--connectionString` | For database output | JDBC connection string.                                                                                      |
+| `-u`, `--userName`         | For database output | Database username.                                                                                           |
+| `-p`, `--password`         | No                  | Database password. Prefer an environment variable or protected shell history.                                |
+| `--database`               | For SQL files       | SQL dialect: `mariadb`, `postgres`, or `sqlite` (default: `mariadb`).                                        |
+| `-o`, `--outputFile`       | For SQL files       | SQL script path relative to `baseDirectory`; with `SQL`, selects file output.                                |
+| `-sf`, `--sqlFile`         | For SQL files       | Alias for `--outputFile`; the path is relative to `baseDirectory`.                                           |
+| `-cd`, `--csvDir`          | For CSV output      | CSV directory relative to `baseDirectory`.                                                                   |
 
-The updater consumes only normalized `BbbMatchData` JSON from
+The updater consumes only normalized `CanonicalMatchEnvelope` JSON from
 `bbb-parse-cricsheet`; it does not decode raw Cricsheet snake-case fields.
 Both full and nightly modes scan normalized JSON files recursively below
 `[base]/[data]`, so archive-named full directories and flat nightly files use
@@ -322,12 +339,22 @@ CSV output directories supplied with `-cd`/`--csvDir` follow the same rule; for
 example, `csv/warehouse` is written to `[base]/csv/warehouse`. Absolute paths
 and paths that escape `baseDirectory` are rejected.
 
-Direct `DATABASE`/`SQL` output is idempotent for matches: it checks the integer
-ID formed from the numeric characters in the JSON filename against
-`dim_match.id` before inserting a match.
+Direct `DATABASE`/`SQL` output is idempotent for matches: it checks the
+canonical UUID against `dim_match.canonical_match_id` before inserting a match.
 The fully qualified source path remains in `dim_match.file_name` for
 provenance. `SQL_FILE` and `CSV` outputs are file-generation workflows and do
 not query an existing database.
+
+Human verification checklist:
+
+- [ ] Parse the same raw file twice and confirm source UUID, canonical UUID,
+  and digest are unchanged.
+- [ ] Move the file under a different parent directory and confirm identities
+  remain unchanged.
+- [ ] Correct the bytes without changing the provider basename stem and confirm
+  only the raw digest changes.
+- [ ] Import the same canonical envelope twice and confirm one `dim_match` row
+  and one source-reference row exist.
 
 To ouput the data in SQL format:
 
@@ -374,8 +401,6 @@ marker.
 The `dim_match.csv` file includes the source JSON filename in its `file_name`
 column. The `fact_match.csv` file contains only match-level measures and keys.
 
-
-
 ## Load SQL output into MariaDB
 
 If you load the SQL into the database it will create or replace the generated
@@ -385,6 +410,7 @@ warehouse rows according to the selected SQL dialect.
 cd [SQL Directory]
 mysql -u root -p acs_ball_by_ball < update.sql
 ```
+
 ## Load CSV output into MariaDB
 
 The database must have the warehouse tables before loading CSV data. The loader
@@ -511,7 +537,9 @@ The generated SQL file is self-contained for the warehouse schema: it drops
 the warehouse tables in foreign-key dependency order, recreates them from the
 shared warehouse schema definition, and then loads the generated rows. This is
 destructive to the existing warehouse data, so use it only when replacing the
-entire warehouse is intended. The target database must already exist.
+entire warehouse is intended. The target database must already exist. MariaDB
+output explicitly uses the `InnoDB` storage engine for every warehouse table so
+foreign-key creation does not depend on the target server's default engine.
 
 `bridge_delivery_fielder` uses `(delivery_key, wicket_key, person_key)` as its
 composite primary key. The parser suppresses repeated fielder associations and
@@ -613,7 +641,9 @@ Gateway`. The complete database container setup remains in
 ## Docker and Compose Development Environment
 
 A full development environment is available using Docker Compose in `compose.yaml`. This brings up:
-- **MariaDB 11.4** database configured with database `acs_ball_by_ball`, user `ballbyball`, password `p4ssw0rd`, and auto-initializes relational and dimensional warehouse schemas from `docker/mariadb/init/`.
+
+- **MariaDB 11.4** database configured with database `acs_ball_by_ball`, user `ballbyball`, password `p4ssw0rd`, and
+  auto-initializes relational and dimensional warehouse schemas from `docker/mariadb/init/`.
 - **bbb-api** listening on port `8081` connected to the database.
 - **bbb-web** listening on port `8080` connected to `bbb-api`.
 - **bbb-update-database** container runnable on demand with the `tools` profile.
@@ -653,12 +683,15 @@ docker compose down -v
 Workflows are located in `.github/workflows/`:
 
 - **CI (`ci.yml`)**: Runs `./gradlew clean check` on all pull requests and pushes to `main`.
-- **BBB-API (`build-bbb-api.yml`)**: Builds and checks `bbb-api`, creates install distribution artifacts, and on version tags (`v*.*.*`) builds and pushes multi-architecture (`linux/amd64`, `linux/arm64`) Docker images to Docker Hub.
-- **BBB-Web (`build-bbb-web.yml`)**: Builds and checks `bbb-web`, creates install distribution artifacts, and pushes Docker images on version tags.
-- **BBB-Update-Database (`build-bbb-update-database.yml`)**: Builds and checks `bbb-update-database`, creates distribution artifacts, and pushes Docker images on version tags.
+- **BBB-API (`build-bbb-api.yml`)**: Builds and checks `bbb-api`, creates install distribution artifacts, and on version
+  tags (`v*.*.*`) builds and pushes multi-architecture (`linux/amd64`, `linux/arm64`) Docker images to Docker Hub.
+- **BBB-Web (`build-bbb-web.yml`)**: Builds and checks `bbb-web`, creates install distribution artifacts, and pushes
+  Docker images on version tags.
+- **BBB-Update-Database (`build-bbb-update-database.yml`)**: Builds and checks `bbb-update-database`, creates
+  distribution artifacts, and pushes Docker images on version tags.
 - **Reusable Workflows & Actions**:
-  - `reusable-gradle.yml` & `reusable-docker.yml`
-  - Composite actions in `.github/workflows/actions/` (`setup-jdk`, `use-gradle`, `docker-push`)
+    - `reusable-gradle.yml` & `reusable-docker.yml`
+    - Composite actions in `.github/workflows/actions/` (`setup-jdk`, `use-gradle`, `docker-push`)
 
 ## Updating this runbook
 

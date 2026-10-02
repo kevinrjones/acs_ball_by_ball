@@ -102,9 +102,14 @@ open class DimMatch(
     override fun getRecordType(): Class<DimMatchRecord> = DimMatchRecord::class.java
 
     /**
-     * The column <code>acs_ball_by_ball.dim_match.id</code>.
+     * The column <code>acs_ball_by_ball.dim_match.match_key</code>.
      */
-    val ID: TableField<DimMatchRecord, Int?> = createField(DSL.name("id"), SQLDataType.INTEGER.nullable(false), this, "")
+    val ID: TableField<DimMatchRecord, Long?> = createField(DSL.name("match_key"), SQLDataType.BIGINT.nullable(false), this, "")
+
+    /**
+     * The column <code>acs_ball_by_ball.dim_match.public_match_id</code>.
+     */
+    val PUBLIC_MATCH_ID: TableField<DimMatchRecord, Long?> = createField(DSL.name("public_match_id"), SQLDataType.BIGINT, this, "")
 
     /**
      * The column <code>acs_ball_by_ball.dim_match.source_ca_id</code>.

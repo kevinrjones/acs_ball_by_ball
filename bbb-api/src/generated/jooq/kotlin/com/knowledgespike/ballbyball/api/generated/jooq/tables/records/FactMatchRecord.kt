@@ -16,9 +16,9 @@ import org.jooq.impl.UpdatableRecordImpl
 @Suppress("warnings")
 open class FactMatchRecord() : UpdatableRecordImpl<FactMatchRecord>(FactMatch.FACT_MATCH) {
 
-    open var matchKey: Int?
+    open var matchKey: Long?
         set(value): Unit = set(0, value)
-        get(): Int? = get(0) as Int?
+        get(): Long? = get(0) as Long?
 
     open var matchDateKey: Int?
         set(value): Unit = set(1, value)
@@ -44,12 +44,12 @@ open class FactMatchRecord() : UpdatableRecordImpl<FactMatchRecord>(FactMatch.FA
     // Primary key information
     // -------------------------------------------------------------------------
 
-    override fun key(): Record1<Int?> = super.key() as Record1<Int?>
+    override fun key(): Record1<Long?> = super.key() as Record1<Long?>
 
     /**
      * Create a detached, initialised FactMatchRecord
      */
-    constructor(matchKey: Int? = null, matchDateKey: Int? = null, groundKey: Long? = null, durationDays: Int? = null, margin: Int? = null, matchCount: Byte? = null): this() {
+    constructor(matchKey: Long? = null, matchDateKey: Int? = null, groundKey: Long? = null, durationDays: Int? = null, margin: Int? = null, matchCount: Byte? = null): this() {
         this.matchKey = matchKey
         this.matchDateKey = matchDateKey
         this.groundKey = groundKey

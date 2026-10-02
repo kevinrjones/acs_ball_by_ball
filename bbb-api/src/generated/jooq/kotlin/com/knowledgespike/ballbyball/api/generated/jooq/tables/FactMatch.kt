@@ -83,7 +83,7 @@ open class FactMatch(
     /**
      * The column <code>acs_ball_by_ball.fact_match.match_key</code>.
      */
-    val MATCH_KEY: TableField<FactMatchRecord, Int?> = createField(DSL.name("match_key"), SQLDataType.INTEGER.nullable(false), this, "")
+    val MATCH_KEY: TableField<FactMatchRecord, Long?> = createField(DSL.name("match_key"), SQLDataType.BIGINT.nullable(false), this, "")
 
     /**
      * The column <code>acs_ball_by_ball.fact_match.match_date_key</code>.

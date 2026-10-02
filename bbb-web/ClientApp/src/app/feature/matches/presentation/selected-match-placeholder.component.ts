@@ -15,8 +15,8 @@ export type ScoresheetState = 'loading' | 'results' | 'not-found' | 'error';
   styleUrl: './selected-match-placeholder.component.css'
 })
 export class SelectedMatchPlaceholderComponent implements OnInit {
-  readonly matchKey = signal<string | null>(null);
-  readonly isValidMatchKey = signal(false);
+  readonly publicMatchId = signal<string | null>(null);
+  readonly isValidPublicMatchId = signal(false);
   readonly returnQueryParams = signal<Record<string, string>>({});
   readonly state = signal<ScoresheetState>('loading');
   readonly scoresheet = signal<PresentedScoresheet | null>(null);
@@ -27,25 +27,25 @@ export class SelectedMatchPlaceholderComponent implements OnInit {
   private readonly matchService = inject(MatchService);
 
   ngOnInit(): void {
-    const rawMatchKey = this.activatedRoute.snapshot.paramMap.get('matchKey');
+    const rawPublicMatchId = this.activatedRoute.snapshot.paramMap.get('publicMatchId');
     const query = this.activatedRoute.snapshot.queryParamMap;
     const parsedQuery = parseMatchSearchQuery(query);
     this.returnQueryParams.set(parsedQuery.query ? serializeMatchSearchQuery(parsedQuery.query) : {});
-    this.matchKey.set(rawMatchKey);
-    const isValid = rawMatchKey !== null && /^[1-9]\d*$/.test(rawMatchKey);
-    this.isValidMatchKey.set(isValid);
+    this.publicMatchId.set(rawPublicMatchId);
+    const isValid = rawPublicMatchId !== null && /^[1-9]\d{9}$/.test(rawPublicMatchId);
+    this.isValidPublicMatchId.set(isValid);
     if (isValid) {
-      this.loadScoresheet(Number(rawMatchKey));
+      this.loadScoresheet(Number(rawPublicMatchId));
     } else {
       this.state.set('error');
-      this.errorMessage.set('The selected match key is invalid.');
+      this.errorMessage.set('The selected public match ID is invalid.');
     }
   }
 
   retry(): void {
-    const key = this.matchKey();
-    if (key && this.isValidMatchKey()) {
-      this.loadScoresheet(Number(key));
+    const publicMatchId = this.publicMatchId();
+    if (publicMatchId && this.isValidPublicMatchId()) {
+      this.loadScoresheet(Number(publicMatchId));
     }
   }
 
@@ -90,10 +90,10 @@ export class SelectedMatchPlaceholderComponent implements OnInit {
     cards?.[nextIndex]?.focus();
   }
 
-  private loadScoresheet(matchKey: number): void {
+  private loadScoresheet(publicMatchId: number): void {
     this.state.set('loading');
     this.errorMessage.set(null);
-    this.matchService.getScoresheet(matchKey).subscribe({
+    this.matchService.getScoresheet(publicMatchId).subscribe({
       next: (response) => {
         const presentedScoresheet = presentScoresheet(response.result);
         this.scoresheet.set(presentedScoresheet);

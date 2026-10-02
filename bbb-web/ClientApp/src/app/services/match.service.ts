@@ -36,7 +36,7 @@ export class MatchService {
     return this.http.get<Envelope<MatchSearchResponse>>(`${this.apiUrl}/search`, { params });
   }
 
-  getScoresheet(matchKey: number): Observable<Envelope<MatchScoresheetResponse>> {
-    return this.http.get<Envelope<MatchScoresheetResponse>>(`${this.apiUrl}/${matchKey}/scoresheet`);
+  getScoresheet(publicMatchId: number): Observable<Envelope<MatchScoresheetResponse>> {
+    return this.http.get<Envelope<MatchScoresheetResponse>>(`${this.apiUrl}/${publicMatchId}/scoresheet`);
   }
 }

@@ -52,7 +52,7 @@ describe('HomeComponent', () => {
     expect(fixture.componentInstance.hasLoaded()).toBeTrue();
     expect(fixture.nativeElement.textContent).toContain('Asia Cup 2026');
     const link = fixture.nativeElement.querySelector('.match-card__link') as HTMLAnchorElement;
-    expect(link.getAttribute('href')).toContain('/matches/101/scoresheet');
+    expect(link.getAttribute('href')).toContain('/matches/1000010101/scoresheet');
     expect(link.getAttribute('aria-label')).toBe('View match scorecard');
   });
 
@@ -90,7 +90,7 @@ describe('HomeComponent', () => {
 
 function recentMatch(): RecentMatchesResponse['matches'][number] {
   return {
-    matchKey: 101,
+    publicMatchId: 1_000_010_101,
     sourceMatchId: 1001,
     matchType: 'T20',
     season: '2026',

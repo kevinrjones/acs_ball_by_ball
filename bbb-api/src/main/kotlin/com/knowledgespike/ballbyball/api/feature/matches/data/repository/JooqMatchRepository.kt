@@ -22,9 +22,9 @@ import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimWicket
 import com.knowledgespike.ballbyball.api.generated.jooq.tables.FactDelivery
 import com.knowledgespike.ballbyball.api.generated.jooq.tables.FactMatch
 import com.knowledgespike.ballbyball.types.values.Limit
-import com.knowledgespike.ballbyball.types.values.MatchKey
 import com.knowledgespike.ballbyball.types.values.MatchType
 import com.knowledgespike.ballbyball.types.values.PageNumber
+import com.knowledgespike.ballbyball.types.values.PublicMatchId
 import com.knowledgespike.ballbyball.types.values.Season
 import com.knowledgespike.ballbyball.types.values.SourceMatchId
 import com.knowledgespike.ballbyball.contracts.ScoresheetCompleteness
@@ -71,6 +71,7 @@ class JooqMatchRepository(
     private val bridgeDeliveryFielder = BridgeDeliveryFielder.BRIDGE_DELIVERY_FIELDER
 
     private val mMatchKey = dimMatch.ID
+    private val mPublicMatchId = dimMatch.PUBLIC_MATCH_ID
     private val mFileName = dimMatch.FILE_NAME
     private val mMatchType = dimMatch.MATCH_TYPE
     private val mEventName = dimMatch.EVENT_NAME
@@ -168,7 +169,7 @@ class JooqMatchRepository(
             // Select the distinct match_start_date_keys for the last `limit.value` days
             val recentDateKeys = dsl.selectDistinct(mMatchStartDateKey)
                 .from(dimMatch)
-                .where(mMatchStartDateKey.isNotNull)
+                .where(mMatchStartDateKey.isNotNull.and(mPublicMatchId.isNotNull))
                 .orderBy(mMatchStartDateKey.desc())
                 .limit(limit.value)
                 .fetch(mMatchStartDateKey)
@@ -180,6 +181,7 @@ class JooqMatchRepository(
 
             // Fetch match descriptors on those dates
             val matchRows = dsl.select(
+                mPublicMatchId,
                 mMatchKey,
                 mFileName,
                 mMatchType,
@@ -203,7 +205,7 @@ class JooqMatchRepository(
                 .leftJoin(dimTeam2).on(mTeam2Key.eq(t2TeamKey))
                 .leftJoin(dimTeamWinner).on(mWinnerTeamKey.eq(twTeamKey))
                 .leftJoin(factMatch).on(mMatchKey.eq(fmMatchKey))
-                .where(mMatchStartDateKey.`in`(recentDateKeys))
+                .where(mPublicMatchId.isNotNull.and(mMatchStartDateKey.`in`(recentDateKeys)))
                 .orderBy(dCalendarDate.desc(), mMatchKey.desc())
                 .fetch()
 
@@ -255,7 +257,7 @@ class JooqMatchRepository(
                 val rawMatchType = record.get(mMatchType).orEmpty()
 
                 MatchSummary(
-                    matchKey = MatchKey.from(matchId.toLong()),
+                    publicMatchId = PublicMatchId.from(requireNotNull(record.get(mPublicMatchId))),
                     sourceMatchId = SourceMatchId.from(record.get(mMatchKey) ?: 0),
                     fileName = record.get(mFileName).orEmpty(),
                     matchType = MatchType.from(rawMatchType),
@@ -293,10 +295,11 @@ class JooqMatchRepository(
                 .leftJoin(dimTeam1).on(mTeam1Key.eq(t1TeamKey))
                 .leftJoin(dimTeam2).on(mTeam2Key.eq(t2TeamKey))
                 .leftJoin(dimGround).on(mGroundKey.eq(gGroundKey))
-                .where(searchCondition)
+                .where(mPublicMatchId.isNotNull.and(searchCondition))
                 .fetchOne(count()) ?: 0
 
             val rows = dsl.select(
+                mPublicMatchId,
                 mMatchKey,
                 mFileName,
                 mMatchType,
@@ -320,7 +323,7 @@ class JooqMatchRepository(
                 .leftJoin(dimTeam2).on(mTeam2Key.eq(t2TeamKey))
                 .leftJoin(dimGround).on(mGroundKey.eq(gGroundKey))
                 .leftJoin(factMatch).on(fmMatchKey.eq(mMatchKey))
-                .where(searchCondition)
+                .where(mPublicMatchId.isNotNull.and(searchCondition))
                 .orderBy(dCalendarDate.desc().nullsLast(), mMatchKey.desc())
                 .limit(criteria.pageSize.value)
                 .offset((criteria.page.value - 1) * criteria.pageSize.value)
@@ -344,7 +347,7 @@ class JooqMatchRepository(
                         else -> null
                     }
                     MatchSearchMatch(
-                        matchKey = MatchKey.from(requireNotNull(record.get(mMatchKey)).toLong()),
+                        publicMatchId = PublicMatchId.from(requireNotNull(record.get(mPublicMatchId))),
                         sourceMatchId = SourceMatchId.from(requireNotNull(record.get(mMatchKey))),
                         fileName = requireNotNull(record.get(mFileName)),
                         matchType = record.get(mMatchType)?.takeIf { it.isNotBlank() }?.let(MatchType::from),
@@ -369,10 +372,11 @@ class JooqMatchRepository(
     }
 
     override suspend fun scoresheet(
-        matchKey: MatchKey
+        publicMatchId: PublicMatchId
     ): MatchScoresheetPage? = withContext(ioDispatcher) {
         try {
             val match = dsl.select(
+                mPublicMatchId,
                 mMatchKey,
                 mFileName,
                 mMatchType,
@@ -395,8 +399,10 @@ class JooqMatchRepository(
                 .leftJoin(dimTeam2).on(mTeam2Key.eq(t2TeamKey))
                 .leftJoin(dimGround).on(mGroundKey.eq(gGroundKey))
                 .leftJoin(factMatch).on(fmMatchKey.eq(mMatchKey))
-                .where(mMatchKey.eq(matchKey.value.toInt()))
+                .where(mPublicMatchId.eq(publicMatchId.value))
                 .fetchOne() ?: return@withContext null
+
+            val matchKey = requireNotNull(match.get(mMatchKey))
 
             val team1Key = match.get(mTeam1Key)
             val team2Key = match.get(mTeam2Key)
@@ -407,7 +413,7 @@ class JooqMatchRepository(
                 else -> null
             }
             val context = MatchScoresheetContext(
-                matchKey = MatchKey.from(requireNotNull(match.get(mMatchKey)).toLong()),
+                publicMatchId = PublicMatchId.from(requireNotNull(match.get(mPublicMatchId))),
                 sourceMatchId = SourceMatchId.from(requireNotNull(match.get(mMatchKey))),
                 fileName = requireNotNull(match.get(mFileName)),
                 matchType = match.get(mMatchType)?.takeIf { it.isNotBlank() }?.let(MatchType::from),
@@ -426,17 +432,17 @@ class JooqMatchRepository(
                 .from(dimInnings)
                 .leftJoin(dimInningsBattingTeam).on(iBattingTeamKey.eq(ibTeamKey))
                 .leftJoin(dimInningsBowlingTeam).on(iBowlingTeamKey.eq(ioTeamKey))
-                .where(iMatchKey.eq(matchKey.value.toInt()))
+                .where(iMatchKey.eq(matchKey))
                 .orderBy(iInningsNumber.asc(), iInningsKey.asc())
                 .fetch()
 
             val totalDeliveries = dsl.selectCount()
                 .from(factDelivery)
-                .where(fdMatchKey.eq(matchKey.value.toInt()))
+                .where(fdMatchKey.eq(matchKey))
                 .fetchOne(count()) ?: 0
             val deliveryInnings = dsl.selectDistinct(fdInningsKey)
                 .from(factDelivery)
-                .where(fdMatchKey.eq(matchKey.value.toInt()))
+                .where(fdMatchKey.eq(matchKey))
                 .fetch(fdInningsKey)
                 .filterNotNull()
 
@@ -466,7 +472,7 @@ class JooqMatchRepository(
                 .leftJoin(dimPersonBatter).on(fdBatterKey.eq(pbPersonKey))
                 .leftJoin(dimPersonNonStriker).on(fdNonStrikerKey.eq(pnsPersonKey))
                 .leftJoin(dimPersonBowler).on(fdBowlerKey.eq(pboPersonKey))
-                .where(fdMatchKey.eq(matchKey.value.toInt()))
+                .where(fdMatchKey.eq(matchKey))
                 .orderBy(
                     fdInningsOrder.asc(),
                     fdOverNumber.asc(),

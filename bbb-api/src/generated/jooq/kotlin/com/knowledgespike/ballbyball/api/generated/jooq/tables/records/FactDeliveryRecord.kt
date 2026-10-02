@@ -24,9 +24,9 @@ open class FactDeliveryRecord() : UpdatableRecordImpl<FactDeliveryRecord>(FactDe
         set(value): Unit = set(1, value)
         get(): Int? = get(1) as Int?
 
-    open var matchKey: Int?
+    open var matchKey: Long?
         set(value): Unit = set(2, value)
-        get(): Int? = get(2) as Int?
+        get(): Long? = get(2) as Long?
 
     open var matchDateKey: Int?
         set(value): Unit = set(3, value)
@@ -121,7 +121,7 @@ open class FactDeliveryRecord() : UpdatableRecordImpl<FactDeliveryRecord>(FactDe
     /**
      * Create a detached, initialised FactDeliveryRecord
      */
-    constructor(deliveryKey: Long? = null, sourceBallId: Int? = null, matchKey: Int? = null, matchDateKey: Int? = null, inningsKey: Long? = null, battingTeamKey: Long? = null, bowlingTeamKey: Long? = null, batterKey: Long? = null, nonStrikerKey: Long? = null, bowlerKey: Long? = null, overNumber: Int? = null, ballNumber: Int? = null, ballInOver: Int? = null, inningsOrder: Int? = null, batterRuns: Int? = null, extraRuns: Int? = null, totalRuns: Int? = null, noBalls: Int? = null, wides: Int? = null, byes: Int? = null, legByes: Int? = null, nonBoundary: Int? = null, powerplay: Int? = null, wicketCount: Int? = null): this() {
+    constructor(deliveryKey: Long? = null, sourceBallId: Int? = null, matchKey: Long? = null, matchDateKey: Int? = null, inningsKey: Long? = null, battingTeamKey: Long? = null, bowlingTeamKey: Long? = null, batterKey: Long? = null, nonStrikerKey: Long? = null, bowlerKey: Long? = null, overNumber: Int? = null, ballNumber: Int? = null, ballInOver: Int? = null, inningsOrder: Int? = null, batterRuns: Int? = null, extraRuns: Int? = null, totalRuns: Int? = null, noBalls: Int? = null, wides: Int? = null, byes: Int? = null, legByes: Int? = null, nonBoundary: Int? = null, powerplay: Int? = null, wicketCount: Int? = null): this() {
         this.deliveryKey = deliveryKey
         this.sourceBallId = sourceBallId
         this.matchKey = matchKey

@@ -91,7 +91,7 @@ open class DimInnings(
     /**
      * The column <code>acs_ball_by_ball.dim_innings.match_key</code>.
      */
-    val MATCH_KEY: TableField<DimInningsRecord, Int?> = createField(DSL.name("match_key"), SQLDataType.INTEGER.nullable(false), this, "")
+    val MATCH_KEY: TableField<DimInningsRecord, Long?> = createField(DSL.name("match_key"), SQLDataType.BIGINT.nullable(false), this, "")
 
     /**
      * The column <code>acs_ball_by_ball.dim_innings.innings_number</code>.

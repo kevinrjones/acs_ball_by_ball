@@ -1,18 +1,23 @@
 package com.knowledgespike.ballbyball.parse.database.adapter
 
+import com.knowledgespike.ballbyball.clishared.identity.CanonicalMatchId
+import com.knowledgespike.ballbyball.clishared.identity.DeterministicIdentity
+import com.knowledgespike.ballbyball.clishared.identity.SourceReference
+import com.knowledgespike.ballbyball.clishared.schema.Delivery
+import com.knowledgespike.ballbyball.parse.database.Location
 import com.knowledgespike.ballbyball.parse.database.PersonRegistryEntity
 import com.knowledgespike.ballbyball.parse.database.Team
-import com.knowledgespike.ballbyball.parse.database.Location
 import com.knowledgespike.ballbyball.parse.database.WarehouseInnings
 import com.knowledgespike.ballbyball.parse.database.WarehouseMatch
-import com.knowledgespike.ballbyball.clishared.schema.Delivery
-import com.knowledgespike.cricketarchive.InvalidStateException
+import com.knowledgespike.ballbyball.types.values.PublicMatchId
 
 /**
  * Persists warehouse rows without coupling the parser to a particular output.
  */
 interface OutputAdapter : AutoCloseable {
-    fun findMatchKey(fileName: String): Long?
+    fun findMatchKey(canonicalMatchId: CanonicalMatchId): Long?
+
+    fun ensurePublicMatchId(canonicalMatchId: CanonicalMatchId, publicMatchId: PublicMatchId)
 
     fun upsertPerson(sourceId: String, fullName: String, caId: Int): Long
 
@@ -23,6 +28,8 @@ interface OutputAdapter : AutoCloseable {
     fun upsertDate(date: java.time.LocalDate): Int
 
     fun insertMatch(match: MatchRecord): WarehouseMatch
+
+    fun insertSourceReferences(matchKey: Long, sources: List<SourceReference>)
 
     fun insertMatchFact(
         matchKey: Long,
@@ -54,6 +61,8 @@ interface OutputAdapter : AutoCloseable {
 }
 
 data class MatchRecord(
+    val canonicalMatchId: CanonicalMatchId,
+    val publicMatchId: PublicMatchId = DeterministicIdentity.publicMatchId(canonicalMatchId),
     val fileName: String,
     val matchInSeries: Int,
     val matchType: String,
@@ -71,16 +80,7 @@ data class MatchRecord(
     val victoryType: String,
     val winnerTeamKey: Long?,
     val loserTeamKey: Long?
-) {
-    val id: Int
-        get() = matchIdFromFileName(fileName)
-}
-
-internal fun matchIdFromFileName(fileName: String): Int =
-    fileName.substringAfterLast('/').substringAfterLast('\\')
-        .filter(Char::isDigit)
-        .toIntOrNull()
-        ?: throw InvalidStateException("Match filename must contain a numeric ID: $fileName")
+)
 
 data class DeliveryRecord(
     val matchKey: Long,

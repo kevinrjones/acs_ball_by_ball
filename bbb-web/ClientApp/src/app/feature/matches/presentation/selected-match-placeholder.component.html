@@ -13,14 +13,14 @@
     <div class="scoresheet-status scoresheet-status--error" role="alert">
       <strong>We could not load this scoresheet.</strong>
       <p>{{ errorMessage() }}</p>
-      @if (isValidMatchKey()) { <button type="button" class="scoresheet-retry-button" (click)="retry()">Retry</button> }
+      @if (isValidPublicMatchId()) { <button type="button" class="scoresheet-retry-button" (click)="retry()">Retry</button> }
     </div>
   } @else {
     @if (scoresheet(); as sheet) {
       <header class="scoresheet-hero" aria-labelledby="selected-match-heading">
         <div class="scoresheet-hero__main">
           <div class="scoresheet-badges">
-            <span class="scoresheet-badge scoresheet-badge--dark">Match {{ sheet.context.matchKey }}</span>
+            <span class="scoresheet-badge scoresheet-badge--dark">Match {{ sheet.context.publicMatchId }}</span>
             <span class="scoresheet-badge scoresheet-badge--green">{{ sheet.completeness }}</span>
           </div>
           <h1 id="selected-match-heading" class="scoresheet-title">

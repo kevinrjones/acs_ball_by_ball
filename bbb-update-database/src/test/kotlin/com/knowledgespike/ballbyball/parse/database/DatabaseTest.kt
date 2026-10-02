@@ -1,5 +1,13 @@
 package com.knowledgespike.ballbyball.parse.database
 
+import com.knowledgespike.ballbyball.clishared.identity.CanonicalMatchEnvelope
+import com.knowledgespike.ballbyball.clishared.identity.CanonicalMatchId
+import com.knowledgespike.ballbyball.clishared.identity.MergeEvidence
+import com.knowledgespike.ballbyball.clishared.identity.ProviderId
+import com.knowledgespike.ballbyball.clishared.identity.Sha256Digest
+import com.knowledgespike.ballbyball.clishared.identity.SourceRecordId
+import com.knowledgespike.ballbyball.clishared.identity.SourceReference
+
 import com.knowledgespike.ballbyball.parse.database.adapter.sqlite.SqlScriptOutputAdapter
 import com.knowledgespike.ballbyball.parse.database.adapter.sqlite.SqlOutputAdapter
 import com.knowledgespike.ballbyball.clishared.schema.BbbMatchData
@@ -28,8 +36,28 @@ import strikt.assertions.contains
 import strikt.assertions.isEqualTo
 import java.nio.file.Files
 import java.sql.DriverManager
+import java.util.UUID
 
 class DatabaseTest {
+    private fun Database.writeMatch(fileName: String, cricSheet: BbbMatchData) {
+        val sourceRecordId = SourceRecordId.from(UUID.fromString("c61f62bd-7b02-5c3f-ae44-572d533b5877"))
+        writeMatch(
+            fileName,
+            CanonicalMatchEnvelope(
+                canonicalMatchId = CanonicalMatchId.from(UUID.fromString("1890a7a8-f76d-5f36-89f7-39b0319044b0")),
+                sources = listOf(
+                    SourceReference(
+                        provider = ProviderId.from("cricsheet"),
+                        providerRecordKey = "12345",
+                        sourceRecordId = sourceRecordId,
+                        rawContentDigest = Sha256Digest.from("0".repeat(64))
+                    )
+                ),
+                mergeEvidence = MergeEvidence.SingleSource(sourceRecordId),
+                match = cricSheet
+            )
+        )
+    }
     @Test
     fun `given an existing database match when written again then no dependent rows are inserted`() {
         DriverManager.getConnection("jdbc:sqlite::memory:").use { connection ->
@@ -37,13 +65,15 @@ class DatabaseTest {
                 statement.execute(
                     """
                     create table dim_match (
-                        id integer primary key,
-                        file_name varchar(120) not null
+                        match_key integer primary key,
+                        canonical_match_id varchar(36) not null unique,
+                        public_match_id integer unique
                     )
                     """.trimIndent()
                 )
                 statement.executeUpdate(
-                    "insert into dim_match (id, file_name) values (12345, '/old/root/12345.json')"
+                    "insert into dim_match (match_key, canonical_match_id) " +
+                        "values (7, '1890a7a8-f76d-5f36-89f7-39b0319044b0')"
                 )
             }
 
@@ -55,6 +85,10 @@ class DatabaseTest {
                 statement.executeQuery("select count(*) from dim_match").use { result ->
                     result.next()
                     expectThat(result.getInt(1)).isEqualTo(1)
+                }
+                statement.executeQuery("select public_match_id from dim_match where match_key = 7").use { result ->
+                    result.next()
+                    expectThat(result.getLong(1)).isEqualTo(7_922_450_146L)
                 }
             }
         }
@@ -138,7 +172,7 @@ class DatabaseTest {
         )
         expectThat(sql).contains(
             "INSERT INTO fact_match (match_key, match_date_key, ground_key, duration_days, margin, match_count) " +
-                "VALUES (12345, 20240101, 1, 1, 1, 1);"
+                "VALUES (1, 20240101, 1, 1, 1, 1);"
         )
     }
 

@@ -9,10 +9,10 @@ modules alongside the shared contracts module:
 |-------------------------|---------------------------------------------------------------------------------|--------------|
 | `bbb-api`               | Read warehouse data through JOOQ, verify JWT bearer tokens, expose REST API     | `8081`       |
 | `bbb-web`               | Host Angular SPA, handle OIDC BFF login/logout sessions, proxy secure requests | `9999`       |
-| `bbb-update-database`   | Read normalized match data and write warehouse output                            | —            |
+| `bbb-update-database`   | Load canonical match envelopes into warehouse output                             | —            |
 | `bbb-get-cricsheet-data`| Command-line entry point for retrieving raw Cricsheet data                       | —            |
-| `bbb-cli-shared`        | Source-neutral `BbbMatchData` schema shared by CLI applications                 | —            |
-| `bbb-parse-cricsheet`   | Convert raw Cricsheet JSON into shared-schema JSON                               | —            |
+| `bbb-cli-shared`        | Source-neutral match payload and identity-envelope contracts                     | —            |
+| `bbb-parse-cricsheet`   | Convert raw Cricsheet JSON into canonical-envelope JSON                          | —            |
 
 The API and web applications use `bbb-shared` for serialized HTTP contracts.
 The CLI parser and updater use `bbb-cli-shared` for the source-neutral match
@@ -28,18 +28,25 @@ adaptation, and warehouse loading:
 flowchart LR
     RETRIEVE[bbb-get-cricsheet-data] --> RAW[Raw Cricsheet JSON]
     RAW --> PARSE[bbb-parse-cricsheet]
-    PARSE --> SHARED[bbb-cli-shared: BbbMatchData]
-    SHARED --> UPDATE[bbb-update-database]
+    PARSE --> SOURCE[SourceMatchEnvelope]
+    SOURCE --> SINGLE[Single-source canonicalizer]
+    SOURCE -. future .-> RECONCILE[Reconciliation application]
+    RECONCILE -.-> CANONICAL[CanonicalMatchEnvelope]
+    SINGLE --> CANONICAL
+    CANONICAL --> UPDATE[bbb-update-database]
     UPDATE --> WAREHOUSE[SQL, CSV, or database]
 ```
 
 `bbb-parse-cricsheet` owns the annotated Cricsheet input model and maps source
 format/gender values to warehouse match types. `bbb-cli-shared` contains the
-normalized document with Kotlin-compatible camelCase property names, exposes
-match details under `match`, and omits Cricsheet-only `meta`; it has no
-Cricsheet-specific `@SerialName` annotations. The updater consumes only this
-normalized schema, so archive directory names and source-specific field names
-are not part of its contract.
+normalized payload with Kotlin-compatible camelCase property names and the
+versioned source/canonical envelopes. The adapter hashes exact raw bytes,
+derives a provider-scoped UUIDv5 from the safe basename stem (including keys
+such as `wi_201706`), and omits Cricsheet-only `meta`. The current explicit
+single-source canonicalizer adds a stable canonical UUID and merge evidence; a
+future reconciliation application will replace this promotion step when
+multiple providers are available. The updater consumes canonical envelopes
+only.
 
 The parser requires an absolute `--base-directory` plus safe relative
 `--input` and `--output` directories. It recursively mirrors JSON files,
@@ -105,6 +112,18 @@ a relative data path; the shared register is read directly from the base:
   through its `match` object. `Test`, `T20`, `IT20`, `ODI`, `ODM`, and `MDM` map to `t`,
   `tt`, `itt`, `a`, `a`, and `f`; female documents receive the `w` prefix,
   producing values such as `wtt` and `wa`. Missing event names use `Unknown`.
+- Duplicate loading is based on `canonicalMatchId`, not paths. `dim_match`
+  keeps a generated `BIGINT` join key, while `match_source_reference` stores
+  provider record keys, source UUIDs, and exact-byte SHA-256 digests.
+- Migration 3 leaves old warehouse rows with a null canonical ID deliberately.
+  Replay their canonical envelopes to migrate them; identity is never inferred
+  from arbitrary legacy filenames.
+- Migration 4 adds nullable `dim_match.public_match_id` with a unique index.
+  Migration 5 clears obsolete seven-digit values after the public contract was
+  widened. New canonical loads derive the ten-digit value from the canonical
+  UUID using the fixed public UUIDv5 namespace. Existing canonical rows are
+  backfilled by replay; rows without canonical identity remain unaddressable
+  until replay.
 
 SQL script output selected with `-o`/`--outputFile` or `-sf`/`--sqlFile` is
 resolved relative to the configured base directory. Nested paths are allowed,
@@ -137,6 +156,7 @@ flowchart TD
         AliveRoute[GET /api/heartbeat/alive: Public]
         MatchesRoute[GET /api/matches: Machine/User]
         MatchSearchRoute[GET /api/matches/search: Logged-in User via BFF]
+        ScoresheetRoute[GET /api/matches/{publicMatchId}/scoresheet]
     end
 
     subgraph Identity["Identity Server (:8443)"]
@@ -161,6 +181,7 @@ flowchart TD
     ClaimsCheck -->|No Auth Required| AliveRoute
     ClaimsCheck -->|Valid Token| MatchesRoute
     ClaimsCheck -->|Valid Token| MatchSearchRoute
+    ClaimsCheck -->|Valid Token| ScoresheetRoute
 ```
 
 ### Three-Tier API Access Model

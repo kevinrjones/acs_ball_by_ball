@@ -1,5 +1,13 @@
 package com.knowledgespike.ballbyball.parse.parser
 
+import com.knowledgespike.ballbyball.clishared.identity.CanonicalMatchEnvelope
+import com.knowledgespike.ballbyball.clishared.identity.CanonicalMatchId
+import com.knowledgespike.ballbyball.clishared.identity.MergeEvidence
+import com.knowledgespike.ballbyball.clishared.identity.ProviderId
+import com.knowledgespike.ballbyball.clishared.identity.Sha256Digest
+import com.knowledgespike.ballbyball.clishared.identity.SourceRecordId
+import com.knowledgespike.ballbyball.clishared.identity.SourceReference
+
 import com.knowledgespike.ballbyball.clishared.schema.BbbMatchData
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -8,19 +16,37 @@ import org.junit.jupiter.api.Test
 import strikt.api.expectThat
 import strikt.assertions.isEqualTo
 import java.nio.file.Files
+import java.util.UUID
 
 class BallByBallParserTest {
     @Test
     fun `given shared schema json when parsed then normalized match data is returned`() {
         val file = Files.createTempFile("shared-match", ".json")
-        Files.writeString(file, Json.encodeToString(sampleMatchData()))
+        Files.writeString(file, Json.encodeToString(sampleEnvelope()))
 
         val parsed = BallByBallParser().parse(file.toFile())
 
-        expectThat(parsed.match.matchType).isEqualTo("wtt")
-        expectThat(parsed.match.event?.name).isEqualTo("The Hundred")
-        expectThat(parsed.innings.first().overs?.first()?.deliveries?.first()?.nonStriker)
+        expectThat(parsed.match.match.matchType).isEqualTo("wtt")
+        expectThat(parsed.match.match.event?.name).isEqualTo("The Hundred")
+        expectThat(parsed.match.innings.first().overs?.first()?.deliveries?.first()?.nonStriker)
             .isEqualTo("Batter Two")
+    }
+
+    private fun sampleEnvelope(): CanonicalMatchEnvelope {
+        val sourceRecordId = SourceRecordId.from(UUID.fromString("c61f62bd-7b02-5c3f-ae44-572d533b5877"))
+        return CanonicalMatchEnvelope(
+            canonicalMatchId = CanonicalMatchId.from(UUID.fromString("1890a7a8-f76d-5f36-89f7-39b0319044b0")),
+            sources = listOf(
+                SourceReference(
+                    provider = ProviderId.from("cricsheet"),
+                    providerRecordKey = "12345",
+                    sourceRecordId = sourceRecordId,
+                    rawContentDigest = Sha256Digest.from("0".repeat(64))
+                )
+            ),
+            mergeEvidence = MergeEvidence.SingleSource(sourceRecordId),
+            match = sampleMatchData()
+        )
     }
 
     private fun sampleMatchData() = BbbMatchData(

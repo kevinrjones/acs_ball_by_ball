@@ -22,13 +22,13 @@ describe('SelectedMatchPlaceholderComponent', () => {
     });
   });
 
-  it('should reject a malformed match key', async () => {
+  it('should reject a malformed public match ID', async () => {
     await configure({}, 'not-a-key');
     const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.isValidMatchKey()).toBeFalse();
-    expect(fixture.nativeElement.textContent).toContain('selected match key is invalid');
+    expect(fixture.componentInstance.isValidPublicMatchId()).toBeFalse();
+    expect(fixture.nativeElement.textContent).toContain('selected public match ID is invalid');
   });
 
   it('should render deliveries as a grouped linear over-by-over matrix', async () => {
@@ -41,7 +41,7 @@ describe('SelectedMatchPlaceholderComponent', () => {
       nonStriker: 'Batter Two', batterRuns: 0, totalRuns: 0, wicketCount: 1,
       wickets: [{wicketKey: 11, kind: 'Bowled', fielders: []}]
     });
-    await configure({}, '101', scoresheet(firstDelivery, secondDelivery));
+    await configure({}, '1000010101', scoresheet(firstDelivery, secondDelivery));
     const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
     fixture.detectChanges();
 
@@ -58,7 +58,7 @@ describe('SelectedMatchPlaceholderComponent', () => {
   it('should display zero-based delivery overs starting at one', async () => {
     const firstOver = delivery({deliveryKey: 1, sourceBallId: 101, overNumber: 0, ballInOver: 1});
     const secondOver = delivery({deliveryKey: 2, sourceBallId: 102, overNumber: 1, ballInOver: 1});
-    await configure({}, '101', scoresheet(firstOver, secondOver));
+    await configure({}, '1000010101', scoresheet(firstOver, secondOver));
     const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
     fixture.detectChanges();
 
@@ -71,7 +71,7 @@ describe('SelectedMatchPlaceholderComponent', () => {
     const firstInnings = innings(1, 'England', 'India', delivery({deliveryKey: 1, batter: 'England batter', batterRuns: 302, totalRuns: 302}));
     const secondInnings = innings(2, 'India', 'England', delivery({deliveryKey: 2, batter: 'India batter', batterRuns: 150, totalRuns: 150}));
     const thirdInnings = innings(3, 'England', 'India', delivery({deliveryKey: 3, batter: 'England batter two', batterRuns: 75, totalRuns: 75}));
-    await configure({}, '101', scoresheetWithInnings(firstInnings, secondInnings, thirdInnings));
+    await configure({}, '1000010101', scoresheetWithInnings(firstInnings, secondInnings, thirdInnings));
     const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
     fixture.detectChanges();
 
@@ -115,7 +115,7 @@ describe('SelectedMatchPlaceholderComponent', () => {
       deliveryKey: 3, sourceBallId: 103, overNumber: 2, ballInOver: 1, batter: 'Batter One',
       nonStriker: 'Batter Two', batterRuns: 2, totalRuns: 2
     });
-    await configure({}, '101', scoresheet(deliveryOne, deliveryTwo, deliveryThree));
+    await configure({}, '1000010101', scoresheet(deliveryOne, deliveryTwo, deliveryThree));
     const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
     fixture.detectChanges();
 
@@ -154,7 +154,7 @@ describe('SelectedMatchPlaceholderComponent', () => {
       deliveryKey: 2, sourceBallId: 102, overNumber: 1, ballInOver: 2, batter: 'Batter Two',
       nonStriker: 'Batter One', batterRuns: 3, totalRuns: 3
     });
-    await configure({}, '101', scoresheet(facedBall, nonStrikerBall));
+    await configure({}, '1000010101', scoresheet(facedBall, nonStrikerBall));
     const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
     fixture.detectChanges();
 
@@ -174,7 +174,7 @@ describe('SelectedMatchPlaceholderComponent', () => {
     const rightOver = delivery({
       deliveryKey: 2, sourceBallId: 102, overNumber: 2, bowler: 'Right bowler', totalRuns: 2, batterRuns: 2
     });
-    await configure({}, '101', scoresheet(leftOver, rightOver));
+    await configure({}, '1000010101', scoresheet(leftOver, rightOver));
     const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
     fixture.detectChanges();
 
@@ -201,7 +201,7 @@ describe('SelectedMatchPlaceholderComponent', () => {
     const repeatedOver = delivery({
       deliveryKey: 2, sourceBallId: 102, overNumber: 3, bowler: 'Left bowler', totalRuns: 2, batterRuns: 2
     });
-    await configure({}, '101', scoresheet(firstOver, repeatedOver));
+    await configure({}, '1000010101', scoresheet(firstOver, repeatedOver));
     const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
     fixture.detectChanges();
 
@@ -216,7 +216,7 @@ describe('SelectedMatchPlaceholderComponent', () => {
       deliveryKey: 2, sourceBallId: 102, overNumber: 1, ballInOver: 2, batter: 'D. Hassan',
       nonStriker: 'Blake', wicketCount: 1, wickets: [{wicketKey: 157781, kind: 'caught', fielders: ['RG Sharma']}]
     });
-    await configure({}, '101', scoresheet(dismissal));
+    await configure({}, '1000010101', scoresheet(dismissal));
     const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
     fixture.detectChanges();
 
@@ -246,7 +246,7 @@ describe('SelectedMatchPlaceholderComponent', () => {
       batter: 'D. Hassan', nonStriker: 'Blake', batterRuns: 1, totalRuns: 1, wicketCount: 1,
       wickets: [{wicketKey: 157781, kind: 'caught', fielders: ['RG Sharma']}]
     });
-    await configure({}, '101', scoresheet(firstDelivery, wideDelivery, secondDelivery, dismissal));
+    await configure({}, '1000010101', scoresheet(firstDelivery, wideDelivery, secondDelivery, dismissal));
     const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
     fixture.detectChanges();
 
@@ -261,7 +261,7 @@ describe('SelectedMatchPlaceholderComponent', () => {
       deliveryKey: 2, sourceBallId: 102, overNumber: 1, ballInOver: 2, batter: 'JG Bethell',
       nonStriker: 'BM Duckett', wicketCount: 1, wickets: [{wicketKey: 157781, kind: 'caught', fielders: ['RG Sharma']}]
     });
-    await configure({}, '101', scoresheet(dismissal));
+    await configure({}, '1000010101', scoresheet(dismissal));
     const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
     fixture.detectChanges();
 
@@ -286,7 +286,7 @@ describe('SelectedMatchPlaceholderComponent', () => {
       batter: 'M Kapp', nonStriker: 'D Penna', wicketCount: 1,
       wickets: [{wicketKey: 2, kind: 'caught', fielders: ['Fielder']}]
     });
-    await configure({}, '101', scoresheet(earlierDelivery, dismissal));
+    await configure({}, '1000010101', scoresheet(earlierDelivery, dismissal));
     const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
     fixture.detectChanges();
 
@@ -306,7 +306,7 @@ describe('SelectedMatchPlaceholderComponent', () => {
       deliveryKey: 2, sourceBallId: 102, overNumber: 2, ballInOver: 1, batter: 'Second Batter',
       nonStriker: 'Third Batter', wicketCount: 1, wickets: [{wicketKey: 2, kind: 'caught', fielders: []}]
     });
-    await configure({}, '101', scoresheet(firstWicket, secondWicket));
+    await configure({}, '1000010101', scoresheet(firstWicket, secondWicket));
     const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
     fixture.detectChanges();
 
@@ -327,7 +327,7 @@ describe('SelectedMatchPlaceholderComponent', () => {
     const thirdOver = delivery({
       deliveryKey: 3, sourceBallId: 103, overNumber: 3, ballInOver: 1
     });
-    await configure({}, '101', scoresheet(firstOver, secondOver, thirdOver));
+    await configure({}, '1000010101', scoresheet(firstOver, secondOver, thirdOver));
     const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
     fixture.detectChanges();
 
@@ -357,7 +357,7 @@ describe('SelectedMatchPlaceholderComponent', () => {
       deliveryKey: 4, sourceBallId: 104, overNumber: 3, ballInOver: 1, batter: 'BM Duckett',
       nonStriker: 'H Brook'
     });
-    await configure({}, '101', scoresheet(firstBall, secondBall, wicketBall, incomingBatterBall));
+    await configure({}, '1000010101', scoresheet(firstBall, secondBall, wicketBall, incomingBatterBall));
     const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
     fixture.detectChanges();
 
@@ -382,7 +382,7 @@ describe('SelectedMatchPlaceholderComponent', () => {
 
 async function configure(
   query: Record<string, string>,
-  matchKey = '101',
+  publicMatchId = '1000010101',
   result: MatchScoresheetResponse = scoresheet()
 ): Promise<void> {
   TestBed.resetTestingModule();
@@ -391,7 +391,7 @@ async function configure(
     providers: [
       {
         provide: ActivatedRoute,
-        useValue: {snapshot: {paramMap: convertToParamMap({matchKey}), queryParamMap: convertToParamMap(query)}}
+        useValue: {snapshot: {paramMap: convertToParamMap({publicMatchId}), queryParamMap: convertToParamMap(query)}}
       },
       {
         provide: MatchService,
@@ -407,7 +407,7 @@ function scoresheet(...deliveries: ScoresheetDelivery[]): MatchScoresheetRespons
 
 function scoresheetWithInnings(...inningsList: ScoresheetInnings[]): MatchScoresheetResponse {
   return {
-    context: {matchKey: 101, sourceMatchId: 1001, fileName: 'match.json', team1: 'England', team2: 'India'},
+    context: {publicMatchId: 1_000_010_101, sourceMatchId: 1001, fileName: 'match.json', team1: 'England', team2: 'India'},
     completeness: inningsList.some((current) => current.deliveries.length > 0) ? 'COMPLETE' : 'EMPTY',
     missingData: inningsList.some((current) => current.deliveries.length > 0) ? [] : ['deliveries'],
     innings: inningsList

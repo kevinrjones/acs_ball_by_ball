@@ -1,10 +1,16 @@
 package com.knowledgespike.ballbyball.parse.database
 
+import com.knowledgespike.ballbyball.clishared.identity.CanonicalMatchId
+import com.knowledgespike.ballbyball.types.values.PublicMatchId
+
+import com.knowledgespike.cricketarchive.InvalidStateException
+
 import com.knowledgespike.ballbyball.parse.database.adapter.mariadb.SqlScriptOutputAdapter
 import com.knowledgespike.ballbyball.parse.database.adapter.MatchRecord
 import com.knowledgespike.ballbyball.parse.database.adapter.postgres.SqlScriptOutputAdapter as PostgresSqlScriptOutputAdapter
 import com.knowledgespike.ballbyball.parse.database.adapter.sqlite.SqlScriptOutputAdapter as SqliteSqlScriptOutputAdapter
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import strikt.api.expectThat
 import strikt.assertions.contains
 import strikt.assertions.isGreaterThan
@@ -12,8 +18,22 @@ import strikt.assertions.isEqualTo
 import java.nio.file.Files
 import java.sql.DriverManager
 import java.time.LocalDate
+import java.util.UUID
 
 class SqlScriptOutputAdapterTest {
+    @Test
+    fun `given a forced public ID collision then the second canonical match is rejected`() {
+        val output = Files.createTempFile("warehouse-collision", ".sql")
+        val first = testMatchRecord("1890a7a8-f76d-5f36-89f7-39b0319044b0")
+        val second = testMatchRecord("1890a7a8-f76d-5f36-89f7-39b0319044b1")
+
+        assertThrows<InvalidStateException> {
+            SqlScriptOutputAdapter(output).use { adapter ->
+                adapter.insertMatch(first)
+                adapter.insertMatch(second)
+            }
+        }
+    }
     @Test
     fun `given a new script when opened then warehouse tables are reset before data`() {
         val output = Files.createTempFile("warehouse", ".sql")
@@ -35,6 +55,29 @@ class SqlScriptOutputAdapterTest {
         expectThat(createBridgeDeliveryWicket).isGreaterThan(createDimDate)
         expectThat(startTransaction).isGreaterThan(createBridgeDeliveryWicket)
         expectThat(commit).isGreaterThan(createBridgeDeliveryWicket)
+    }
+
+    @Test
+    fun `given mariadb output when opened then every warehouse table uses innodb`() {
+        val output = Files.createTempFile("warehouse", ".sql")
+        SqlScriptOutputAdapter(output).use { }
+
+        val sql = Files.readString(output)
+        expectThat(Regex("CREATE TABLE ").findAll(sql).count()).isEqualTo(13)
+        expectThat(Regex("\\) ENGINE = InnoDB;").findAll(sql).count()).isEqualTo(13)
+    }
+
+    @Test
+    fun `given mariadb output then match foreign keys use the dim match key type`() {
+        val output = Files.createTempFile("warehouse", ".sql")
+        SqlScriptOutputAdapter(output).use { }
+
+        val sql = Files.readString(output)
+        expectThat(
+            Regex("(?m)^\\s+match_key\\s+BIGINT UNSIGNED NOT NULL(?: PRIMARY KEY)?,")
+                .findAll(sql)
+                .count()
+        ).isEqualTo(5)
     }
 
     @Test
@@ -75,6 +118,7 @@ class SqlScriptOutputAdapterTest {
         val dateKey = adapter.upsertDate(LocalDate.parse("2024-01-02"))
         val match = adapter.insertMatch(
             MatchRecord(
+                canonicalMatchId = CanonicalMatchId.from(UUID.fromString("1890a7a8-f76d-5f36-89f7-39b0319044b0")),
                 fileName = sourceFile.toString(),
                 matchInSeries = 1,
                 matchType = "tt",
@@ -98,12 +142,14 @@ class SqlScriptOutputAdapterTest {
         adapter.close()
 
         val sql = Files.readString(output)
-        expectThat(sql).contains("INSERT INTO dim_match (id, source_ca_id, file_name")
-        expectThat(sql).contains("VALUES (12345, NULL, '${sourceFile.toString().replace("'", "''")}'")
+        expectThat(sql).contains("INSERT INTO dim_match (match_key, canonical_match_id, public_match_id, source_ca_id, file_name")
+        expectThat(sql).contains(
+            "VALUES (1, '1890a7a8-f76d-5f36-89f7-39b0319044b0', 7922450146, NULL, '${sourceFile.toString().replace("'", "''")}'"
+        )
         val matchInsert = sql.lineSequence().single { it.startsWith("INSERT INTO dim_match") }
         expectThat(matchInsert.count { it == '?' }).isEqualTo(0)
         expectThat(sql).contains("INSERT INTO fact_match (match_key, match_date_key")
-            .and { contains("VALUES (12345, 20240102, 1, 1, 10, 1)") }
+            .and { contains("VALUES (1, 20240102, 1, 1, 10, 1)") }
     }
 
     @Test
@@ -157,7 +203,7 @@ class SqlScriptOutputAdapterTest {
                     "select count(*) from sqlite_master where type = 'table' and name not like 'sqlite_%'"
                 ).use { result ->
                     result.next()
-                    expectThat(result.getInt(1)).isEqualTo(12)
+                    expectThat(result.getInt(1)).isEqualTo(13)
                 }
                 statement.executeQuery(
                     "select count(*) from sqlite_master where type = 'index' and name = 'idx_fact_delivery_ball_in_over'"
@@ -190,4 +236,26 @@ class SqlScriptOutputAdapterTest {
             }
         }
     }
+
+    private fun testMatchRecord(canonicalMatchId: String): MatchRecord = MatchRecord(
+        canonicalMatchId = CanonicalMatchId.from(UUID.fromString(canonicalMatchId)),
+        publicMatchId = PublicMatchId.from(7_922_450_146L),
+        fileName = "match.json",
+        matchInSeries = 1,
+        matchType = "tt",
+        eventName = "Series",
+        matchDateText = "2024-01-02",
+        season = "2024",
+        matchStartYear = "2024",
+        matchStartDateKey = null,
+        ballsPerOver = 6,
+        team1Key = 1,
+        team2Key = 2,
+        groundKey = 1,
+        tossTeamKey = 1,
+        tossDecision = null,
+        victoryType = "runs",
+        winnerTeamKey = 1,
+        loserTeamKey = 2
+    )
 }

@@ -9,6 +9,8 @@ group = "com.knowledgespike"
 version = "1.0"
 
 dependencies {
+    implementation(project(":bbb-shared"))
+    implementation(libs.arrow.core)
     implementation(libs.kotlinx.serialization)
 
     testImplementation(kotlin("test"))

@@ -20,9 +20,9 @@ open class DimInningsRecord() : UpdatableRecordImpl<DimInningsRecord>(DimInnings
         set(value): Unit = set(0, value)
         get(): Long? = get(0) as Long?
 
-    open var matchKey: Int?
+    open var matchKey: Long?
         set(value): Unit = set(1, value)
-        get(): Int? = get(1) as Int?
+        get(): Long? = get(1) as Long?
 
     open var inningsNumber: Int?
         set(value): Unit = set(2, value)
@@ -45,7 +45,7 @@ open class DimInningsRecord() : UpdatableRecordImpl<DimInningsRecord>(DimInnings
     /**
      * Create a detached, initialised DimInningsRecord
      */
-    constructor(inningsKey: Long? = null, matchKey: Int? = null, inningsNumber: Int? = null, battingTeamKey: Long? = null, bowlingTeamKey: Long? = null): this() {
+    constructor(inningsKey: Long? = null, matchKey: Long? = null, inningsNumber: Int? = null, battingTeamKey: Long? = null, bowlingTeamKey: Long? = null): this() {
         this.inningsKey = inningsKey
         this.matchKey = matchKey
         this.inningsNumber = inningsNumber

@@ -54,11 +54,11 @@ class JooqMatchRepositoryIntegrationTest {
             val repository = resources.matchRepository
             val match = repository.recentMatches(Limit.from(10)).firstOrNull()
             assumeTrue(match != null, "No match is available in the warehouse")
-            val scoresheet = repository.scoresheet(match!!.matchKey)
+            val scoresheet = repository.scoresheet(match!!.publicMatchId)
 
             expectThat(scoresheet).isNotNull()
             val mapped = requireNotNull(scoresheet)
-            expectThat(mapped.context.matchKey).isEqualTo(match.matchKey)
+            expectThat(mapped.context.publicMatchId).isEqualTo(match.publicMatchId)
             expectThat(mapped.innings.map { it.inningsNumber }).isEqualTo(
                 mapped.innings.map { it.inningsNumber }.sorted()
             )

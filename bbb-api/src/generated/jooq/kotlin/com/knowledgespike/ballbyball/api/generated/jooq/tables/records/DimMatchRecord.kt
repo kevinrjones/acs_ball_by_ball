@@ -18,97 +18,102 @@ import org.jooq.impl.UpdatableRecordImpl
 @Suppress("warnings")
 open class DimMatchRecord() : UpdatableRecordImpl<DimMatchRecord>(DimMatch.DIM_MATCH) {
 
-    open var id: Int?
+    open var id: Long?
         set(value): Unit = set(0, value)
-        get(): Int? = get(0) as Int?
+        get(): Long? = get(0) as Long?
+
+    open var publicMatchId: Long?
+        set(value): Unit = set(1, value)
+        get(): Long? = get(1) as Long?
 
     open var sourceCaId: String?
-        set(value): Unit = set(1, value)
-        get(): String? = get(1) as String?
-
-    open var fileName: String?
         set(value): Unit = set(2, value)
         get(): String? = get(2) as String?
 
-    open var matchInSeries: Int?
+    open var fileName: String?
         set(value): Unit = set(3, value)
-        get(): Int? = get(3) as Int?
+        get(): String? = get(3) as String?
+
+    open var matchInSeries: Int?
+        set(value): Unit = set(4, value)
+        get(): Int? = get(4) as Int?
 
     open var matchType: String?
-        set(value): Unit = set(4, value)
-        get(): String? = get(4) as String?
-
-    open var eventName: String?
         set(value): Unit = set(5, value)
         get(): String? = get(5) as String?
 
-    open var matchDateText: String?
+    open var eventName: String?
         set(value): Unit = set(6, value)
         get(): String? = get(6) as String?
 
-    open var season: String?
+    open var matchDateText: String?
         set(value): Unit = set(7, value)
         get(): String? = get(7) as String?
 
-    open var matchStartYear: String?
+    open var season: String?
         set(value): Unit = set(8, value)
         get(): String? = get(8) as String?
 
-    open var matchStartDateKey: Int?
+    open var matchStartYear: String?
         set(value): Unit = set(9, value)
-        get(): Int? = get(9) as Int?
+        get(): String? = get(9) as String?
 
-    open var ballsPerOver: Int?
+    open var matchStartDateKey: Int?
         set(value): Unit = set(10, value)
         get(): Int? = get(10) as Int?
 
-    open var addedTimestamp: LocalDateTime?
+    open var ballsPerOver: Int?
         set(value): Unit = set(11, value)
-        get(): LocalDateTime? = get(11) as LocalDateTime?
+        get(): Int? = get(11) as Int?
+
+    open var addedTimestamp: LocalDateTime?
+        set(value): Unit = set(12, value)
+        get(): LocalDateTime? = get(12) as LocalDateTime?
 
     open var team1Key: Long?
-        set(value): Unit = set(12, value)
-        get(): Long? = get(12) as Long?
-
-    open var team2Key: Long?
         set(value): Unit = set(13, value)
         get(): Long? = get(13) as Long?
 
-    open var groundKey: Long?
+    open var team2Key: Long?
         set(value): Unit = set(14, value)
         get(): Long? = get(14) as Long?
 
-    open var tossTeamKey: Long?
+    open var groundKey: Long?
         set(value): Unit = set(15, value)
         get(): Long? = get(15) as Long?
 
-    open var tossDecision: String?
+    open var tossTeamKey: Long?
         set(value): Unit = set(16, value)
-        get(): String? = get(16) as String?
+        get(): Long? = get(16) as Long?
 
-    open var victoryType: String?
+    open var tossDecision: String?
         set(value): Unit = set(17, value)
         get(): String? = get(17) as String?
 
-    open var winnerTeamKey: Long?
+    open var victoryType: String?
         set(value): Unit = set(18, value)
-        get(): Long? = get(18) as Long?
+        get(): String? = get(18) as String?
 
-    open var loserTeamKey: Long?
+    open var winnerTeamKey: Long?
         set(value): Unit = set(19, value)
         get(): Long? = get(19) as Long?
+
+    open var loserTeamKey: Long?
+        set(value): Unit = set(20, value)
+        get(): Long? = get(20) as Long?
 
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
 
-    override fun key(): Record1<Int?> = super.key() as Record1<Int?>
+    override fun key(): Record1<Long?> = super.key() as Record1<Long?>
 
     /**
      * Create a detached, initialised DimMatchRecord
      */
-    constructor(id: Int? = null, sourceCaId: String? = null, fileName: String? = null, matchInSeries: Int? = null, matchType: String? = null, eventName: String? = null, matchDateText: String? = null, season: String? = null, matchStartYear: String? = null, matchStartDateKey: Int? = null, ballsPerOver: Int? = null, addedTimestamp: LocalDateTime? = null, team1Key: Long? = null, team2Key: Long? = null, groundKey: Long? = null, tossTeamKey: Long? = null, tossDecision: String? = null, victoryType: String? = null, winnerTeamKey: Long? = null, loserTeamKey: Long? = null): this() {
+    constructor(id: Long? = null, publicMatchId: Long? = null, sourceCaId: String? = null, fileName: String? = null, matchInSeries: Int? = null, matchType: String? = null, eventName: String? = null, matchDateText: String? = null, season: String? = null, matchStartYear: String? = null, matchStartDateKey: Int? = null, ballsPerOver: Int? = null, addedTimestamp: LocalDateTime? = null, team1Key: Long? = null, team2Key: Long? = null, groundKey: Long? = null, tossTeamKey: Long? = null, tossDecision: String? = null, victoryType: String? = null, winnerTeamKey: Long? = null, loserTeamKey: Long? = null): this() {
         this.id = id
+        this.publicMatchId = publicMatchId
         this.sourceCaId = sourceCaId
         this.fileName = fileName
         this.matchInSeries = matchInSeries

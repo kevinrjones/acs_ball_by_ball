@@ -59,13 +59,13 @@ fun Route.registerWebRoutes(
                     }
                 )
             }
-            get("/matches/{matchKey}/scoresheet") {
+            get("/matches/{publicMatchId}/scoresheet") {
                 parseMatchScoresheetRequest { name ->
-                    if (name == "matchKey") call.parameters[name] else call.request.queryParameters[name]
+                    if (name == "publicMatchId") call.parameters[name] else call.request.queryParameters[name]
                 }.fold(
                     ifLeft = { errors -> call.respond(HttpStatusCode.BadRequest, Envelope.failure(errors)) },
                     ifRight = { request ->
-                        when (val result = matchApiClient.scoresheet(request.matchKey)) {
+                        when (val result = matchApiClient.scoresheet(request.publicMatchId)) {
                             is MatchScoresheetResult.Success -> call.respond(
                                 HttpStatusCode.OK,
                                 Envelope.success(result.response)

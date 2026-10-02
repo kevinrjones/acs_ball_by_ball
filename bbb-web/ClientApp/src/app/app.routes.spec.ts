@@ -10,7 +10,7 @@ describe('application routes', () => {
     expect(routes).toEqual(jasmine.arrayContaining([
       jasmine.objectContaining({path: 'matches/search', component: MatchSearchComponent}),
       jasmine.objectContaining({path: 'matches/results', component: MatchResultsComponent}),
-      jasmine.objectContaining({path: 'matches/:matchKey/scoresheet', component: SelectedMatchPlaceholderComponent})
+      jasmine.objectContaining({path: 'matches/:publicMatchId/scoresheet', component: SelectedMatchPlaceholderComponent})
     ]));
   });
 
@@ -21,6 +21,6 @@ describe('application routes', () => {
   it('should protect non-list match features with the authenticated guard', () => {
     expect(routes.find((route) => route.path === 'matches/search')?.canActivate).toContain(authenticatedGuard);
     expect(routes.find((route) => route.path === 'matches/results')?.canActivate).toContain(authenticatedGuard);
-    expect(routes.find((route) => route.path === 'matches/:matchKey/scoresheet')?.canActivate).toContain(authenticatedGuard);
+    expect(routes.find((route) => route.path === 'matches/:publicMatchId/scoresheet')?.canActivate).toContain(authenticatedGuard);
   });
 });

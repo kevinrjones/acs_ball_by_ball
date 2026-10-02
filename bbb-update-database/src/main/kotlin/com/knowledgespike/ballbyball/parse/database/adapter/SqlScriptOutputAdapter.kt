@@ -1,5 +1,11 @@
 package com.knowledgespike.ballbyball.parse.database.adapter
 
+import com.knowledgespike.ballbyball.clishared.identity.CanonicalMatchId
+import com.knowledgespike.ballbyball.clishared.identity.SourceReference
+import com.knowledgespike.ballbyball.types.values.PublicMatchId
+
+import com.knowledgespike.cricketarchive.InvalidStateException
+
 import com.knowledgespike.cricketarchive.LoggerDelegate
 import com.knowledgespike.ballbyball.parse.database.*
 import java.io.BufferedWriter
@@ -22,7 +28,9 @@ abstract class SqlScriptOutputAdapter(
     private val teams = mutableMapOf<String, Team>()
     private val grounds = mutableMapOf<String, Location>()
     private val dates = mutableMapOf<LocalDate, Int>()
-    private val matches = mutableMapOf<Int, Long>()
+    private val matches = mutableMapOf<CanonicalMatchId, Long>()
+    private val matchPublicIds = mutableMapOf<CanonicalMatchId, PublicMatchId>()
+    private val publicMatches = mutableMapOf<PublicMatchId, CanonicalMatchId>()
     private val innings = mutableMapOf<Pair<Long, Int>, WarehouseInnings>()
     private val deliveries = mutableMapOf<Triple<Long, Long, Int>, Long>()
     private val deliveryFielders = mutableSetOf<Triple<Long, Long, Long>>()
@@ -33,6 +41,7 @@ abstract class SqlScriptOutputAdapter(
     private var nextPersonKey = 1L
     private var nextTeamKey = 1L
     private var nextGroundKey = 1L
+    private var nextMatchKey = 1L
     private var nextInningsKey = 1L
     private var nextDeliveryKey = 1L
     private var nextWicketKey = 1L
@@ -44,7 +53,13 @@ abstract class SqlScriptOutputAdapter(
         writer.appendLine(dialect.transactionStart)
     }
 
-    override fun findMatchKey(fileName: String): Long? = matches[matchIdFromFileName(fileName)]
+    override fun findMatchKey(canonicalMatchId: CanonicalMatchId): Long? = matches[canonicalMatchId]
+
+    override fun ensurePublicMatchId(canonicalMatchId: CanonicalMatchId, publicMatchId: PublicMatchId) {
+        if (matches.containsKey(canonicalMatchId)) {
+            validatePublicMatchId(canonicalMatchId, publicMatchId)
+        }
+    }
 
     override fun upsertPerson(sourceId: String, fullName: String, caId: Int): Long {
         people[sourceId]?.let { return it }
@@ -113,14 +128,20 @@ abstract class SqlScriptOutputAdapter(
     }
 
     override fun insertMatch(match: MatchRecord): WarehouseMatch {
-        matches[match.id]?.let { return WarehouseMatch(it) }
-        val key = match.id.toLong()
+        matches[match.canonicalMatchId]?.let {
+            ensurePublicMatchId(match.canonicalMatchId, match.publicMatchId)
+            return WarehouseMatch(it, match.publicMatchId)
+        }
+        validatePublicMatchId(match.canonicalMatchId, match.publicMatchId)
+        val key = nextMatchKey++
         write(
-            "INSERT INTO dim_match (id, source_ca_id, file_name, match_in_series, match_type, event_name, " +
+            "INSERT INTO dim_match (match_key, canonical_match_id, public_match_id, source_ca_id, file_name, match_in_series, match_type, event_name, " +
                     "match_date_text, season, match_start_year, match_start_date_key, balls_per_over, added_timestamp, " +
                     "team1_key, team2_key, ground_key, toss_team_key, toss_decision, victory_type, winner_team_key, loser_team_key) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            match.id,
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            key,
+            match.canonicalMatchId.value.toString(),
+            match.publicMatchId.value,
             null,
             match.fileName,
             match.matchInSeries,
@@ -141,8 +162,24 @@ abstract class SqlScriptOutputAdapter(
             match.winnerTeamKey,
             match.loserTeamKey
         )
-        matches[match.id] = key
-        return WarehouseMatch(key)
+        matches[match.canonicalMatchId] = key
+        matchPublicIds[match.canonicalMatchId] = match.publicMatchId
+        publicMatches[match.publicMatchId] = match.canonicalMatchId
+        return WarehouseMatch(key, match.publicMatchId)
+    }
+
+    override fun insertSourceReferences(matchKey: Long, sources: List<SourceReference>) {
+        sources.forEach { source ->
+            write(
+                "INSERT INTO match_source_reference (match_key, provider, provider_record_key, source_record_id, raw_content_digest) " +
+                    "VALUES (?, ?, ?, ?, ?)",
+                matchKey,
+                source.provider.value,
+                source.providerRecordKey,
+                source.sourceRecordId.value.toString(),
+                source.rawContentDigest.value
+            )
+        }
     }
 
     override fun insertMatchFact(
@@ -278,6 +315,25 @@ abstract class SqlScriptOutputAdapter(
             writer.appendLine("COMMIT;")
             writer.close()
             closed = true
+        }
+    }
+
+    private fun validatePublicMatchId(canonicalMatchId: CanonicalMatchId, publicMatchId: PublicMatchId) {
+        publicMatches[publicMatchId]?.let { existingCanonicalMatchId ->
+            if (existingCanonicalMatchId != canonicalMatchId) {
+                throw InvalidStateException(
+                    "Deterministic publicMatchId ${publicMatchId.value} collides for " +
+                        "canonical matches ${existingCanonicalMatchId.value} and ${canonicalMatchId.value}"
+                )
+            }
+        }
+        matchPublicIds[canonicalMatchId]?.let { existingPublicMatchId ->
+            if (existingPublicMatchId != publicMatchId) {
+                throw InvalidStateException(
+                    "Canonical match ${canonicalMatchId.value} already has publicMatchId " +
+                        existingPublicMatchId.value
+                )
+            }
         }
     }
 

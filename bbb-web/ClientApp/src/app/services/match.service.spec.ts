@@ -34,7 +34,7 @@ describe('MatchService', () => {
       result: {
         matches: [
           {
-            matchKey: 1,
+            publicMatchId: 1_000_000_001,
             sourceMatchId: 101,
             matchType: 'T20',
             season: '2026',
@@ -60,7 +60,7 @@ describe('MatchService', () => {
 
     service.getRecentMatches(8).subscribe((response) => {
       expect(response.result.matches.length).toBe(1);
-      expect(response.result.matches[0].matchKey).toBe(1);
+      expect(response.result.matches[0].publicMatchId).toBe(1_000_000_001);
       expect(response.errorMessage).toBe('');
     });
 
@@ -117,5 +117,13 @@ describe('MatchService', () => {
     );
     expect(req.request.method).toBe('GET');
     req.flush(mockResponse);
+  });
+
+  it('should call the scoresheet endpoint with the public match ID', () => {
+    service.getScoresheet(1_000_000_001).subscribe();
+
+    const req = httpTesting.expectOne('/api/matches/1000000001/scoresheet');
+    expect(req.request.method).toBe('GET');
+    req.flush({result: {context: {publicMatchId: 1_000_000_001}, completeness: 'EMPTY', missingData: [], innings: []}});
   });
 });

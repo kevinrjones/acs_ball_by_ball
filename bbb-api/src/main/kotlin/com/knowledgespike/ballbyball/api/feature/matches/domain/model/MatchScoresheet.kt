@@ -1,13 +1,13 @@
 package com.knowledgespike.ballbyball.api.feature.matches.domain.model
 
 import com.knowledgespike.ballbyball.contracts.ScoresheetCompleteness
-import com.knowledgespike.ballbyball.types.values.MatchKey
+import com.knowledgespike.ballbyball.types.values.PublicMatchId
 import com.knowledgespike.ballbyball.types.values.MatchType
 import com.knowledgespike.ballbyball.types.values.Season
 import com.knowledgespike.ballbyball.types.values.SourceMatchId
 
 data class MatchScoresheetContext(
-    val matchKey: MatchKey,
+    val publicMatchId: PublicMatchId,
     val sourceMatchId: SourceMatchId,
     val fileName: String,
     val matchType: MatchType?,

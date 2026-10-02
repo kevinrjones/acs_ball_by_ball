@@ -58,7 +58,7 @@ describe('MatchResultsComponent', () => {
 
   it('should render deterministic match fields and a real selection link', () => {
     matchService.searchMatches.and.returnValue(of(response([{
-      matchKey: 101,
+      publicMatchId: 1_000_010_101,
       sourceMatchId: 1001,
       fileName: 'india-match.json',
       matchType: 'T20',
@@ -80,6 +80,10 @@ describe('MatchResultsComponent', () => {
     const action = fixture.nativeElement.querySelector('a[data-result-action]') as HTMLAnchorElement;
     expect(action.tagName).toBe('A');
     expect(action.getAttribute('aria-label')).toContain('View match card');
+    expect(router.createUrlTree).toHaveBeenCalledWith(
+      ['/matches', 1_000_010_101, 'scoresheet'],
+      jasmine.anything()
+    );
     expect(fixture.componentInstance.queryParams()).toEqual({
       team: 'India', teamExactMatch: 'true', opponents: 'Pakistan', opponentsExactMatch: 'true',
       venue: '0', startDate: '', endDate: '', matchType: 'all', matchResult: '0', page: '1', pageSize: '20'

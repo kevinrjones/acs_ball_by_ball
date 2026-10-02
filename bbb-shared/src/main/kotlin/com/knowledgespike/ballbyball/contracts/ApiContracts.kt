@@ -1,7 +1,7 @@
 package com.knowledgespike.ballbyball.contracts
 
 import com.knowledgespike.ballbyball.types.values.ExactMatch
-import com.knowledgespike.ballbyball.types.values.MatchKey
+import com.knowledgespike.ballbyball.types.values.PublicMatchId
 import com.knowledgespike.ballbyball.types.values.MatchResultFilter
 import com.knowledgespike.ballbyball.types.values.MatchTypeFilter
 import com.knowledgespike.ballbyball.types.values.MatchType
@@ -27,7 +27,7 @@ data class HeartbeatResponse(
 
 @Serializable
 data class MatchSummary(
-    val matchKey: MatchKey,
+    val publicMatchId: PublicMatchId,
     val sourceMatchId: SourceMatchId,
     val fileName: String,
     val matchType: MatchType,
@@ -47,7 +47,7 @@ data class MatchSummary(
 ) {
     companion object {
         fun of(
-            matchKey: Long,
+            publicMatchId: Long,
             sourceMatchId: Int,
             fileName: String,
             matchType: String,
@@ -65,7 +65,7 @@ data class MatchSummary(
             result: String = "MISSING",
             format: String = "MISSING"
         ): MatchSummary = MatchSummary(
-            MatchKey.from(matchKey),
+            PublicMatchId.from(publicMatchId),
             SourceMatchId.from(sourceMatchId),
             fileName,
             MatchType.from(matchType),
@@ -108,7 +108,7 @@ data class MatchSearchRequest(
 
 @Serializable
 data class MatchSearchResult(
-    val matchKey: MatchKey,
+    val publicMatchId: PublicMatchId,
     val sourceMatchId: SourceMatchId,
     val fileName: String,
     val matchType: MatchType?,
@@ -145,7 +145,7 @@ enum class ScoresheetCompleteness {
 
 @Serializable
 data class MatchScoresheetContext(
-    val matchKey: MatchKey,
+    val publicMatchId: PublicMatchId,
     val sourceMatchId: SourceMatchId,
     val fileName: String,
     val matchType: MatchType?,

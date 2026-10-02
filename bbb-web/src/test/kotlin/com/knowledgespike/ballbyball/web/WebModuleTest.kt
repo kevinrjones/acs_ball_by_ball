@@ -21,7 +21,7 @@ import com.knowledgespike.ballbyball.web.config.KbffConfigFactory
 import com.knowledgespike.ballbyball.web.config.resolveRegistrationUrl
 import com.knowledgespike.ballbyball.web.domain.service.TokenService
 import com.knowledgespike.ballbyball.types.values.ExactMatch
-import com.knowledgespike.ballbyball.types.values.MatchKey
+import com.knowledgespike.ballbyball.types.values.PublicMatchId
 import com.knowledgespike.ballbyball.types.values.MatchResultFilter
 import com.knowledgespike.ballbyball.types.values.MatchTypeFilter
 import com.knowledgespike.ballbyball.types.values.PageNumber
@@ -87,7 +87,7 @@ class WebModuleTest {
                     respond(
                         content = Json.encodeToString(
                             Envelope.success(
-                                RecentMatchesResponse(listOf(MatchSummary.of(1, 10, "match.json", "TEST", "2026")))
+                                RecentMatchesResponse(listOf(MatchSummary.of(1_000_000_001, 10, "match.json", "TEST", "2026")))
                             )
                         ),
                         status = HttpStatusCode.OK,
@@ -252,7 +252,7 @@ class WebModuleTest {
         val searchResponse = MatchSearchResponse(
             matches = listOf(
                 MatchSearchResult(
-                    matchKey = MatchKey.from(100),
+                    publicMatchId = PublicMatchId.from(1_000_000_100),
                     sourceMatchId = SourceMatchId.from(200),
                     fileName = "historic.json",
                     matchType = null,
@@ -333,10 +333,10 @@ class WebModuleTest {
         }
         val client = KtorMatchApiClient("http://api", mockHttpClient, tokenService)
 
-        val result = client.scoresheet(MatchKey.from(42))
+        val result = client.scoresheet(PublicMatchId.from(1_000_000_042))
 
         expectThat(result).isEqualTo(MatchScoresheetResult.Unavailable(HttpStatusCode.NotFound))
-        expectThat(requestedPath).isEqualTo("/api/matches/42/scoresheet?")
+        expectThat(requestedPath).isEqualTo("/api/matches/1000000042/scoresheet?")
         expectThat(authHeaderValue).isEqualTo("Bearer scoresheet-token")
         mockHttpClient.close()
     }
@@ -722,6 +722,6 @@ class WebModuleTest {
             return searchResult
         }
 
-        override suspend fun scoresheet(matchKey: MatchKey): MatchScoresheetResult = MatchScoresheetResult.Unavailable()
+        override suspend fun scoresheet(publicMatchId: PublicMatchId): MatchScoresheetResult = MatchScoresheetResult.Unavailable()
     }
 }

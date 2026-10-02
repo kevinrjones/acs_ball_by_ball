@@ -36,9 +36,9 @@ fun Route.routeMatches(matchService: MatchService) {
                     }
                 )
             }
-            get("/matches/{matchKey}/scoresheet") {
+            get("/matches/{publicMatchId}/scoresheet") {
                 parseMatchScoresheetRequest { name ->
-                    if (name == "matchKey") {
+                    if (name == "publicMatchId") {
                         call.parameters[name]
                     } else {
                         call.request.queryParameters[name]
@@ -48,7 +48,7 @@ fun Route.routeMatches(matchService: MatchService) {
                     ifRight = { request ->
                         try {
                             val scoresheet = matchService.scoresheet(
-                                request.matchKey
+                                request.publicMatchId
                             )
                             if (scoresheet == null) {
                                 call.respond(
@@ -80,7 +80,7 @@ private fun com.knowledgespike.ballbyball.api.feature.matches.domain.model.Match
     MatchSearchResponse(
         matches = matches.map {
             MatchSearchResult(
-                matchKey = it.matchKey,
+                publicMatchId = it.publicMatchId,
                 sourceMatchId = it.sourceMatchId,
                 fileName = it.fileName,
                 matchType = it.matchType,
@@ -99,7 +99,7 @@ private fun com.knowledgespike.ballbyball.api.feature.matches.domain.model.Match
 private fun com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchScoresheetPage.toResponse() =
     MatchScoresheetResponse(
         context = MatchScoresheetContext(
-            matchKey = context.matchKey,
+            publicMatchId = context.publicMatchId,
             sourceMatchId = context.sourceMatchId,
             fileName = context.fileName,
             matchType = context.matchType,

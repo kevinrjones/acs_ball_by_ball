@@ -103,7 +103,7 @@ class ValueClassesTest {
     @Test
     fun `MatchSummary serializes with value classes as primitive JSON values`() {
         val summary = MatchSummary.of(
-            matchKey = 1001L,
+            publicMatchId = 1_001_001_001L,
             sourceMatchId = 42,
             fileName = "match_1001.json",
             matchType = "ODI",
@@ -112,11 +112,11 @@ class ValueClassesTest {
 
         val jsonString = json.encodeToString(summary)
         expectThat(jsonString).isEqualTo(
-            """{"matchKey":1001,"sourceMatchId":42,"fileName":"match_1001.json","matchType":"ODI","season":"2024"}"""
+            """{"publicMatchId":1001001001,"sourceMatchId":42,"fileName":"match_1001.json","matchType":"ODI","season":"2024"}"""
         )
 
         val deserialized = json.decodeFromString<MatchSummary>(jsonString)
-        expectThat(deserialized.matchKey.value).isEqualTo(1001L)
+        expectThat(deserialized.publicMatchId.value).isEqualTo(1_001_001_001L)
         expectThat(deserialized.sourceMatchId.value).isEqualTo(42)
         expectThat(deserialized.matchType.value).isEqualTo("ODI")
         expectThat(deserialized.season.value).isEqualTo("2024")

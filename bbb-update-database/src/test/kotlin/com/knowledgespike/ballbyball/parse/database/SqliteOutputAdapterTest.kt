@@ -1,31 +1,35 @@
 package com.knowledgespike.ballbyball.parse.database
 
+import com.knowledgespike.ballbyball.clishared.identity.CanonicalMatchId
+
 import com.knowledgespike.ballbyball.parse.database.adapter.sqlite.SqlOutputAdapter
 import org.junit.jupiter.api.Test
 import strikt.api.expectThat
 import strikt.assertions.isEqualTo
 import java.sql.DriverManager
+import java.util.UUID
 
 class SqliteOutputAdapterTest {
     @Test
-    fun `given an existing match when found by a fully qualified path then its key is returned`() {
+    fun `given an existing canonical match when found then its surrogate key is returned`() {
         DriverManager.getConnection("jdbc:sqlite::memory:").use { connection ->
             connection.createStatement().use { statement ->
                 statement.execute(
                     """
                     create table dim_match (
-                        id integer primary key,
-                        file_name varchar(120) not null
+                        match_key integer primary key,
+                        canonical_match_id varchar(36) not null unique
                     )
                     """.trimIndent()
                 )
                 statement.executeUpdate(
-                    "insert into dim_match (id, file_name) values (12345, '/old/root/12345.json')"
+                    "insert into dim_match (match_key, canonical_match_id) values (7, '1890a7a8-f76d-5f36-89f7-39b0319044b0')"
                 )
             }
 
             SqlOutputAdapter(connection).use { adapter ->
-                expectThat(adapter.findMatchKey("/new/root/12345.json")).isEqualTo(12345L)
+                val id = CanonicalMatchId.from(UUID.fromString("1890a7a8-f76d-5f36-89f7-39b0319044b0"))
+                expectThat(adapter.findMatchKey(id)).isEqualTo(7L)
             }
         }
     }

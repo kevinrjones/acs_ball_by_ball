@@ -4,7 +4,7 @@ import com.knowledgespike.ballbyball.contracts.MatchSearchRequest
 import com.knowledgespike.ballbyball.contracts.MatchSearchResponse
 import com.knowledgespike.ballbyball.contracts.MatchScoresheetResponse
 import com.knowledgespike.ballbyball.contracts.MatchSummary
-import com.knowledgespike.ballbyball.types.values.MatchKey
+import com.knowledgespike.ballbyball.types.values.PublicMatchId
 import io.ktor.http.HttpStatusCode
 import kotlin.time.Instant
 
@@ -40,5 +40,5 @@ interface MatchApiClient {
 
     suspend fun searchMatches(request: MatchSearchRequest): SearchMatchesResult
 
-    suspend fun scoresheet(matchKey: MatchKey): MatchScoresheetResult
+    suspend fun scoresheet(publicMatchId: PublicMatchId): MatchScoresheetResult
 }

@@ -2,7 +2,7 @@ package com.knowledgespike.ballbyball.api.feature.matches.domain.model
 
 import com.knowledgespike.ballbyball.contracts.MatchSearchRequest
 import com.knowledgespike.ballbyball.types.values.ExactMatch
-import com.knowledgespike.ballbyball.types.values.MatchKey
+import com.knowledgespike.ballbyball.types.values.PublicMatchId
 import com.knowledgespike.ballbyball.types.values.MatchResultFilter
 import com.knowledgespike.ballbyball.types.values.MatchType
 import com.knowledgespike.ballbyball.types.values.MatchTypeFilter
@@ -45,7 +45,7 @@ data class MatchSearchCriteria(
 }
 
 data class MatchSearchMatch(
-    val matchKey: MatchKey,
+    val publicMatchId: PublicMatchId,
     val sourceMatchId: SourceMatchId,
     val fileName: String,
     val matchType: MatchType?,

@@ -192,15 +192,15 @@ class Application {
             log.info("Inserting matches from {}", dataDirectory)
             matchFiles(dataDirectory).forEach { file ->
                 val sourceFile = file.toAbsolutePath().normalize()
-                if (!exceptions.contains(file.fileName.toString()) && database.shouldParse(sourceFile.toString())) {
-                    val matchData = parser.parse(file.toFile())
+                if (!exceptions.contains(file.fileName.toString())) {
+                    val envelope = parser.parse(file.toFile())
                     log.debug(
                         "Parsing match: {}, {}, {}",
                         file.fileName,
-                        matchData.match.event?.name ?: "Unknown",
-                        matchData.match.matchType
+                        envelope.match.match.event?.name ?: "Unknown",
+                        envelope.match.match.matchType
                     )
-                    database.writeMatch(sourceFile.toString(), matchData)
+                    database.writeMatch(sourceFile.toString(), envelope)
                 }
             }
         }

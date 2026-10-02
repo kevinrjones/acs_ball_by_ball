@@ -1,5 +1,9 @@
 package com.knowledgespike.ballbyball.parse.database.adapter
 
+import com.knowledgespike.ballbyball.clishared.identity.CanonicalMatchId
+import com.knowledgespike.ballbyball.clishared.identity.SourceReference
+import com.knowledgespike.ballbyball.types.values.PublicMatchId
+
 import com.knowledgespike.cricketarchive.InvalidStateException
 import com.knowledgespike.cricketarchive.LoggerDelegate
 import com.knowledgespike.ballbyball.parse.database.Location
@@ -21,10 +25,39 @@ import java.util.Locale
 /** Writes warehouse rows directly to the configured database. */
 abstract class JdbcOutputAdapter(protected val connection: Connection) : OutputAdapter {
     private val log by LoggerDelegate()
-    override fun findMatchKey(fileName: String): Long? = queryKey(
-        "select id from dim_match where id = ?",
-        matchIdFromFileName(fileName)
+    override fun findMatchKey(canonicalMatchId: CanonicalMatchId): Long? = queryKey(
+        "select match_key from dim_match where canonical_match_id = ?",
+        canonicalMatchId.value.toString()
     )
+
+    override fun ensurePublicMatchId(canonicalMatchId: CanonicalMatchId, publicMatchId: PublicMatchId) {
+        val matchKey = findMatchKey(canonicalMatchId) ?: return
+        val existingPublicMatchId = queryNullableKey(
+            "select public_match_id from dim_match where canonical_match_id = ?",
+            canonicalMatchId.value.toString()
+        )
+        if (existingPublicMatchId == publicMatchId.value) return
+        if (existingPublicMatchId != null) {
+            throw InvalidStateException(
+                "Canonical match ${canonicalMatchId.value} already has publicMatchId $existingPublicMatchId, " +
+                    "expected ${publicMatchId.value}"
+            )
+        }
+        val conflictingMatchKey = queryNullableKey(
+            "select match_key from dim_match where public_match_id = ?",
+            publicMatchId.value
+        )
+        if (conflictingMatchKey != null && conflictingMatchKey != matchKey) {
+            throw InvalidStateException(
+                "Deterministic publicMatchId ${publicMatchId.value} collides with matchKey $conflictingMatchKey"
+            )
+        }
+        execute(
+            "update dim_match set public_match_id = ? where canonical_match_id = ?",
+            publicMatchId.value,
+            canonicalMatchId.value.toString()
+        )
+    }
 
     override fun upsertPerson(sourceId: String, fullName: String, caId: Int): Long {
         queryKey("select person_key from dim_person where source_person_id = ?", sourceId)?.let { return it }
@@ -89,12 +122,25 @@ abstract class JdbcOutputAdapter(protected val connection: Connection) : OutputA
     }
 
     override fun insertMatch(match: MatchRecord): WarehouseMatch {
-        execute(
-            sql = "insert into dim_match (id, source_ca_id, file_name, match_in_series, match_type, event_name, " +
+        findMatchKey(match.canonicalMatchId)?.let {
+            ensurePublicMatchId(match.canonicalMatchId, match.publicMatchId)
+            return WarehouseMatch(it, match.publicMatchId)
+        }
+        queryNullableKey(
+            "select match_key from dim_match where public_match_id = ?",
+            match.publicMatchId.value
+        )?.let { conflictingMatchKey ->
+            throw InvalidStateException(
+                "Deterministic publicMatchId ${match.publicMatchId.value} collides with matchKey $conflictingMatchKey"
+            )
+        }
+        val key = insertWithKey(
+            sql = "insert into dim_match (canonical_match_id, public_match_id, source_ca_id, file_name, match_in_series, match_type, event_name, " +
                     "match_date_text, season, match_start_year, match_start_date_key, balls_per_over, added_timestamp, " +
                     "team1_key, team2_key, ground_key, toss_team_key, toss_decision, victory_type, winner_team_key, loser_team_key) " +
-                    "values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            match.id,
+                    "values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            match.canonicalMatchId.value.toString(),
+            match.publicMatchId.value,
             null,
             match.fileName,
             match.matchInSeries,
@@ -115,7 +161,21 @@ abstract class JdbcOutputAdapter(protected val connection: Connection) : OutputA
             match.winnerTeamKey,
             match.loserTeamKey
         )
-        return WarehouseMatch(match.id.toLong())
+        return WarehouseMatch(key, match.publicMatchId)
+    }
+
+    override fun insertSourceReferences(matchKey: Long, sources: List<SourceReference>) {
+        sources.forEach { source ->
+            execute(
+                "insert into match_source_reference (match_key, provider, provider_record_key, source_record_id, raw_content_digest) " +
+                    "values (?, ?, ?, ?, ?)",
+                matchKey,
+                source.provider.value,
+                source.providerRecordKey,
+                source.sourceRecordId.value.toString(),
+                source.rawContentDigest.value
+            )
+        }
     }
 
     override fun insertMatchFact(
@@ -262,6 +322,19 @@ abstract class JdbcOutputAdapter(protected val connection: Connection) : OutputA
             values.forEachIndexed { index, value -> setValue(statement, index + 1, value) }
             statement.executeQuery().use { results ->
                 if (results.next()) return results.getLong(1)
+            }
+        }
+        return null
+    }
+
+    private fun queryNullableKey(sql: String, vararg values: Any?): Long? {
+        connection.prepareStatement(sql).use { statement ->
+            values.forEachIndexed { index, value -> setValue(statement, index + 1, value) }
+            statement.executeQuery().use { results ->
+                if (results.next()) {
+                    val value = results.getLong(1)
+                    return if (results.wasNull()) null else value
+                }
             }
         }
         return null
