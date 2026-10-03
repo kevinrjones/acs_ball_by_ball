@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { computed, inject, Injectable, Signal } from '@angular/core';
-import { catchError, defer, Observable, of, shareReplay } from 'rxjs';
+import { catchError, defer, map, Observable, of, shareReplay } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 
 export interface Claim {
@@ -10,6 +10,7 @@ export interface Claim {
 }
 
 export type Session = { claims: Claim[]; csrfToken?: string } | null;
+export type AuthenticationState = { session: Session; unavailable: boolean };
 
 const ANONYMOUS: Session = null;
 const CACHE_SIZE = 1;
@@ -18,17 +19,25 @@ const CACHE_SIZE = 1;
   providedIn: 'root'
 })
 export class AuthenticationService {
-  private session$: Observable<Session> | null = null;
+  private sessionState$: Observable<AuthenticationState> | null = null;
   private readonly http = inject(HttpClient);
 
   public getSession(ignoreCache = false): Observable<Session> {
-    if (!this.session$ || ignoreCache) {
-      this.session$ = this.http.get<Session>('/bff/user').pipe(
-        catchError(() => of(ANONYMOUS)),
+    return this.getSessionState(ignoreCache).pipe(map((state) => state.session));
+  }
+
+  public getSessionState(ignoreCache = false): Observable<AuthenticationState> {
+    if (!this.sessionState$ || ignoreCache) {
+      this.sessionState$ = this.http.get<Session>('/bff/user').pipe(
+        map((session) => ({session, unavailable: false})),
+        catchError((error: {status?: number}) => of({
+          session: ANONYMOUS,
+          unavailable: error.status !== 401
+        })),
         shareReplay(CACHE_SIZE)
       );
     }
-    return this.session$;
+    return this.sessionState$;
   }
 
   public readonly session: Signal<Session> = toSignal(

@@ -35,6 +35,7 @@ class CricSheetParser(
         log.info("Found {} Cricsheet JSON files in {}", inputs.size, inputDirectory)
         if (inputs.isEmpty()) {
             log.warn("No Cricsheet JSON files found in {}", inputDirectory)
+            return ParseResult(listOf(ParseFailure(inputDirectory, "No Cricsheet JSON files found")))
         }
 
         val failures = mutableListOf<ParseFailure>()

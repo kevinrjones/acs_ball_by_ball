@@ -19,6 +19,11 @@ interface OutputAdapter : AutoCloseable {
 
     fun ensurePublicMatchId(canonicalMatchId: CanonicalMatchId, publicMatchId: PublicMatchId)
 
+    fun sourceReferencesChanged(
+        canonicalMatchId: CanonicalMatchId,
+        sources: List<SourceReference>
+    ): Boolean = false
+
     fun upsertPerson(sourceId: String, fullName: String, caId: Int): Long
 
     fun upsertTeam(name: String): Team
@@ -102,3 +107,10 @@ data class DeliveryRecord(
     val delivery: Delivery,
     val powerplay: Int
 )
+
+internal fun fingerprint(source: SourceReference): String = listOf(
+    source.provider.value,
+    source.providerRecordKey,
+    source.sourceRecordId.value.toString(),
+    source.rawContentDigest.value
+).joinToString("|")

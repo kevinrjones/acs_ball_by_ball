@@ -1,6 +1,6 @@
 import {TestBed} from '@angular/core/testing';
 import {ActivatedRoute, convertToParamMap} from '@angular/router';
-import {of} from 'rxjs';
+import {BehaviorSubject, Observable, of} from 'rxjs';
 import {MatchService} from '../data/match.service';
 import {SelectedMatchPlaceholderComponent} from './selected-match-placeholder.component';
 import {MatchScoresheetResponse, ScoresheetDelivery, ScoresheetInnings} from '../domain/match.model';
@@ -29,6 +29,20 @@ describe('SelectedMatchPlaceholderComponent', () => {
 
     expect(fixture.componentInstance.isValidPublicMatchId()).toBeFalse();
     expect(fixture.nativeElement.textContent).toContain('selected public match ID is invalid');
+  });
+
+  it('should reload when Angular reuses the component for a new public match ID', async () => {
+    const routeParams = new BehaviorSubject(convertToParamMap({publicMatchId: '1000010101'}));
+    const getScoresheet = jasmine.createSpy().and.returnValue(of({result: scoresheet()}));
+    await configure({}, '1000010101', scoresheet(), routeParams.asObservable(), getScoresheet);
+    const fixture = TestBed.createComponent(SelectedMatchPlaceholderComponent);
+    fixture.detectChanges();
+
+    routeParams.next(convertToParamMap({publicMatchId: '1000010102'}));
+    fixture.detectChanges();
+
+    expect(getScoresheet.calls.allArgs()).toEqual([[1000010101], [1000010102]]);
+    expect(fixture.componentInstance.publicMatchId()).toBe('1000010102');
   });
 
   it('should render deliveries as a grouped linear over-by-over matrix', async () => {
@@ -383,7 +397,9 @@ describe('SelectedMatchPlaceholderComponent', () => {
 async function configure(
   query: Record<string, string>,
   publicMatchId = '1000010101',
-  result: MatchScoresheetResponse = scoresheet()
+  result: MatchScoresheetResponse = scoresheet(),
+  paramMap: Observable<ReturnType<typeof convertToParamMap>> = of(convertToParamMap({publicMatchId})),
+  getScoresheet = () => of({result})
 ): Promise<void> {
   TestBed.resetTestingModule();
   await TestBed.configureTestingModule({
@@ -391,11 +407,14 @@ async function configure(
     providers: [
       {
         provide: ActivatedRoute,
-        useValue: {snapshot: {paramMap: convertToParamMap({publicMatchId}), queryParamMap: convertToParamMap(query)}}
+        useValue: {
+          snapshot: {paramMap: convertToParamMap({publicMatchId}), queryParamMap: convertToParamMap(query)},
+          paramMap
+        }
       },
       {
         provide: MatchService,
-        useValue: {getScoresheet: () => of({result})}
+        useValue: {getScoresheet}
       }
     ]
   }).compileComponents();

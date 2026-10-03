@@ -1,6 +1,7 @@
 package com.knowledgespike.ballbyball.parse.parser
 
 import com.knowledgespike.ballbyball.clishared.identity.CanonicalMatchEnvelope
+import com.knowledgespike.ballbyball.clishared.identity.CURRENT_ENVELOPE_VERSION
 import kotlinx.serialization.json.Json
 import java.io.File
 
@@ -18,6 +19,10 @@ class BallByBallParser {
     }
 
     fun buildCricSheet(data: String): CanonicalMatchEnvelope {
-        return json.decodeFromString(data)
+        val envelope = json.decodeFromString<CanonicalMatchEnvelope>(data)
+        require(envelope.version == CURRENT_ENVELOPE_VERSION) {
+            "Unsupported canonical match envelope version: ${envelope.version}"
+        }
+        return envelope
     }
 }

@@ -17,17 +17,17 @@ httpClient:
 
 kbff:
   oidc:
-    authority: "${OIDC_AUTHORITY:https://ids.local:8443}"
-    clientId: "${OIDC_CLIENT_ID:ballbyball}"
-    clientSecret: "${OIDC_CLIENT_SECRET:secret}"
+    authority: "${OIDC_AUTHORITY}"
+    clientId: "${OIDC_CLIENT_ID}"
+    clientSecret: "${OIDC_CLIENT_SECRET}"
     scopes:
       - "openid"
       - "profile"
       - "bbb.api"
       - "bbb.api.read"
-    redirectUri: "${OIDC_REDIRECT_URI:http://localhost:8080/signin-oidc}"
-    postLogoutRedirectUri: "${OIDC_POST_LOGOUT_REDIRECT_URI:http://localhost:8080/}"
-    registrationUrl: "${OIDC_REGISTRATION_URL:https://ids.local:8443/identity/account/register}"
+    redirectUri: "${OIDC_REDIRECT_URI}"
+    postLogoutRedirectUri: "${OIDC_POST_LOGOUT_REDIRECT_URI}"
+    registrationUrl: "${OIDC_REGISTRATION_URL}"
     sslCertificatePath: "${OIDC_CERT_PATH:}"
   api:
     baseUrl: "${API_BASE_URL:http://localhost:8081}"

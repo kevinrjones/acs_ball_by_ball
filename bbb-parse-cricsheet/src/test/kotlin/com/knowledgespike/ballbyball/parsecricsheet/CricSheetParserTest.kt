@@ -13,6 +13,17 @@ class CricSheetParserTest {
     private val json = Json { ignoreUnknownKeys = false }
 
     @Test
+    fun `given an input directory without json files then parsing fails`() {
+        val root = Files.createTempDirectory("parse-cricsheet-empty")
+        Files.createDirectories(root.resolve("input"))
+
+        val result = CricSheetParser().parse(root.resolve("input"), root.resolve("output"))
+
+        expectThat(result.succeeded).isEqualTo(false)
+        expectThat(result.failures.single().message).isEqualTo("No Cricsheet JSON files found")
+    }
+
+    @Test
     fun `given cricsheet input when parsed then output is mirrored with normalized names and match type`() {
         val root = Files.createTempDirectory("parse-cricsheet")
         val input = root.resolve("raw/archive")

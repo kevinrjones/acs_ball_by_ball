@@ -104,15 +104,33 @@ class UpdateDatabaseInputTest {
     }
 
     @Test
+    fun `given csv output overlapping match data when resolved then parsing fails`() {
+        val input = UpdateDatabaseInput(
+            baseDirectory = Path.of("/tmp/cricsheet"),
+            dataDirectory = Path.of("/tmp/cricsheet/matches"),
+            namesDirectory = Path.of("/tmp/cricsheet"),
+            playerRegistry = Path.of("/tmp/cricsheet/people.csv"),
+            nightly = false
+        )
+
+        assertThrows<ParseException> {
+            UpdateDatabaseArguments.resolveCsvOutputPath(input, "matches")
+        }
+        assertThrows<ParseException> {
+            UpdateDatabaseArguments.resolveCsvOutputPath(input, ".")
+        }
+    }
+
+    @Test
     fun `given data directory when selected then all json files are returned without directory metadata`() {
         val directory = Files.createTempDirectory("nightly-matches")
         Files.writeString(directory.resolve("b.json"), "b")
-        Files.writeString(directory.resolve("a.json"), "a")
+        Files.writeString(directory.resolve("a.JSON"), "a")
         Files.writeString(directory.resolve("notes.txt"), "ignore")
         Files.createDirectories(directory.resolve("archive-name"))
         Files.writeString(directory.resolve("archive-name/nested.json"), "nested")
 
         expectThat(matchFiles(directory).map { directory.relativize(it).toString() })
-            .isEqualTo(listOf("a.json", "archive-name/nested.json", "b.json"))
+            .isEqualTo(listOf("a.JSON", "archive-name/nested.json", "b.json"))
     }
 }

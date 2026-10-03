@@ -3,7 +3,7 @@
     <div>
       <div class="match-page-eyebrow"><svg class="inline-icon" aria-hidden="true" fill="none" viewBox="0 0 24 24"><path d="M4 8h16M6 5h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-linecap="round" stroke-width="1.8" /></svg> Historical Stats &amp; Records <span class="breadcrumb-slash">/</span> Card Search Results</div>
       <h1 id="match-results-heading" class="match-page-title">Match Card Search Results</h1>
-      @if (state() === 'results' || state() === 'no-results') {<p class="match-page-subtitle">Found {{ totalResults() }} verified matches matching your filter specifications.</p>}
+      @if (state() === 'results' || state() === 'no-results') {<p class="match-page-subtitle">Found {{ totalResults() }} matches matching your filter specifications.</p>}
       @if (state() === 'error') {<p class="match-page-subtitle">The search could not be completed.</p>}
     </div>
     <div class="database-status" aria-label="Historical match database status"><svg class="inline-icon" aria-hidden="true" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8" /><path d="M12 10v6m0-9h.01" stroke="currentColor" stroke-linecap="round" stroke-width="1.8" /></svg><span>Historical match database</span></div>
@@ -34,7 +34,7 @@
           </section>
 
           <section class="results-table-card" aria-labelledby="results-table-heading">
-            <div class="results-toolbar"><div class="results-toolbar-title"><h2 id="results-table-heading">Search Results</h2><span class="results-count-pill">{{ totalResults() }} Matches Returned</span></div><div class="results-toolbar-stats"><span class="results-stat-indicator"><span class="results-stat-dot"></span> Verified Scorecards</span><span class="results-stat-sep">•</span><span>Sort: <strong>Chronological</strong></span></div></div>
+            <div class="results-toolbar"><div class="results-toolbar-title"><h2 id="results-table-heading">Search Results</h2><span class="results-count-pill">{{ totalResults() }} Matches Returned</span></div><div class="results-toolbar-stats"><span class="results-stat-indicator"><span class="results-stat-dot"></span> Scorecards</span><span class="results-stat-sep">•</span><span>Sort: <strong>Chronological</strong></span></div></div>
             <div class="results-table-overflow">
               <table class="results-data-table">
                 <thead><tr><th scope="col">Date</th><th scope="col">Tournament</th><th scope="col">Match</th><th scope="col">Ground</th><th scope="col" class="results-action-heading">Action</th></tr></thead>

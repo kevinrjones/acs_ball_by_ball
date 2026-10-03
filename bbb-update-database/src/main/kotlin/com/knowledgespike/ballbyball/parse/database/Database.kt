@@ -38,6 +38,9 @@ class Database(private val outputAdapter: OutputAdapter) {
             val publicMatchId = DeterministicIdentity.publicMatchId(envelope.canonicalMatchId)
             if (!shouldParse(envelope.canonicalMatchId)) {
                 outputAdapter.ensurePublicMatchId(envelope.canonicalMatchId, publicMatchId)
+                check(!outputAdapter.sourceReferencesChanged(envelope.canonicalMatchId, envelope.sources)) {
+                    "Source content changed for canonical match ${envelope.canonicalMatchId.value}; rebuild the warehouse before importing corrections"
+                }
                 log.info("Match already exists: {}", envelope.canonicalMatchId.value)
                 outputAdapter.commit()
                 return

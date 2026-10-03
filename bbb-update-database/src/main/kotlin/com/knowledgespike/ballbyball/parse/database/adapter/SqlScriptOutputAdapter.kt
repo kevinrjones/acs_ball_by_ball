@@ -27,6 +27,7 @@ abstract class SqlScriptOutputAdapter(
     private val matches = mutableMapOf<CanonicalMatchId, Long>()
     private val matchPublicIds = mutableMapOf<CanonicalMatchId, PublicMatchId>()
     private val publicMatches = mutableMapOf<PublicMatchId, CanonicalMatchId>()
+    private val sourceReferences = mutableMapOf<Long, Set<String>>()
     private val innings = mutableMapOf<Pair<Long, Int>, WarehouseInnings>()
     private val deliveries = mutableMapOf<Triple<Long, Long, Int>, Long>()
     private val deliveryFielders = mutableSetOf<Triple<Long, Long, Long>>()
@@ -53,6 +54,15 @@ abstract class SqlScriptOutputAdapter(
 
     override fun ensurePublicMatchId(canonicalMatchId: CanonicalMatchId, publicMatchId: PublicMatchId) {
         decideMatchWrite(canonicalMatchId, publicMatchId)
+    }
+
+    override fun sourceReferencesChanged(
+        canonicalMatchId: CanonicalMatchId,
+        sources: List<SourceReference>
+    ): Boolean {
+        val matchKey = findMatchKey(canonicalMatchId) ?: return false
+        val existing = sourceReferences[matchKey] ?: return false
+        return existing != sources.map { fingerprint(it) }.toSet()
     }
 
     override fun upsertPerson(sourceId: String, fullName: String, caId: Int): Long {
@@ -129,6 +139,7 @@ abstract class SqlScriptOutputAdapter(
     }
 
     override fun insertSourceReferences(matchKey: Long, sources: List<SourceReference>) {
+        sourceReferences[matchKey] = sources.map { fingerprint(it) }.toSet()
         sources.forEach { source ->
             write(
                 WarehouseWriteSupport.insertSql(

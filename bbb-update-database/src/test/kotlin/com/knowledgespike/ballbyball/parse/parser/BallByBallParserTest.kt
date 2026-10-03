@@ -15,6 +15,7 @@ import kotlinx.serialization.json.JsonObject
 import org.junit.jupiter.api.Test
 import strikt.api.expectThat
 import strikt.assertions.isEqualTo
+import org.junit.jupiter.api.assertThrows
 import java.nio.file.Files
 import java.util.UUID
 
@@ -30,6 +31,15 @@ class BallByBallParserTest {
         expectThat(parsed.match.match.event?.name).isEqualTo("The Hundred")
         expectThat(parsed.match.innings.first().overs?.first()?.deliveries?.first()?.nonStriker)
             .isEqualTo("Batter Two")
+    }
+
+    @Test
+    fun `given unsupported envelope version when parsed then parsing fails explicitly`() {
+        val data = Json.encodeToString(sampleEnvelope().copy(version = 99))
+
+        assertThrows<IllegalArgumentException> {
+            BallByBallParser().buildCricSheet(data)
+        }
     }
 
     private fun sampleEnvelope(): CanonicalMatchEnvelope {

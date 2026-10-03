@@ -63,12 +63,14 @@ object KbffConfigFactory {
             ?: "http://localhost:8081").trimEnd('/')
 
     fun fromConfig(config: ApplicationConfig, isDevelopment: Boolean = false): KbffConfiguration {
-        val authority = config.propertyOrNull("kbff.oidc.authority")?.getString() ?: "https://ids.local:8443"
-        val clientId = config.propertyOrNull("kbff.oidc.clientId")?.getString() ?: "bbweb"
-        val clientSecret = config.propertyOrNull("kbff.oidc.clientSecret")?.getString() ?: "secret"
-        val scopes = config.propertyOrNull("kbff.oidc.scopes")?.getList() ?: listOf("openid", "profile", "bb.api", "bb.api.read")
-        val redirectUri = config.propertyOrNull("kbff.oidc.redirectUri")?.getString() ?: "http://localhost:8080/signin-oidc"
-        val postLogoutRedirectUri = config.propertyOrNull("kbff.oidc.postLogoutRedirectUri")?.getString() ?: "http://localhost:8080/"
+        val authority = requiredConfig(config, "kbff.oidc.authority", isDevelopment, "https://ids.local:8443")
+        val clientId = requiredConfig(config, "kbff.oidc.clientId", isDevelopment, "bbweb")
+        val clientSecret = requiredConfig(config, "kbff.oidc.clientSecret", isDevelopment, "secret")
+        val scopes = config.propertyOrNull("kbff.oidc.scopes")?.getList()?.takeIf { it.isNotEmpty() }
+            ?: if (isDevelopment) listOf("openid", "profile", "bb.api", "bb.api.read")
+            else error("kbff.oidc.scopes must be configured")
+        val redirectUri = requiredConfig(config, "kbff.oidc.redirectUri", isDevelopment, "http://localhost:8080/signin-oidc")
+        val postLogoutRedirectUri = requiredConfig(config, "kbff.oidc.postLogoutRedirectUri", isDevelopment, "http://localhost:8080/")
         val sslCertificatePath = config.propertyOrNull("kbff.oidc.sslCertificatePath")?.getString()
 
         val apiBaseUrl = resolveApiBaseUrl(config)
@@ -95,6 +97,14 @@ object KbffConfigFactory {
             }
         }
     }
+
+    private fun requiredConfig(
+        config: ApplicationConfig,
+        path: String,
+        isDevelopment: Boolean,
+        developmentDefault: String
+    ): String = config.propertyOrNull(path)?.getString()?.takeIf(String::isNotBlank)
+        ?: if (isDevelopment) developmentDefault else error("$path must be configured")
 }
 
 fun ApplicationConfig.resolveRegistrationUrl(): String =

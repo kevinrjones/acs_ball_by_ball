@@ -211,12 +211,24 @@ Copy `.env.example` when using Compose:
 | --- | --- | --- |
 | `DB_NAME` | `acs_ball_by_ball` | Database name |
 | `DB_USER` | `ballbyball` | Application DB user |
-| `DB_PASSWORD` | `p4ssw0rd` | Application DB password |
+| `DB_PASSWORD` | required | Application DB password |
+| `DB_ROOT_PASSWORD` | required | MariaDB root password |
 | `DB_PORT` | `3306` | Host MariaDB port |
 | `API_PORT` | `8081` | Host API port |
 | `WEB_PORT` | `8080` | Host web port |
 | `DATA_DIR` | `./data` | Data mount for the updater container |
+| `JWT_JWKS_URL` | required | API signing-key endpoint |
+| `JWT_ISSUER` | required | API token issuer |
+| `JWT_AUDIENCE` | required | API token audience |
+| `OIDC_AUTHORITY` | required | BFF identity-provider authority |
+| `OIDC_CLIENT_ID` | required | BFF OIDC client ID |
+| `OIDC_CLIENT_SECRET` | required | BFF OIDC client secret |
+| `OIDC_REDIRECT_URI` | required | BFF callback URI |
+| `OIDC_POST_LOGOUT_REDIRECT_URI` | required | BFF post-logout URI |
+| `OIDC_REGISTRATION_URL` | required | Account registration URL |
 
+The database passwords, JWT settings, and OIDC settings are required by
+Compose; fill them in locally or through a secret manager before starting it.
 Do not commit real secrets. Prefer environment variables over hard-coded
 credentials in source files.
 
@@ -245,7 +257,7 @@ docker compose run --rm update-database \
   --playerRegistry people.csv \
   --connectionString jdbc:mariadb://mariadb:3306/acs_ball_by_ball \
   --userName ballbyball \
-  --password p4ssw0rd
+  --password "$DB_PASSWORD"
 ```
 
 Stop / reset:
@@ -277,6 +289,7 @@ execution, and Docker push steps.
 | [docs/GENERATING_KEYS.md](docs/GENERATING_KEYS.md) | Match key generation, collision risk, and recovery |
 | [docs/architecture/applications.md](docs/architecture/applications.md) | Module boundaries and runtime flows |
 | [docs/architecture/database.md](docs/architecture/database.md) | Warehouse schema notes |
+| [UBIQUITOUS_LANGUAGE.md](UBIQUITOUS_LANGUAGE.md) | Shared domain, contract, identity, and security vocabulary |
 | [docs/setup/SETUP-DB.md](docs/setup/SETUP-DB.md) | Local database container setup |
 | [docs/project_memory.md](docs/project_memory.md) | Shipped work, decisions, and gotchas |
 | [docs/adr/](docs/adr/) | Architecture decision records |

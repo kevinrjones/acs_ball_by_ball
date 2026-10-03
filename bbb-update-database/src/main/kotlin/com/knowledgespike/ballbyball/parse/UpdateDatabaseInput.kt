@@ -95,6 +95,19 @@ object UpdateDatabaseArguments {
     fun resolveOutputPath(baseDirectory: Path, value: String, option: String): Path =
         childPath(baseDirectory, value, option, "base directory")
 
+    fun resolveCsvOutputPath(input: UpdateDatabaseInput, value: String): Path {
+        val output = resolveOutputPath(input.baseDirectory, value, "--csvDir")
+        val dataDirectory = input.dataDirectory.normalize()
+        val baseDirectory = input.baseDirectory.normalize()
+        if (output == baseDirectory || output.startsWith(dataDirectory) || dataDirectory.startsWith(output)) {
+            throw ParseException("--csvDir must not overlap the base or match-data directory: $value")
+        }
+        if (output == input.playerRegistry.normalize()) {
+            throw ParseException("--csvDir must not target the player registry: $value")
+        }
+        return output
+    }
+
     private fun requiredValue(commandLine: CommandLine, vararg names: String): String =
         names.firstNotNullOfOrNull { commandLine.getOptionValue(it) }
             ?: throw ParseException("Missing required option: --${names.last()}")
@@ -132,5 +145,7 @@ object UpdateDatabaseArguments {
 }
 
 internal fun matchFiles(dataDirectory: Path): List<Path> = Files.walk(dataDirectory).use { files ->
-    files.filter { it != dataDirectory && Files.isRegularFile(it) && it.name.endsWith("json") }.sorted().toList()
+    files.filter { it != dataDirectory && Files.isRegularFile(it) && it.name.endsWith(".json", ignoreCase = true) }
+        .sorted()
+        .toList()
 }

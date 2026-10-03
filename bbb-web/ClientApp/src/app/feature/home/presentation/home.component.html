@@ -18,10 +18,11 @@
              class="px-5 py-2.5 text-sm font-semibold rounded-lg bg-[#0e3b43] text-white hover:bg-[#09292e] shadow-sm transition-all hover:shadow hover:-translate-y-0.5 focus:ring-2 focus:ring-offset-1 focus:ring-teal-700">
             Card Search
           </a>
-          <button
-            class="px-5 py-2.5 text-sm font-semibold rounded-lg bg-[#0e3b43] text-white hover:bg-[#09292e] shadow-sm transition-all hover:shadow hover:-translate-y-0.5 focus:ring-2 focus:ring-offset-1 focus:ring-teal-700">
-            Player Search
-          </button>
+          <span
+            class="px-5 py-2.5 text-sm font-semibold rounded-lg bg-slate-200 text-slate-500"
+            aria-disabled="true">
+            Player Search (coming soon)
+          </span>
         } @else {
           <a href="/bff/login"
              class="px-5 py-2.5 text-sm font-semibold rounded-lg bg-[#0e3b43] text-white hover:bg-[#09292e] shadow-sm transition-all hover:shadow hover:-translate-y-0.5 focus:ring-2 focus:ring-offset-1 focus:ring-teal-700">
@@ -46,7 +47,7 @@
                 </span>
         </div>
         <div class="flex items-center gap-3">
-          <span class="text-xs font-medium text-slate-500">{{ latestDateRange }}</span>
+          <span class="text-xs font-medium text-slate-500">Latest 10 matches</span>
           <button
             (click)="loadRecentMatches()"
             [disabled]="isLoading()"

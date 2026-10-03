@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { AuthenticationService, Session } from './authentication.service';
+import { AuthenticationService, AuthenticationState, Session } from './authentication.service';
 
 describe('AuthenticationService', () => {
   let service: AuthenticationService;
@@ -57,6 +57,17 @@ describe('AuthenticationService', () => {
     expect(service.userName()).toBe('Kevin Jones');
     expect(service.email()).toBe('kevin@knowledgespike.com');
     expect(service.logoutUrl()).toBe('/bff/logout?sid=test-csrf');
+  });
+
+  it('should mark the session unavailable when the BFF is unhealthy', () => {
+    service = TestBed.inject(AuthenticationService);
+    const req = httpTesting.expectOne('/bff/user');
+    req.flush('Service unavailable', {status: 503, statusText: 'Service Unavailable'});
+
+    let state: AuthenticationState | undefined;
+    service.getSessionState().subscribe((value) => state = value);
+
+    expect(state).toEqual({session: null, unavailable: true});
   });
 
 });

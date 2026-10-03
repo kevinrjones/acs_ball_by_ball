@@ -15,6 +15,7 @@ import com.knowledgespike.ballbyball.parse.database.adapter.DeliveryRecord
 import com.knowledgespike.ballbyball.parse.database.adapter.MatchWriteDecision
 import com.knowledgespike.ballbyball.parse.database.adapter.MatchRecord
 import com.knowledgespike.ballbyball.parse.database.adapter.WarehouseWriteSupport
+import com.knowledgespike.ballbyball.parse.database.adapter.fingerprint
 import com.knowledgespike.ballbyball.parse.database.getNameParts
 import java.io.BufferedWriter
 import java.nio.charset.StandardCharsets
@@ -36,6 +37,7 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
     private val matches = mutableMapOf<CanonicalMatchId, Long>()
     private val matchPublicIds = mutableMapOf<CanonicalMatchId, PublicMatchId>()
     private val publicMatches = mutableMapOf<PublicMatchId, CanonicalMatchId>()
+    private val sourceReferences = mutableMapOf<Long, Set<String>>()
     private val innings = mutableMapOf<Pair<Long, Int>, WarehouseInnings>()
     private val deliveries = mutableMapOf<Triple<Long, Long, Int>, Long>()
     private val matchPeople = mutableSetOf<Triple<Long, Long, String>>()
@@ -58,6 +60,15 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
 
     override fun ensurePublicMatchId(canonicalMatchId: CanonicalMatchId, publicMatchId: PublicMatchId) {
         decideMatchWrite(canonicalMatchId, publicMatchId)
+    }
+
+    override fun sourceReferencesChanged(
+        canonicalMatchId: CanonicalMatchId,
+        sources: List<SourceReference>
+    ): Boolean {
+        val matchKey = findMatchKey(canonicalMatchId) ?: return false
+        val existing = sourceReferences[matchKey] ?: return false
+        return existing != sources.map { fingerprint(it) }.toSet()
     }
 
     override fun upsertPerson(sourceId: String, fullName: String, caId: Int): Long {
@@ -122,6 +133,7 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
     }
 
     override fun insertSourceReferences(matchKey: Long, sources: List<SourceReference>) {
+        sourceReferences[matchKey] = sources.map { fingerprint(it) }.toSet()
         sources.forEach { source ->
             writeRow(
                 "match_source_reference",

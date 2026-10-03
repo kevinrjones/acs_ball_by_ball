@@ -13,6 +13,7 @@ import com.knowledgespike.ballbyball.parse.database.WarehouseInnings
 import com.knowledgespike.ballbyball.parse.database.WarehouseMatch
 import com.knowledgespike.ballbyball.parse.database.getNameParts
 import java.sql.Connection
+import java.sql.SQLException
 import java.sql.Statement
 import java.sql.Types
 import java.time.LocalDate
@@ -32,6 +33,36 @@ abstract class JdbcOutputAdapter(protected val connection: Connection) : OutputA
         when (matchWriteDecision(canonicalMatchId, publicMatchId)) {
             is MatchWriteDecision.Reuse -> backfillPublicMatchId(canonicalMatchId, publicMatchId)
             MatchWriteDecision.Insert -> Unit
+        }
+    }
+
+    override fun sourceReferencesChanged(
+        canonicalMatchId: CanonicalMatchId,
+        sources: List<SourceReference>
+    ): Boolean {
+        val matchKey = findMatchKey(canonicalMatchId) ?: return false
+        return try {
+            val existing = mutableSetOf<String>()
+            connection.prepareStatement(
+                "select provider, provider_record_key, source_record_id, raw_content_digest " +
+                    "from match_source_reference where match_key = ?"
+            ).use { statement ->
+                statement.setLong(1, matchKey)
+                statement.executeQuery().use { results ->
+                    while (results.next()) {
+                        existing += listOf(
+                            results.getString("provider"),
+                            results.getString("provider_record_key"),
+                            results.getString("source_record_id"),
+                            results.getString("raw_content_digest")
+                        ).joinToString("|")
+                    }
+                }
+            }
+            existing.isNotEmpty() && existing != sources.map { fingerprint(it) }.toSet()
+        } catch (exception: SQLException) {
+            log.warn("Source provenance table is unavailable; skipping correction detection", exception)
+            false
         }
     }
 

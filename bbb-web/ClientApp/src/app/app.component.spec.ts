@@ -64,8 +64,10 @@ describe('AppComponent', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
 
-    const links = Array.from(fixture.nativeElement.querySelectorAll('.primary-nav a')) as HTMLAnchorElement[];
-    expect(links.map((link) => link.textContent?.trim())).toEqual(['Home', 'Matches', 'Series', 'Stats Archive']);
+    const navigationItems = Array.from(fixture.nativeElement.querySelectorAll('.primary-nav > *')) as HTMLElement[];
+    expect(navigationItems.map((item) => item.textContent?.trim())).toEqual([
+      'Home', 'Matches', 'Series (coming soon)', 'Stats Archive (coming soon)'
+    ]);
     expect(fixture.nativeElement.querySelector('.site-header__inner')).toBeTruthy();
   });
 

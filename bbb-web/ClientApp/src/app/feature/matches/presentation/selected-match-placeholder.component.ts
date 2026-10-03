@@ -1,6 +1,8 @@
 import {CommonModule} from '@angular/common';
-import {Component, inject, OnInit, signal} from '@angular/core';
-import {ActivatedRoute, RouterLink} from '@angular/router';
+import {Component, DestroyRef, inject, OnInit, signal} from '@angular/core';
+import {ActivatedRoute, ParamMap, RouterLink} from '@angular/router';
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop';
+import {EMPTY, Observable, of, switchMap, catchError} from 'rxjs';
 import {parseMatchSearchQuery, serializeMatchSearchQuery} from '../domain/match-search-query.codec';
 import {MatchService} from '../data/match.service';
 import {presentScoresheet, PresentedScoresheet} from './scoresheet-presenter';
@@ -25,21 +27,15 @@ export class SelectedMatchPlaceholderComponent implements OnInit {
 
   private readonly activatedRoute = inject(ActivatedRoute);
   private readonly matchService = inject(MatchService);
+  private readonly destroyRef = inject(DestroyRef);
 
   ngOnInit(): void {
-    const rawPublicMatchId = this.activatedRoute.snapshot.paramMap.get('publicMatchId');
-    const query = this.activatedRoute.snapshot.queryParamMap;
-    const parsedQuery = parseMatchSearchQuery(query);
-    this.returnQueryParams.set(parsedQuery.query ? serializeMatchSearchQuery(parsedQuery.query) : {});
-    this.publicMatchId.set(rawPublicMatchId);
-    const isValid = rawPublicMatchId !== null && /^[1-9]\d{9}$/.test(rawPublicMatchId);
-    this.isValidPublicMatchId.set(isValid);
-    if (isValid) {
-      this.loadScoresheet(Number(rawPublicMatchId));
-    } else {
-      this.state.set('error');
-      this.errorMessage.set('The selected public match ID is invalid.');
-    }
+    const parameterMap$: Observable<ParamMap> =
+      this.activatedRoute.paramMap ?? of(this.activatedRoute.snapshot.paramMap);
+    parameterMap$.pipe(
+      switchMap((paramMap) => this.loadRouteMatch(paramMap.get('publicMatchId'))),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe((response) => this.applyScoresheet(response.result));
   }
 
   retry(): void {
@@ -91,27 +87,55 @@ export class SelectedMatchPlaceholderComponent implements OnInit {
   }
 
   private loadScoresheet(publicMatchId: number): void {
+    this.loadRouteMatch(String(publicMatchId)).subscribe((response) => this.applyScoresheet(response.result));
+  }
+
+  private loadRouteMatch(rawPublicMatchId: string | null) {
+    this.configureRouteState(rawPublicMatchId);
+    if (!this.isValidPublicMatchId()) {
+      return EMPTY;
+    }
     this.state.set('loading');
     this.errorMessage.set(null);
-    this.matchService.getScoresheet(publicMatchId).subscribe({
-      next: (response) => {
-        const presentedScoresheet = presentScoresheet(response.result);
-        this.scoresheet.set(presentedScoresheet);
-        this.activeInningsNumber.set(presentedScoresheet.innings[0]?.inningsNumber ?? null);
-        this.state.set('results');
-      },
-      error: (error: {status?: number; error?: {errorMessage?: string; message?: string}; message?: string}) => {
-        if (error.status === 404) {
-          this.state.set('not-found');
-          this.errorMessage.set('The requested match was not found.');
-        } else {
-          this.state.set('error');
-          this.errorMessage.set(
-            error?.error?.errorMessage || error?.error?.message || error?.message || 'The scoresheet is currently unavailable.'
-          );
-        }
-      }
-    });
+    return this.matchService.getScoresheet(Number(rawPublicMatchId)).pipe(
+      catchError((error: {status?: number; error?: {errorMessage?: string; message?: string}; message?: string}) => {
+        this.handleScoresheetError(error);
+        return EMPTY;
+      })
+    );
+  }
+
+  private configureRouteState(rawPublicMatchId: string | null): void {
+    const parsedQuery = parseMatchSearchQuery(this.activatedRoute.snapshot.queryParamMap);
+    this.returnQueryParams.set(parsedQuery.query ? serializeMatchSearchQuery(parsedQuery.query) : {});
+    this.publicMatchId.set(rawPublicMatchId);
+    const isValid = rawPublicMatchId !== null && /^[1-9]\d{9}$/.test(rawPublicMatchId);
+    this.isValidPublicMatchId.set(isValid);
+    this.scoresheet.set(null);
+    this.activeInningsNumber.set(null);
+    if (!isValid) {
+      this.state.set('error');
+      this.errorMessage.set('The selected public match ID is invalid.');
+    }
+  }
+
+  private applyScoresheet(response: Parameters<typeof presentScoresheet>[0]): void {
+    const presentedScoresheet = presentScoresheet(response);
+    this.scoresheet.set(presentedScoresheet);
+    this.activeInningsNumber.set(presentedScoresheet.innings[0]?.inningsNumber ?? null);
+    this.state.set('results');
+  }
+
+  private handleScoresheetError(error: {status?: number; error?: {errorMessage?: string; message?: string}; message?: string}): void {
+    if (error.status === 404) {
+      this.state.set('not-found');
+      this.errorMessage.set('The requested match was not found.');
+    } else {
+      this.state.set('error');
+      this.errorMessage.set(
+        error?.error?.errorMessage || error?.error?.message || error?.message || 'The scoresheet is currently unavailable.'
+      );
+    }
   }
 
   private nextTabIndex(key: string, currentIndex: number, tabCount: number): number | null {

@@ -642,8 +642,9 @@ Gateway`. The complete database container setup remains in
 
 A full development environment is available using Docker Compose in `compose.yaml`. This brings up:
 
-- **MariaDB 12.3.2** database configured with database `acs_ball_by_ball`, user `ballbyball`, password `p4ssw0rd`, and
-  auto-initializes relational and dimensional warehouse schemas from `docker/mariadb/init/`.
+- **MariaDB 12.3.2** database configured with database `acs_ball_by_ball` and user `ballbyball`; set `DB_PASSWORD` and
+  `DB_ROOT_PASSWORD` before starting Compose. It auto-initializes relational and dimensional warehouse schemas from
+  `docker/mariadb/init/`.
 - **bbb-api** listening on port `8081` connected to the database.
 - **bbb-web** listening on port `8080` connected to `bbb-api`.
 - **bbb-update-database** container runnable on demand with the `tools` profile.
@@ -671,7 +672,7 @@ docker compose run --rm update-database \
   --playerRegistry people.csv \
   --connectionString jdbc:mariadb://mariadb:3306/acs_ball_by_ball \
   --userName ballbyball \
-  --password p4ssw0rd
+  --password "$DB_PASSWORD"
 ```
 
 ### Stop the development environment

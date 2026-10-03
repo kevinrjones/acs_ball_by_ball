@@ -56,4 +56,4 @@ object SingleSourceCanonicalizer {
     )
 }
 
-private const val CURRENT_ENVELOPE_VERSION = 1
+const val CURRENT_ENVELOPE_VERSION = 1

@@ -1,5 +1,101 @@
 # Project Memory
 
+## Task: Expert code review and ubiquitous language
+
+### Title
+
+Expert review of Kotlin, Angular, contracts, and application boundaries
+
+### Date/time completed
+
+2026-10-03 12:35
+
+### What was shipped
+
+- Added `UBIQUITOUS_LANGUAGE.md` defining the project vocabulary for source and
+  canonical envelopes, deterministic identities, warehouse keys, HTTP
+  contracts, feature slices, BFF authentication, and match operations.
+- Added the glossary to the root documentation map in `README.md`.
+- Reviewed `docs/architecture/applications.md` against the implementation; it
+  already provides sufficient module, runtime, security, contract, and feature
+  boundary detail, so it was intentionally left unchanged.
+
+### Key decisions
+
+- Keep `matchKey`, `publicMatchId`, `canonicalMatchId`, and `sourceRecordId`
+  distinct in all documentation and code discussions.
+- Treat a contract as the complete boundary agreement: wire shape, semantics,
+  validation, status/error behavior, versioning, and identity meaning.
+- Keep this task review-only for application behavior; findings are recorded
+  for follow-up rather than changing production logic opportunistically.
+
+### Gotchas
+
+- The Compose deployment defaults the web host port to `8080`, while the
+  standalone Ktor application defaults to `9999`; documentation should always
+  state which execution mode it describes.
+- Production configuration still has placeholder OIDC/database defaults, and
+  JWT configuration merges configured audiences/scopes with permissive defaults;
+  deployment hardening is required before treating those defaults as safe.
+
+### Test coverage areas
+
+- Static review covered API bootstrap/security/routes, shared contracts and
+  tiny types, Angular routing/services/components, the Cricsheet retrieval and
+  normalization pipeline, warehouse adapters, migrations, tests, and build
+  configuration.
+- Tests were not run because this task added documentation only; the review
+  identified follow-up coverage for route-parameter reuse, guard failure
+  states, destructive CSV targets, changed source digests, unsupported envelope
+  versions, empty input, and non-zero CLI exit propagation.
+
+## Task: Implement review follow-ups
+
+### Title
+
+Harden ingestion, authentication, and client navigation findings
+
+### Date/time completed
+
+2026-10-03 12:45
+
+### What was shipped
+
+- Prevented CSV output from overlapping or deleting the base, match-data, or
+  player-registry paths, and made empty or uppercase-extension input explicit.
+- Corrected player-register CSV parsing, enforced canonical envelope versions,
+  detected changed source digests where provenance is available, and propagated
+  CLI failures through a non-zero exit status.
+- Removed permissive production authentication defaults, made JWT audiences and
+  scopes configuration-driven, and preserved explicit test-only fallback values.
+- Reloaded scoresheets on reused Angular route parameters, distinguished BFF
+  outages from anonymous sessions, and replaced misleading or inert navigation
+  affordances with honest unavailable states.
+
+### Key decisions
+
+- A changed source digest is rejected during incremental import rather than
+  silently leaving warehouse facts and provenance inconsistent.
+- Development-only defaults remain available through explicit development mode;
+  production OIDC, JWT, and database values must be supplied by configuration.
+- Existing legacy/minimal JDBC fixtures without provenance tables retain their
+  duplicate-match behavior while current schemas perform correction detection.
+
+### Gotchas
+
+- Existing warehouses must be rebuilt or migrated before corrected source
+  records can be imported safely.
+- The Angular client still mirrors the shared wire contracts manually; contract
+  drift should be addressed by future generated-client work.
+
+### Test coverage areas
+
+- Added coverage for CSV target overlap, quoted registry fields, empty input,
+  uppercase JSON files, unsupported envelope versions, BFF outages, and route
+  parameter reuse.
+- Verified with `./gradlew :bbb-api:test :bbb-web:test :bbb-update-database:test
+  :bbb-parse-cricsheet:test :bbb-cli-shared:test --no-daemon`.
+
 ## Overall
 
 ### What was shipped

@@ -74,7 +74,7 @@ flyway {
         .get()
     password = providers.gradleProperty("flyway.password")
         .orElse(providers.environmentVariable("FLYWAY_PASSWORD"))
-        .orElse("p4ssw0rd")
+        .orElse("")
         .get()
     schemas = if (flywayDatabase == "sqlite") arrayOf("main") else arrayOf("acs_ball_by_ball")
     locations = arrayOf("filesystem:${projectDir}/migrations/$flywayDatabase")

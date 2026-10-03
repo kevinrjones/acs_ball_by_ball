@@ -16,6 +16,7 @@ import com.knowledgespike.ballbyball.parse.database.adapter.sqlite.SqlOutputAdap
 import com.knowledgespike.ballbyball.parse.database.adapter.sqlite.SqlScriptOutputAdapter as SqliteSqlScriptOutputAdapter
 import org.apache.commons.cli.*
 import java.nio.file.Path
+import kotlin.system.exitProcess
 
 private sealed interface OutputTarget {
     data class DatabaseTarget(
@@ -35,79 +36,54 @@ class Application {
 
         @JvmStatic
         fun main(args: Array<String>) {
-            try {
+            execute(args).takeIf { it != 0 }?.let(::exitProcess)
+        }
 
-                val options = createCommandLineOptions()
+        internal fun execute(args: Array<String>): Int = try {
+            val options = createCommandLineOptions()
+            val formatter = org.apache.commons.cli.help.HelpFormatter.builder().get()
+            val header = "Parse cricsheet data into database"
+            if (args.isEmpty() || args.any { it == "-h" || it == "--help" }) {
+                formatter.printHelp("java parsecard", header, options, "", true)
+                return 0
+            }
 
-                val formatter = org.apache.commons.cli.help.HelpFormatter.builder().get()
-                val header = "Parse cricsheet data into database"
-                if (args.isEmpty() || args.any { it == "-h" || it == "--help" }) {
-                    formatter.printHelp(
-                        "java parsecard",
-                        header,
-                        options,
-                        "",
-                        true
+            val cmd = try {
+                DefaultParser().parse(options, args)
+            } catch (exception: Exception) {
+                println(exception.message)
+                formatter.printHelp("java parsecard", header, options, "", true)
+                return 2
+            }
+
+            val input = UpdateDatabaseArguments.from(cmd)
+            val outputTarget = resolveOutputTarget(cmd, input)
+            val people = PlayerRegistryParser().parse(input.playerRegistry.toFile()).map {
+                PersonRegistryEntity(it.id, it.name, it.caId.toIntOrNull() ?: 0)
+            }.toList()
+
+            when (outputTarget) {
+                is OutputTarget.ScriptTarget -> createScriptOutputAdapter(outputTarget.databaseType, outputTarget.output)
+                    .use { adapter -> runImport(adapter, input, people) }
+                is OutputTarget.DatabaseTarget -> {
+                    val dbConnection = DatabaseConnection(
+                        outputTarget.connectionString,
+                        outputTarget.userName,
+                        outputTarget.password
                     )
-                    return
-                }
-
-                val cmd: CommandLine
-                val cmdLineParser: CommandLineParser = DefaultParser()
-                try {
-                    cmd = cmdLineParser.parse(options, args)
-                } catch (e: Exception) {
-                    println(e.message)
-                    formatter.printHelp(
-                        "java parsecard",
-                        header,
-                        options,
-                        "",
-                        true
-                    )
-                    System.exit(2)
-                    return
-                }
-
-                val input = UpdateDatabaseArguments.from(cmd)
-                val outputTarget = resolveOutputTarget(cmd, input)
-
-                val playerRegistryParser = PlayerRegistryParser()
-                val players = playerRegistryParser.parse(input.playerRegistry.toFile())
-                val people = players.map {
-                    PersonRegistryEntity(it.id, it.name, it.caId.toIntOrNull() ?: 0)
-                }.toList()
-
-                when (outputTarget) {
-                    is OutputTarget.ScriptTarget -> {
-                        createScriptOutputAdapter(outputTarget.databaseType, outputTarget.output).use { adapter ->
-                            runImport(adapter, input, people)
-                        }
-                    }
-
-                    is OutputTarget.DatabaseTarget -> {
-                        val dbConnection = DatabaseConnection(
-                            outputTarget.connectionString,
-                            outputTarget.userName,
-                            outputTarget.password
-                        )
-                        dbConnection.connect.use { db ->
-                            createSqlOutputAdapter(outputTarget.connectionString, db.connection).use { adapter ->
-                                runImport(adapter, input, people)
-                            }
-                        }
-                    }
-
-                    is OutputTarget.CsvTarget -> {
-                        CsvOutputAdapter(outputTarget.directory).use { adapter ->
-                            runImport(adapter, input, people)
-                        }
+                    dbConnection.connect.use { db ->
+                        createSqlOutputAdapter(outputTarget.connectionString, db.connection)
+                            .use { adapter -> runImport(adapter, input, people) }
                     }
                 }
-            } catch (e: Exception) {
-                log.error("Unable to parse cricsheet data", e)
+                is OutputTarget.CsvTarget -> CsvOutputAdapter(outputTarget.directory)
+                    .use { adapter -> runImport(adapter, input, people) }
             }
             log.info("finished")
+            0
+        } catch (exception: Exception) {
+            log.error("Unable to parse cricsheet data", exception)
+            1
         }
 
         private fun resolveOutputTarget(cmd: CommandLine, input: UpdateDatabaseInput): OutputTarget {
@@ -119,7 +95,7 @@ class Application {
                 UpdateDatabaseArguments.resolveOutputPath(input.baseDirectory, it, "--outputFile")
             }
             val csvPath = csvDirectory?.let {
-                UpdateDatabaseArguments.resolveOutputPath(input.baseDirectory, it, "--csvDir")
+                UpdateDatabaseArguments.resolveCsvOutputPath(input, it)
             }
 
             return when (outputType) {
@@ -212,7 +188,9 @@ class Application {
             dataDirectory: Path
         ) {
             log.info("Inserting matches from {}", dataDirectory)
-            matchFiles(dataDirectory).forEach { file ->
+            val files = matchFiles(dataDirectory)
+            require(files.isNotEmpty()) { "No canonical match JSON files found in $dataDirectory" }
+            files.forEach { file ->
                 val sourceFile = file.toAbsolutePath().normalize()
                 val envelope = parser.parse(file.toFile())
                 log.debug(
