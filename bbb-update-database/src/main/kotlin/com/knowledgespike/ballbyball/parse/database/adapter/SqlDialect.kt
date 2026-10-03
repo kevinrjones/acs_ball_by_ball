@@ -7,20 +7,20 @@ enum class SqlDialect(
     val transactionStart: String
 ) {
     MARIADB(
-        duplicateMatchPersonClause = "ON DUPLICATE KEY UPDATE match_person_key = match_person_key",
-        duplicateDeliveryFielderClause = "ON DUPLICATE KEY UPDATE delivery_key = delivery_key",
+        duplicateMatchPersonClause = "ON DUPLICATE KEY UPDATE id = id",
+        duplicateDeliveryFielderClause = "ON DUPLICATE KEY UPDATE delivery_id = delivery_id",
         booleanLiteral = { if (it) "1" else "0" },
         transactionStart = "START TRANSACTION;"
     ),
     POSTGRES(
-        duplicateMatchPersonClause = "ON CONFLICT (match_key, person_key, role_code) DO NOTHING",
-        duplicateDeliveryFielderClause = "ON CONFLICT (delivery_key, wicket_key, person_key) DO NOTHING",
+        duplicateMatchPersonClause = "ON CONFLICT (match_id, person_id, role_code) DO NOTHING",
+        duplicateDeliveryFielderClause = "ON CONFLICT (delivery_id, wicket_id, person_id) DO NOTHING",
         booleanLiteral = { if (it) "TRUE" else "FALSE" },
         transactionStart = "START TRANSACTION;"
     ),
     SQLITE(
-        duplicateMatchPersonClause = "ON CONFLICT (match_key, person_key, role_code) DO NOTHING",
-        duplicateDeliveryFielderClause = "ON CONFLICT (delivery_key, wicket_key, person_key) DO NOTHING",
+        duplicateMatchPersonClause = "ON CONFLICT (match_id, person_id, role_code) DO NOTHING",
+        duplicateDeliveryFielderClause = "ON CONFLICT (delivery_id, wicket_id, person_id) DO NOTHING",
         booleanLiteral = { if (it) "1" else "0" },
         transactionStart = "BEGIN TRANSACTION;"
     )

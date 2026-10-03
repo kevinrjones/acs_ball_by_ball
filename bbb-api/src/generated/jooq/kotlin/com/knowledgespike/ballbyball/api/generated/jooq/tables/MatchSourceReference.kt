@@ -9,7 +9,7 @@ import com.knowledgespike.ballbyball.api.generated.jooq.indexes.MATCH_SOURCE_REF
 import com.knowledgespike.ballbyball.api.generated.jooq.keys.FK_MATCH_SOURCE_MATCH
 import com.knowledgespike.ballbyball.api.generated.jooq.keys.KEY_MATCH_SOURCE_REFERENCE_PRIMARY
 import com.knowledgespike.ballbyball.api.generated.jooq.keys.KEY_MATCH_SOURCE_REFERENCE_UQ_MATCH_SOURCE_PROVIDER_RECORD
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimMatch.DimMatchPath
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Matches.MatchesPath
 import com.knowledgespike.ballbyball.api.generated.jooq.tables.records.MatchSourceReferenceRecord
 
 import kotlin.collections.Collection
@@ -78,10 +78,9 @@ open class MatchSourceReference(
     override fun getRecordType(): Class<MatchSourceReferenceRecord> = MatchSourceReferenceRecord::class.java
 
     /**
-     * The column
-     * <code>acs_ball_by_ball.match_source_reference.match_key</code>.
+     * The column <code>acs_ball_by_ball.match_source_reference.match_id</code>.
      */
-    val MATCH_KEY: TableField<MatchSourceReferenceRecord, Long?> = createField(DSL.name("match_key"), SQLDataType.BIGINT.nullable(false), this, "")
+    val MATCH_ID: TableField<MatchSourceReferenceRecord, Long?> = createField(DSL.name("match_id"), SQLDataType.BIGINT.nullable(false), this, "")
 
     /**
      * The column <code>acs_ball_by_ball.match_source_reference.provider</code>.
@@ -147,11 +146,11 @@ open class MatchSourceReference(
     override fun getReferences(): List<ForeignKey<MatchSourceReferenceRecord, *>> = listOf(FK_MATCH_SOURCE_MATCH)
 
     /**
-     * Get the implicit join path to the <code>acs_ball_by_ball.dim_match</code>
+     * Get the implicit join path to the <code>acs_ball_by_ball.matches</code>
      * table.
      */
-    fun dimMatch(): DimMatchPath = dimMatch
-    val dimMatch: DimMatchPath by lazy { DimMatchPath(this, FK_MATCH_SOURCE_MATCH, null) }
+    fun matches(): MatchesPath = matches
+    val matches: MatchesPath by lazy { MatchesPath(this, FK_MATCH_SOURCE_MATCH, null) }
     override fun `as`(alias: String): MatchSourceReference = MatchSourceReference(DSL.name(alias), this)
     override fun `as`(alias: Name): MatchSourceReference = MatchSourceReference(alias, this)
     override fun `as`(alias: Table<*>): MatchSourceReference = MatchSourceReference(alias.qualifiedName, this)

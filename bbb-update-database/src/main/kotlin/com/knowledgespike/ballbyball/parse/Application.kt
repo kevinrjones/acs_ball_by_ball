@@ -5,7 +5,7 @@ import com.knowledgespike.cricketarchive.shared.DatabaseConnection
 import com.knowledgespike.ballbyball.parse.parser.BallByBallParser
 import com.knowledgespike.ballbyball.parse.parser.PlayerRegistryParser
 import com.knowledgespike.ballbyball.parse.database.Database
-import com.knowledgespike.ballbyball.parse.database.PersonRegistryEntity
+import com.knowledgespike.ballbyball.parse.database.PersonEntity
 import com.knowledgespike.ballbyball.parse.database.adapter.OutputAdapter
 import com.knowledgespike.ballbyball.parse.database.adapter.csv.CsvOutputAdapter
 import com.knowledgespike.ballbyball.parse.database.adapter.mariadb.SqlOutputAdapter as MariaDbSqlOutputAdapter
@@ -59,7 +59,7 @@ class Application {
             val input = UpdateDatabaseArguments.from(cmd)
             val outputTarget = resolveOutputTarget(cmd, input)
             val people = PlayerRegistryParser().parse(input.playerRegistry.toFile()).map {
-                PersonRegistryEntity(it.id, it.name, it.caId.toIntOrNull() ?: 0)
+                PersonEntity(it.id, it.name, it.caId.toIntOrNull() ?: 0)
             }.toList()
 
             when (outputTarget) {
@@ -174,7 +174,7 @@ class Application {
         private fun runImport(
             adapter: OutputAdapter,
             input: UpdateDatabaseInput,
-            people: List<PersonRegistryEntity>
+            people: List<PersonEntity>
         ) {
             val database = Database(adapter)
             database.writeAllPeople(people.stream())

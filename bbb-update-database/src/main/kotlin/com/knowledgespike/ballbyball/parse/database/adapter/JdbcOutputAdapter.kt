@@ -6,11 +6,11 @@ import com.knowledgespike.ballbyball.types.values.PublicMatchId
 
 import com.knowledgespike.cricketarchive.InvalidStateException
 import com.knowledgespike.cricketarchive.LoggerDelegate
-import com.knowledgespike.ballbyball.parse.database.Location
-import com.knowledgespike.ballbyball.parse.database.PersonRegistryEntity
+import com.knowledgespike.ballbyball.parse.database.Ground
+import com.knowledgespike.ballbyball.parse.database.PersonEntity
 import com.knowledgespike.ballbyball.parse.database.Team
-import com.knowledgespike.ballbyball.parse.database.WarehouseInnings
-import com.knowledgespike.ballbyball.parse.database.WarehouseMatch
+import com.knowledgespike.ballbyball.parse.database.InningsEntity
+import com.knowledgespike.ballbyball.parse.database.MatchEntity
 import com.knowledgespike.ballbyball.parse.database.getNameParts
 import java.sql.Connection
 import java.sql.SQLException
@@ -20,12 +20,12 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 
-/** Writes warehouse rows directly to the configured database. */
+/** Writes relational rows directly to the configured database. */
 abstract class JdbcOutputAdapter(protected val connection: Connection) : OutputAdapter {
     private val log by LoggerDelegate()
     private var autoCommitBeforeMatch: Boolean? = null
     override fun findMatchKey(canonicalMatchId: CanonicalMatchId): Long? = queryKey(
-        "select match_key from dim_match where canonical_match_id = ?",
+        "select id from matches where canonical_match_id = ?",
         canonicalMatchId.value.toString()
     )
 
@@ -45,7 +45,7 @@ abstract class JdbcOutputAdapter(protected val connection: Connection) : OutputA
             val existing = mutableSetOf<String>()
             connection.prepareStatement(
                 "select provider, provider_record_key, source_record_id, raw_content_digest " +
-                    "from match_source_reference where match_key = ?"
+                    "from match_source_reference where match_id = ?"
             ).use { statement ->
                 statement.setLong(1, matchKey)
                 statement.executeQuery().use { results ->
@@ -67,10 +67,10 @@ abstract class JdbcOutputAdapter(protected val connection: Connection) : OutputA
     }
 
     override fun upsertPerson(sourceId: String, fullName: String, caId: Int): Long {
-        queryKey("select person_key from dim_person where source_person_id = ?", sourceId)?.let { return it }
+        queryKey("select id from people where source_person_id = ?", sourceId)?.let { return it }
         val (sortNamePart, otherNamePart) = getNameParts(fullName)
         return insertWithKey(
-            sql = WarehouseWriteSupport.insertSql("dim_person", WarehouseWriteSupport.PERSON_JDBC_COLUMNS, "insert into"),
+            sql = RelationalWriteSupport.insertSql("people", RelationalWriteSupport.PERSON_JDBC_COLUMNS, "insert into"),
             sourceId,
             fullName,
             sortNamePart,
@@ -81,42 +81,42 @@ abstract class JdbcOutputAdapter(protected val connection: Connection) : OutputA
 
     override fun upsertTeam(name: String): Team {
         findTeam(name)?.let { return it }
-        val sourceId = nextSourceId("source_team_id", "dim_team")
+        val sourceId = nextSourceId("source_team_id", "teams")
         val key = insertWithKey(
-            WarehouseWriteSupport.insertSql("dim_team", WarehouseWriteSupport.TEAM_JDBC_COLUMNS, "insert into"),
+            RelationalWriteSupport.insertSql("teams", RelationalWriteSupport.TEAM_JDBC_COLUMNS, "insert into"),
             sourceId,
             name
         )
         return Team(key, name)
     }
 
-    override fun upsertGround(name: String): Location {
-        connection.prepareStatement("select ground_key from dim_ground where ground_name = ?").use { statement ->
+    override fun upsertGround(name: String): Ground {
+        connection.prepareStatement("select id from grounds where ground_name = ?").use { statement ->
             statement.setString(1, name)
             statement.executeQuery().use { results ->
-                if (results.next()) return Location(results.getLong(1), name)
+                if (results.next()) return Ground(results.getLong(1), name)
             }
         }
-        val sourceId = nextSourceId("source_ground_id", "dim_ground")
+        val sourceId = nextSourceId("source_ground_id", "grounds")
         val key = insertWithKey(
-            WarehouseWriteSupport.insertSql("dim_ground", WarehouseWriteSupport.GROUND_JDBC_COLUMNS, "insert into"),
+            RelationalWriteSupport.insertSql("grounds", RelationalWriteSupport.GROUND_JDBC_COLUMNS, "insert into"),
             sourceId,
             name
         )
-        return Location(key, name)
+        return Ground(key, name)
     }
 
     override fun upsertDate(date: LocalDate): Int {
-        connection.prepareStatement("select date_key from dim_date where calendar_date = ?").use { statement ->
+        connection.prepareStatement("select date_id from dates where calendar_date = ?").use { statement ->
             statement.setDate(1, java.sql.Date.valueOf(date))
             statement.executeQuery().use { results ->
                 if (results.next()) return results.getInt(1)
             }
         }
 
-        val dimensions = WarehouseWriteSupport.dateDimensions(date)
+        val dimensions = RelationalWriteSupport.dateDimensions(date)
         connection.prepareStatement(
-            WarehouseWriteSupport.insertSql("dim_date", WarehouseWriteSupport.DATE_COLUMNS, "insert into")
+            RelationalWriteSupport.insertSql("dates", RelationalWriteSupport.DATE_COLUMNS, "insert into")
         ).use { statement ->
             dimensions.values(java.sql.Date.valueOf(date)).forEachIndexed { index, value ->
                 setValue(statement, index + 1, value)
@@ -126,162 +126,140 @@ abstract class JdbcOutputAdapter(protected val connection: Connection) : OutputA
         return dimensions.dateKey
     }
 
-    override fun insertMatch(match: MatchRecord): WarehouseMatch {
+    override fun insertMatch(match: MatchRecord): MatchEntity {
         return when (val decision = matchWriteDecision(match.canonicalMatchId, match.publicMatchId)) {
             is MatchWriteDecision.Reuse -> {
                 backfillPublicMatchId(match.canonicalMatchId, match.publicMatchId)
-                WarehouseMatch(decision.matchKey, match.publicMatchId)
+                MatchEntity(decision.matchKey, match.publicMatchId)
             }
 
             MatchWriteDecision.Insert -> {
                 val key = insertWithKey(
-                    WarehouseWriteSupport.insertSql(
-                        "dim_match",
-                        WarehouseWriteSupport.MATCH_JDBC_COLUMNS,
+                    RelationalWriteSupport.insertSql(
+                        "matches",
+                        RelationalWriteSupport.MATCH_JDBC_COLUMNS,
                         "insert into"
                     ),
-                    *WarehouseWriteSupport.matchInsertValues(
+                    *RelationalWriteSupport.matchInsertValues(
                         match,
                         java.sql.Timestamp.valueOf(LocalDateTime.now(ZoneOffset.UTC))
                     ).toTypedArray()
                 )
-                WarehouseMatch(key, match.publicMatchId)
+                MatchEntity(key, match.publicMatchId)
             }
         }
     }
 
-    override fun insertSourceReferences(matchKey: Long, sources: List<SourceReference>) {
+    override fun insertSourceReferences(matchId: Long, sources: List<SourceReference>) {
         sources.forEach { source ->
             execute(
-                WarehouseWriteSupport.insertSql(
+                RelationalWriteSupport.insertSql(
                     "match_source_reference",
-                    WarehouseWriteSupport.SOURCE_REFERENCE_COLUMNS,
+                    RelationalWriteSupport.SOURCE_REFERENCE_COLUMNS,
                     "insert into"
                 ),
-                *WarehouseWriteSupport.sourceReferenceValues(matchKey, source).toTypedArray()
+                *RelationalWriteSupport.sourceReferenceValues(matchId, source).toTypedArray()
             )
         }
     }
 
-    override fun insertMatchFact(
-        matchKey: Long,
-        matchDateKey: Int?,
-        groundKey: Long,
-        durationDays: Int,
-        margin: Int
-    ) {
-        execute(
-            WarehouseWriteSupport.insertSql(
-                "fact_match",
-                WarehouseWriteSupport.MATCH_FACT_COLUMNS,
-                "insert into",
-                listOf("?", "?", "?", "?", "?", "1")
-            ),
-            matchKey,
-            matchDateKey,
-            groundKey,
-            durationDays,
-            margin
-        )
-    }
-
     override fun upsertInnings(
-        matchKey: Long,
+        matchId: Long,
         inningsNumber: Int,
-        battingTeamKey: Long,
-        bowlingTeamKey: Long
-    ): WarehouseInnings {
-        connection.prepareStatement("select innings_key from dim_innings where match_key = ? and innings_number = ?").use { statement ->
-            statement.setLong(1, matchKey)
+        battingTeamId: Long,
+        bowlingTeamId: Long
+    ): InningsEntity {
+        connection.prepareStatement("select id from innings where match_id = ? and innings_number = ?").use { statement ->
+            statement.setLong(1, matchId)
             statement.setInt(2, inningsNumber)
             statement.executeQuery().use { results ->
-                if (results.next()) return WarehouseInnings(results.getLong(1))
+                if (results.next()) return InningsEntity(results.getLong(1))
             }
         }
         val key = insertWithKey(
-            WarehouseWriteSupport.insertSql(
-                "dim_innings",
-                WarehouseWriteSupport.INNINGS_JDBC_COLUMNS,
+            RelationalWriteSupport.insertSql(
+                "innings",
+                RelationalWriteSupport.INNINGS_JDBC_COLUMNS,
                 "insert into"
             ),
-            matchKey,
+            matchId,
             inningsNumber,
-            battingTeamKey,
-            bowlingTeamKey
+            battingTeamId,
+            bowlingTeamId
         )
-        return WarehouseInnings(key)
+        return InningsEntity(key)
     }
 
-    override fun findDeliveryKey(matchKey: Long, inningsKey: Long, inningsOrder: Int): Long? = queryKey(
-        "select delivery_key from fact_delivery where match_key = ? and innings_key = ? and innings_order = ?",
-        matchKey,
-        inningsKey,
+    override fun findDeliveryKey(matchId: Long, inningsId: Long, inningsOrder: Int): Long? = queryKey(
+        "select id from deliveries where match_id = ? and innings_id = ? and innings_order = ?",
+        matchId,
+        inningsId,
         inningsOrder
     )
 
     override fun insertDelivery(delivery: DeliveryRecord): Long {
-        val sourceId = nextSourceId("source_ball_id", "fact_delivery")
+        val sourceId = nextSourceId("source_ball_id", "deliveries")
         return insertWithKey(
-            WarehouseWriteSupport.insertSql(
-                "fact_delivery",
-                WarehouseWriteSupport.DELIVERY_JDBC_COLUMNS,
+            RelationalWriteSupport.insertSql(
+                "deliveries",
+                RelationalWriteSupport.DELIVERY_JDBC_COLUMNS,
                 "insert into"
             ),
-            *WarehouseWriteSupport.deliveryInsertValues(sourceId, delivery).toTypedArray()
+            *RelationalWriteSupport.deliveryInsertValues(sourceId, delivery).toTypedArray()
         )
     }
 
     override fun insertWicket(kind: String): Long {
-        val sourceId = nextSourceId("source_wicket_id", "dim_wicket")
+        val sourceId = nextSourceId("source_wicket_id", "wickets")
         return insertWithKey(
-            WarehouseWriteSupport.insertSql("dim_wicket", WarehouseWriteSupport.WICKET_JDBC_COLUMNS, "insert into"),
+            RelationalWriteSupport.insertSql("wickets", RelationalWriteSupport.WICKET_JDBC_COLUMNS, "insert into"),
             sourceId,
             kind
         )
     }
 
-    override fun insertDeliveryWicket(deliveryKey: Long, wicketKey: Long) {
+    override fun insertDeliveryWicket(deliveryId: Long, wicketId: Long) {
         execute(
-            WarehouseWriteSupport.insertSql(
-                "bridge_delivery_wicket",
-                WarehouseWriteSupport.DELIVERY_WICKET_COLUMNS,
+            RelationalWriteSupport.insertSql(
+                "delivery_wickets",
+                RelationalWriteSupport.DELIVERY_WICKET_COLUMNS,
                 "insert into"
             ),
-            deliveryKey,
-            wicketKey
+            deliveryId,
+            wicketId
         )
     }
 
-    override fun insertDeliveryFielder(deliveryKey: Long, wicketKey: Long, personKey: Long) {
+    override fun insertDeliveryFielder(deliveryId: Long, wicketId: Long, personId: Long) {
         val affectedRows = executeAllowingNoOp(
-            WarehouseWriteSupport.insertSql(
-                "bridge_delivery_fielder",
-                WarehouseWriteSupport.DELIVERY_FIELDER_COLUMNS,
+            RelationalWriteSupport.insertSql(
+                "delivery_fielders",
+                RelationalWriteSupport.DELIVERY_FIELDER_COLUMNS,
                 "insert into"
             ) + " " + duplicateDeliveryFielderClause(),
-            deliveryKey,
-            wicketKey,
-            personKey
+            deliveryId,
+            wicketId,
+            personId
         )
         if (affectedRows == 0) {
             log.warn(
-                "Duplicate bridge_delivery_fielder suppressed: deliveryKey={}, wicketKey={}, personKey={}",
-                deliveryKey,
-                wicketKey,
-                personKey
+                "Duplicate delivery_fielder suppressed: deliveryId={}, wicketId={}, personId={}",
+                deliveryId,
+                wicketId,
+                personId
             )
         }
     }
 
-    override fun insertMatchPerson(matchKey: Long, personKey: Long, roleCode: String) {
+    override fun insertMatchPerson(matchId: Long, personId: Long, roleCode: String) {
         executeAllowingNoOp(
-            WarehouseWriteSupport.insertSql(
-                "bridge_match_person",
-                WarehouseWriteSupport.MATCH_PERSON_INSERT_COLUMNS,
+            RelationalWriteSupport.insertSql(
+                "match_people",
+                RelationalWriteSupport.MATCH_PERSON_INSERT_COLUMNS,
                 "insert into"
             ) + " " + duplicateMatchPersonClause(),
-            matchKey,
-            personKey,
+            matchId,
+            personId,
             roleCode
         )
     }
@@ -290,7 +268,7 @@ abstract class JdbcOutputAdapter(protected val connection: Connection) : OutputA
 
     protected abstract fun duplicateDeliveryFielderClause(): String
 
-    override fun writeAllPeople(people: Sequence<PersonRegistryEntity>) = people.forEach { person ->
+    override fun writeAllPeople(people: Sequence<PersonEntity>) = people.forEach { person ->
         upsertPerson(person.id, person.name, person.caId)
     }
 
@@ -323,15 +301,15 @@ abstract class JdbcOutputAdapter(protected val connection: Connection) : OutputA
         val existingMatchKey = findMatchKey(canonicalMatchId)
         val existingPublicMatchId = existingMatchKey?.let {
             queryNullableKey(
-                "select public_match_id from dim_match where canonical_match_id = ?",
+                "select public_match_id from matches where canonical_match_id = ?",
                 canonicalMatchId.value.toString()
             )
         }
         val publicMatchOwner = queryNullableKey(
-            "select match_key from dim_match where public_match_id = ?",
+            "select id from matches where public_match_id = ?",
             publicMatchId.value
         )
-        return WarehouseWriteSupport.matchWriteDecision(
+        return RelationalWriteSupport.matchWriteDecision(
             canonicalMatchId = canonicalMatchId,
             publicMatchId = publicMatchId,
             existingMatchKey = existingMatchKey,
@@ -342,7 +320,7 @@ abstract class JdbcOutputAdapter(protected val connection: Connection) : OutputA
 
     private fun backfillPublicMatchId(canonicalMatchId: CanonicalMatchId, publicMatchId: PublicMatchId) {
         executeAllowingNoOp(
-            "update dim_match set public_match_id = ? " +
+            "update matches set public_match_id = ? " +
                 "where canonical_match_id = ? and public_match_id is null",
             publicMatchId.value,
             canonicalMatchId.value.toString()
@@ -350,7 +328,7 @@ abstract class JdbcOutputAdapter(protected val connection: Connection) : OutputA
     }
 
     private fun findTeam(name: String): Team? {
-        connection.prepareStatement("select team_key from dim_team where team_name = ?").use { statement ->
+        connection.prepareStatement("select id from teams where team_name = ?").use { statement ->
             statement.setString(1, name)
             statement.executeQuery().use { results ->
                 if (results.next()) return Team(results.getLong(1), name)

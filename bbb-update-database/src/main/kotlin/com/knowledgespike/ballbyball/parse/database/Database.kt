@@ -39,7 +39,7 @@ class Database(private val outputAdapter: OutputAdapter) {
             if (!shouldParse(envelope.canonicalMatchId)) {
                 outputAdapter.ensurePublicMatchId(envelope.canonicalMatchId, publicMatchId)
                 check(!outputAdapter.sourceReferencesChanged(envelope.canonicalMatchId, envelope.sources)) {
-                    "Source content changed for canonical match ${envelope.canonicalMatchId.value}; rebuild the warehouse before importing corrections"
+                    "Source content changed for canonical match ${envelope.canonicalMatchId.value}; rebuild the relational database before importing corrections"
                 }
                 log.info("Match already exists: {}", envelope.canonicalMatchId.value)
                 outputAdapter.commit()
@@ -61,7 +61,7 @@ class Database(private val outputAdapter: OutputAdapter) {
             val matchReferees = Translate.getOfficials(cricSheet.match.officials?.matchReferees, cricSheet)
             val ground = upsertGround(cricSheet.match.venue ?: "")
             val match = addMatchToDatabase(fileName, envelope.canonicalMatchId, publicMatchId, teams, ground, cricSheet)
-            outputAdapter.insertSourceReferences(match.key, envelope.sources)
+            outputAdapter.insertSourceReferences(match.id, envelope.sources)
 
             addMatchPeople(match, players.values.flatten(), "PLAYER")
             addMatchPeople(match, umpires, "UMPIRE")
@@ -83,7 +83,7 @@ class Database(private val outputAdapter: OutputAdapter) {
 
     private fun addBallByBall(
         fileName: String,
-        match: WarehouseMatch,
+        match: MatchEntity,
         teams: List<Team>,
         cricSheet: BbbMatchData
     ) {
@@ -96,7 +96,7 @@ class Database(private val outputAdapter: OutputAdapter) {
             val battingTeam = teams.find { it.name == teamNameForMatch(inning.team, cricSheet) }
                 ?: throw InvalidStateException("Unknown batting team: ${inning.team}")
             val bowlingTeam = requireOpposingTeam(teams, battingTeam)
-            val innings = upsertInnings(match.key, inningsIndex + 1, battingTeam.id, bowlingTeam.id)
+            val innings = upsertInnings(match.id, inningsIndex + 1, battingTeam.id, bowlingTeam.id)
             val powerplays = calculatePowerplays(inning.powerplays, cricSheet.match.ballsPerOver)
             var deliveryNumber = 0
 
@@ -133,9 +133,9 @@ class Database(private val outputAdapter: OutputAdapter) {
     }
 
     private fun insertDeliveryIfAbsent(
-        match: WarehouseMatch,
+        match: MatchEntity,
         matchDateKey: Int?,
-        innings: WarehouseInnings,
+        innings: InningsEntity,
         battingTeam: Team,
         bowlingTeam: Team,
         batterKey: Long,
@@ -148,14 +148,14 @@ class Database(private val outputAdapter: OutputAdapter) {
         delivery: Delivery,
         powerplay: Int
     ): Long? {
-        val existingKey = outputAdapter.findDeliveryKey(match.key, innings.key, inningsOrder)
+        val existingKey = outputAdapter.findDeliveryKey(match.id, innings.id, inningsOrder)
         if (existingKey != null) return null
 
         return outputAdapter.insertDelivery(
             DeliveryRecord(
-                matchKey = match.key,
+                matchKey = match.id,
                 matchDateKey = matchDateKey,
-                inningsKey = innings.key,
+                inningsKey = innings.id,
                 battingTeamKey = battingTeam.id,
                 bowlingTeamKey = bowlingTeam.id,
                 batterKey = batterKey,
@@ -218,10 +218,10 @@ class Database(private val outputAdapter: OutputAdapter) {
         return (overs * ballsPersOVer) + balls // assuming 6 ball over,
     }
 
-    private fun addMatchPeople(match: WarehouseMatch, people: List<Person>, roleCode: String) {
+    private fun addMatchPeople(match: MatchEntity, people: List<Person>, roleCode: String) {
         people.forEach { person ->
             val personKey = requirePersonKey(person.id, person.name)
-            outputAdapter.insertMatchPerson(match.key, personKey, roleCode)
+            outputAdapter.insertMatchPerson(match.id, personKey, roleCode)
         }
     }
 
@@ -230,9 +230,9 @@ class Database(private val outputAdapter: OutputAdapter) {
         canonicalMatchId: CanonicalMatchId,
         publicMatchId: com.knowledgespike.ballbyball.types.values.PublicMatchId,
         teamsWithId: List<Team>,
-        location: Location,
+        location: Ground,
         cricSheet: BbbMatchData
-    ): WarehouseMatch {
+    ): MatchEntity {
         val eventName = cricSheet.match.event?.name ?: ""
         val eventMatch = cricSheet.match.event?.matchNumber ?: 0
         val matchType = cricSheet.match.matchType
@@ -271,6 +271,8 @@ class Database(private val outputAdapter: OutputAdapter) {
                 matchStartYear = matchStartDate?.year?.toString() ?: "",
                 matchStartDateKey = matchStartDateKey,
                 ballsPerOver = ballsPerOver,
+                durationDays = duration,
+                margin = margin,
                 team1Key = homeTeam.id,
                 team2Key = awayTeam.id,
                 groundKey = location.id,
@@ -281,7 +283,6 @@ class Database(private val outputAdapter: OutputAdapter) {
                 loserTeamKey = loser?.id
             )
         )
-        outputAdapter.insertMatchFact(match.key, matchStartDateKey, location.id, duration, margin)
         return match
 
     }
@@ -305,7 +306,7 @@ class Database(private val outputAdapter: OutputAdapter) {
         else "unknown"
     }
 
-    private fun upsertGround(name: String): Location {
+    private fun upsertGround(name: String): Ground {
         return outputAdapter.upsertGround(name)
     }
 
@@ -331,7 +332,7 @@ class Database(private val outputAdapter: OutputAdapter) {
                 cricSheet.match.event?.name !in WOMEN_TEAM_NAME_EXCEPTIONS
     }
 
-    fun writeAllPeople(people: Stream<PersonRegistryEntity>) {
+    fun writeAllPeople(people: Stream<PersonEntity>) {
         outputAdapter.writeAllPeople(people.iterator().asSequence())
         outputAdapter.commit()
     }
@@ -345,7 +346,7 @@ class Database(private val outputAdapter: OutputAdapter) {
         inningsNumber: Int,
         battingTeamKey: Long,
         bowlingTeamKey: Long
-    ): WarehouseInnings {
+    ): InningsEntity {
         return outputAdapter.upsertInnings(matchKey, inningsNumber, battingTeamKey, bowlingTeamKey)
     }
 
@@ -362,7 +363,7 @@ class Database(private val outputAdapter: OutputAdapter) {
     }
 
     /**
-     * Warehouse matches are modeled as exactly two sides. The bowling (or losing) side is
+     * Relational matches are modeled as exactly two sides. The bowling (or losing) side is
      * the other registered team for the match, not a free-form third participant.
      */
     private fun requireOpposingTeam(teams: List<Team>, selected: Team): Team =

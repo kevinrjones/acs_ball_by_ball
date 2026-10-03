@@ -5,16 +5,16 @@ import com.knowledgespike.ballbyball.clishared.identity.SourceReference
 import com.knowledgespike.ballbyball.types.values.PublicMatchId
 
 import com.knowledgespike.cricketarchive.LoggerDelegate
-import com.knowledgespike.ballbyball.parse.database.Location
-import com.knowledgespike.ballbyball.parse.database.PersonRegistryEntity
+import com.knowledgespike.ballbyball.parse.database.Ground
+import com.knowledgespike.ballbyball.parse.database.PersonEntity
 import com.knowledgespike.ballbyball.parse.database.Team
-import com.knowledgespike.ballbyball.parse.database.WarehouseInnings
-import com.knowledgespike.ballbyball.parse.database.WarehouseMatch
+import com.knowledgespike.ballbyball.parse.database.InningsEntity
+import com.knowledgespike.ballbyball.parse.database.MatchEntity
 import com.knowledgespike.ballbyball.parse.database.adapter.OutputAdapter
 import com.knowledgespike.ballbyball.parse.database.adapter.DeliveryRecord
 import com.knowledgespike.ballbyball.parse.database.adapter.MatchWriteDecision
 import com.knowledgespike.ballbyball.parse.database.adapter.MatchRecord
-import com.knowledgespike.ballbyball.parse.database.adapter.WarehouseWriteSupport
+import com.knowledgespike.ballbyball.parse.database.adapter.RelationalWriteSupport
 import com.knowledgespike.ballbyball.parse.database.adapter.fingerprint
 import com.knowledgespike.ballbyball.parse.database.getNameParts
 import java.io.BufferedWriter
@@ -26,19 +26,19 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-/** Writes warehouse tables as UTF-8 CSV files suitable for bulk loading into MariaDB. */
+/** Writes relational tables as UTF-8 CSV files suitable for bulk loading into MariaDB. */
 class CsvOutputAdapter(output: Path) : OutputAdapter {
     private val log by LoggerDelegate()
     private val writers = mutableMapOf<String, BufferedWriter>()
     private val people = mutableMapOf<String, Long>()
     private val teams = mutableMapOf<String, Team>()
-    private val grounds = mutableMapOf<String, Location>()
+    private val grounds = mutableMapOf<String, Ground>()
     private val dates = mutableMapOf<LocalDate, Int>()
     private val matches = mutableMapOf<CanonicalMatchId, Long>()
     private val matchPublicIds = mutableMapOf<CanonicalMatchId, PublicMatchId>()
     private val publicMatches = mutableMapOf<PublicMatchId, CanonicalMatchId>()
     private val sourceReferences = mutableMapOf<Long, Set<String>>()
-    private val innings = mutableMapOf<Pair<Long, Int>, WarehouseInnings>()
+    private val innings = mutableMapOf<Pair<Long, Int>, InningsEntity>()
     private val deliveries = mutableMapOf<Triple<Long, Long, Int>, Long>()
     private val matchPeople = mutableSetOf<Triple<Long, Long, String>>()
     private val deliveryFielders = mutableSetOf<Triple<Long, Long, Long>>()
@@ -76,8 +76,8 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
         val key = nextPersonKey++
         val (sortNamePart, otherNamePart) = getNameParts(fullName)
         writeRow(
-            "dim_person",
-            WarehouseWriteSupport.PERSON_COLUMNS,
+            "people",
+            RelationalWriteSupport.PERSON_COLUMNS,
             listOf(key, sourceId, fullName, sortNamePart, otherNamePart, caId)
         )
         people[sourceId] = key
@@ -87,40 +87,40 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
     override fun upsertTeam(name: String): Team {
         teams[name]?.let { return it }
         val team = Team(nextTeamKey++, name)
-        writeRow("dim_team", WarehouseWriteSupport.TEAM_COLUMNS, listOf(team.id, nextTeamSourceId++, team.name))
+        writeRow("teams", RelationalWriteSupport.TEAM_COLUMNS, listOf(team.id, nextTeamSourceId++, team.name))
         teams[name] = team
         return team
     }
 
-    override fun upsertGround(name: String): Location {
+    override fun upsertGround(name: String): Ground {
         grounds[name]?.let { return it }
-        val ground = Location(nextGroundKey++, name)
-        writeRow("dim_ground", WarehouseWriteSupport.GROUND_COLUMNS, listOf(ground.id, nextGroundSourceId++, ground.name))
+        val ground = Ground(nextGroundKey++, name)
+        writeRow("grounds", RelationalWriteSupport.GROUND_COLUMNS, listOf(ground.id, nextGroundSourceId++, ground.name))
         grounds[name] = ground
         return ground
     }
 
     override fun upsertDate(date: LocalDate): Int {
         dates[date]?.let { return it }
-        val dimensions = WarehouseWriteSupport.dateDimensions(date)
+        val dimensions = RelationalWriteSupport.dateDimensions(date)
         writeRow(
-            "dim_date",
-            WarehouseWriteSupport.DATE_COLUMNS,
+            "dates",
+            RelationalWriteSupport.DATE_COLUMNS,
             dimensions.values()
         )
         dates[date] = dimensions.dateKey
         return dimensions.dateKey
     }
 
-    override fun insertMatch(match: MatchRecord): WarehouseMatch {
+    override fun insertMatch(match: MatchRecord): MatchEntity {
         val key = when (val decision = decideMatchWrite(match.canonicalMatchId, match.publicMatchId)) {
-            is MatchWriteDecision.Reuse -> return WarehouseMatch(decision.matchKey, match.publicMatchId)
+            is MatchWriteDecision.Reuse -> return MatchEntity(decision.matchKey, match.publicMatchId)
             MatchWriteDecision.Insert -> nextMatchKey++
         }
         writeRow(
-            "dim_match",
-            WarehouseWriteSupport.MATCH_COLUMNS,
-            WarehouseWriteSupport.matchValues(
+            "matches",
+            RelationalWriteSupport.MATCH_COLUMNS,
+            RelationalWriteSupport.matchValues(
                 key,
                 match,
                 LocalDateTime.now(java.time.ZoneOffset.UTC)
@@ -129,61 +129,48 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
         matches[match.canonicalMatchId] = key
         matchPublicIds[match.canonicalMatchId] = match.publicMatchId
         publicMatches[match.publicMatchId] = match.canonicalMatchId
-        return WarehouseMatch(key, match.publicMatchId)
+        return MatchEntity(key, match.publicMatchId)
     }
 
-    override fun insertSourceReferences(matchKey: Long, sources: List<SourceReference>) {
-        sourceReferences[matchKey] = sources.map { fingerprint(it) }.toSet()
+    override fun insertSourceReferences(matchId: Long, sources: List<SourceReference>) {
+        sourceReferences[matchId] = sources.map { fingerprint(it) }.toSet()
         sources.forEach { source ->
             writeRow(
                 "match_source_reference",
-                WarehouseWriteSupport.SOURCE_REFERENCE_COLUMNS,
-                WarehouseWriteSupport.sourceReferenceValues(matchKey, source)
+                RelationalWriteSupport.SOURCE_REFERENCE_COLUMNS,
+                RelationalWriteSupport.sourceReferenceValues(matchId, source)
             )
         }
     }
 
-    override fun insertMatchFact(
-        matchKey: Long,
-        matchDateKey: Int?,
-        groundKey: Long,
-        durationDays: Int,
-        margin: Int
-    ) {
-        writeRow(
-            "fact_match",
-            WarehouseWriteSupport.MATCH_FACT_COLUMNS,
-            listOf(matchKey, matchDateKey, groundKey, durationDays, margin, 1)
-        )
-    }
 
     override fun upsertInnings(
-        matchKey: Long,
+        matchId: Long,
         inningsNumber: Int,
-        battingTeamKey: Long,
-        bowlingTeamKey: Long
-    ): WarehouseInnings {
-        val lookup = matchKey to inningsNumber
+        battingTeamId: Long,
+        bowlingTeamId: Long
+    ): InningsEntity {
+        val lookup = matchId to inningsNumber
         innings[lookup]?.let { return it }
-        val result = WarehouseInnings(nextInningsKey++)
+        val result = InningsEntity(nextInningsKey++)
         writeRow(
-            "dim_innings",
-            WarehouseWriteSupport.INNINGS_COLUMNS,
-            listOf(result.key, matchKey, inningsNumber, battingTeamKey, bowlingTeamKey)
+            "innings",
+            RelationalWriteSupport.INNINGS_COLUMNS,
+            listOf(result.id, matchId, inningsNumber, battingTeamId, bowlingTeamId)
         )
         innings[lookup] = result
         return result
     }
 
-    override fun findDeliveryKey(matchKey: Long, inningsKey: Long, inningsOrder: Int): Long? =
-        deliveries[Triple(matchKey, inningsKey, inningsOrder)]
+    override fun findDeliveryKey(matchId: Long, inningsId: Long, inningsOrder: Int): Long? =
+        deliveries[Triple(matchId, inningsId, inningsOrder)]
 
     override fun insertDelivery(delivery: DeliveryRecord): Long {
         val key = nextDeliveryKey++
         writeRow(
-            "fact_delivery",
-            WarehouseWriteSupport.DELIVERY_COLUMNS,
-            WarehouseWriteSupport.deliveryValues(key, nextBallSourceId++, delivery)
+            "deliveries",
+            RelationalWriteSupport.DELIVERY_COLUMNS,
+            RelationalWriteSupport.deliveryValues(key, nextBallSourceId++, delivery)
         )
         deliveries[Triple(delivery.matchKey, delivery.inningsKey, delivery.inningsOrder)] = key
         return key
@@ -191,43 +178,43 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
 
     override fun insertWicket(kind: String): Long {
         val key = nextWicketKey++
-        writeRow("dim_wicket", WarehouseWriteSupport.WICKET_COLUMNS, listOf(key, nextWicketSourceId++, kind))
+        writeRow("wickets", RelationalWriteSupport.WICKET_COLUMNS, listOf(key, nextWicketSourceId++, kind))
         return key
     }
 
-    override fun insertDeliveryWicket(deliveryKey: Long, wicketKey: Long) {
+    override fun insertDeliveryWicket(deliveryId: Long, wicketId: Long) {
         writeRow(
-            "bridge_delivery_wicket",
-            WarehouseWriteSupport.DELIVERY_WICKET_COLUMNS,
-            listOf(deliveryKey, wicketKey)
+            "delivery_wickets",
+            RelationalWriteSupport.DELIVERY_WICKET_COLUMNS,
+            listOf(deliveryId, wicketId)
         )
     }
 
-    override fun insertDeliveryFielder(deliveryKey: Long, wicketKey: Long, personKey: Long) {
-        val bridgeKey = Triple(deliveryKey, wicketKey, personKey)
+    override fun insertDeliveryFielder(deliveryId: Long, wicketId: Long, personId: Long) {
+        val bridgeKey = Triple(deliveryId, wicketId, personId)
         if (!deliveryFielders.add(bridgeKey)) {
             log.warn(
-                "Duplicate bridge_delivery_fielder suppressed from CSV output: deliveryKey={}, wicketKey={}, personKey={}",
-                deliveryKey,
-                wicketKey,
-                personKey
+                "Duplicate delivery_fielder suppressed from CSV output: deliveryId={}, wicketId={}, personId={}",
+                deliveryId,
+                wicketId,
+                personId
             )
             return
         }
         writeRow(
-            "bridge_delivery_fielder",
-            WarehouseWriteSupport.DELIVERY_FIELDER_COLUMNS,
-            listOf(deliveryKey, wicketKey, personKey)
+            "delivery_fielders",
+            RelationalWriteSupport.DELIVERY_FIELDER_COLUMNS,
+            listOf(deliveryId, wicketId, personId)
         )
     }
 
-    override fun insertMatchPerson(matchKey: Long, personKey: Long, roleCode: String) {
-        if (matchPeople.add(Triple(matchKey, personKey, roleCode))) {
-            writeRow("bridge_match_person", WarehouseWriteSupport.MATCH_PERSON_COLUMNS, listOf(null, matchKey, personKey, roleCode))
+    override fun insertMatchPerson(matchId: Long, personId: Long, roleCode: String) {
+        if (matchPeople.add(Triple(matchId, personId, roleCode))) {
+            writeRow("match_people", RelationalWriteSupport.MATCH_PERSON_COLUMNS, listOf(null, matchId, personId, roleCode))
         }
     }
 
-    override fun writeAllPeople(people: Sequence<PersonRegistryEntity>) {
+    override fun writeAllPeople(people: Sequence<PersonEntity>) {
         people.forEach { person -> upsertPerson(person.id, person.name, person.caId) }
     }
 
@@ -244,7 +231,7 @@ class CsvOutputAdapter(output: Path) : OutputAdapter {
     }
 
     private fun decideMatchWrite(canonicalMatchId: CanonicalMatchId, publicMatchId: PublicMatchId) =
-        WarehouseWriteSupport.matchWriteDecision(
+        RelationalWriteSupport.matchWriteDecision(
             canonicalMatchId = canonicalMatchId,
             publicMatchId = publicMatchId,
             existingMatchKey = matches[canonicalMatchId],

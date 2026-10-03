@@ -7,9 +7,9 @@ modules alongside the shared contracts module:
 
 | Module                  | Responsibility                                                                  | Default port |
 |-------------------------|---------------------------------------------------------------------------------|--------------|
-| `bbb-api`               | Read warehouse data through JOOQ, verify JWT bearer tokens, expose REST API     | `8081`       |
+| `bbb-api`               | Read relational match data through jOOQ, verify JWT bearer tokens, expose REST API | `8081`       |
 | `bbb-web`               | Host Angular SPA, handle OIDC BFF login/logout sessions, proxy secure requests | `9999`       |
-| `bbb-update-database`   | Load canonical match envelopes into warehouse output                             | —            |
+| `bbb-update-database`   | Load canonical match envelopes into relational output                             | —            |
 | `bbb-get-cricsheet-data`| Command-line entry point for retrieving raw Cricsheet data                       | —            |
 | `bbb-cli-shared`        | Source-neutral match payload and identity-envelope contracts                     | —            |
 | `bbb-parse-cricsheet`   | Convert raw Cricsheet JSON into canonical-envelope JSON                          | —            |
@@ -22,7 +22,7 @@ versions are declared in `gradle/libs.versions.toml`.
 ### Normalized match-data workflow
 
 The CLI data path is intentionally split into source retrieval, source
-adaptation, and warehouse loading:
+adaptation, and relational loading:
 
 ```mermaid
 flowchart LR
@@ -34,11 +34,11 @@ flowchart LR
     RECONCILE -.-> CANONICAL[CanonicalMatchEnvelope]
     SINGLE --> CANONICAL
     CANONICAL --> UPDATE[bbb-update-database]
-    UPDATE --> WAREHOUSE[SQL, CSV, or database]
+    UPDATE --> RELATIONAL[SQL, CSV, or database]
 ```
 
 `bbb-parse-cricsheet` owns the annotated Cricsheet input model and maps source
-format/gender values to warehouse match types. `bbb-cli-shared` contains the
+format/gender values to relational match types. `bbb-cli-shared` contains the
 normalized payload with Kotlin-compatible camelCase property names and the
 versioned source/canonical envelopes. The adapter hashes exact raw bytes,
 derives a provider-scoped UUIDv5 from the safe basename stem (including keys
@@ -112,15 +112,14 @@ a relative data path; the shared register is read directly from the base:
   through its `match` object. `Test`, `T20`, `IT20`, `ODI`, `ODM`, and `MDM` map to `t`,
   `tt`, `itt`, `a`, `a`, and `f`; female documents receive the `w` prefix,
   producing values such as `wtt` and `wa`. Missing event names use `Unknown`.
-- Duplicate loading is based on `canonicalMatchId`, not paths. `dim_match`
+- Duplicate loading is based on `canonicalMatchId`, not paths. `matches`
   keeps a generated `BIGINT` join key, while `match_source_reference` stores
   provider record keys, source UUIDs, and exact-byte SHA-256 digests.
-- Migration 3 leaves old warehouse rows with a null canonical ID deliberately.
-  Replay their canonical envelopes to migrate them; identity is never inferred
+- The rebuild migration leaves old database rows behind only in the backup.
+  Replay their canonical envelopes into the relational schema; identity is never inferred
   from arbitrary legacy filenames.
-- Migration 4 adds nullable `dim_match.public_match_id` with a unique index.
-  Migration 5 clears obsolete seven-digit values after the public contract was
-  widened. New canonical loads derive the ten-digit value from the canonical
+- The relational schema keeps nullable `matches.public_match_id` with a unique
+  index. New canonical loads derive the ten-digit value from the canonical
   UUID using the fixed public UUIDv5 namespace. Existing canonical rows are
   backfilled by replay; rows without canonical identity remain unaddressable
   until replay.
@@ -244,7 +243,7 @@ sequenceDiagram
     participant Route as HTTP route (Boundary Validation)
     participant Service as MatchService
     participant Repo as MatchRepository
-    participant DB as Warehouse
+    participant DB as Relational database
     Client ->> Route: GET /api/matches?limit=value
     Route ->> Route: Arrow fold: Limit(rawLimit)
     alt Invalid Limit
@@ -252,7 +251,7 @@ sequenceDiagram
     else Valid Limit
         Route ->> Service: recentMatches(limit: Limit)
         Service ->> Repo: recentMatches(limit: Limit)
-        Repo ->> DB: JOOQ query on dim_match
+        Repo ->> DB: jOOQ query on matches
         DB -->> Repo: rows
         Repo -->> Service: MatchSummary list
         Service -->> Route: MatchSummary list
@@ -320,7 +319,7 @@ the route limited to transport translation.
 - `feature.health`: Contains `DatabaseHealth` domain interface, `JooqDatabaseHealth` repository, and `HealthRoute` (`GET /health`).
 - `feature.matches`: Contains `MatchRepository` domain interface, `MatchService` use-case handler, `JooqMatchRepository` data adapter, and `MatchesRoute` (`GET /api/matches`).
 
-Blocking JOOQ/JDBC queries in repositories run on `Dispatchers.IO` rather than on Ktor request threads. The repositories select the JOOQ dialect from the configured JDBC URL, use the warehouse `dim_match` table and a Hikari connection pool, and keep queries focused and lightweight.
+Blocking jOOQ/JDBC queries in repositories run on `Dispatchers.IO` rather than on Ktor request threads. The repositories select the jOOQ dialect from the configured JDBC URL, use the relational `matches` table and a Hikari connection pool, and keep queries focused and lightweight.
 
 Hikari is configured not to fail application startup when the database is unavailable. `/health` then reports the connection state as `200` or `503`, while match-query failures are logged and returned as server errors.
 
@@ -328,14 +327,14 @@ Endpoints:
 
 - `GET /health` checks that the configured database connection can execute a
   query. It returns `200` when healthy and `503` otherwise.
-- `GET /api/matches?limit=25` returns recent matches ordered by match start date (with the warehouse key as a
+- `GET /api/matches?limit=25` returns recent matches ordered by match start date (with the internal match key as a
   deterministic tie-breaker). The limit must be
   numeric and between `1` and `100`.
 - `GET /api/matches/search?team=South%20Africa&teamExactMatch=false&opponents=India&opponentsExactMatch=false&venue=0&matchType=all&matchResult=0&page=1&pageSize=20`
   returns a bounded `MatchSearchResponse` ordered by calendar date and
-  `match_key`. The shared parser validates the structured filters once for both
+  `matches.id`. The shared parser validates the structured filters once for both
   API and BFF routes; page sizes are limited to `1..50`, neutral venue is
-  rejected because it is not proven by the warehouse, and invalid requests
+  rejected because it is not proven by the relational source, and invalid requests
   return one stable 400 envelope containing all validation messages.
 
 Database configuration is supplied through environment variables. The defaults
@@ -349,7 +348,7 @@ target the local MariaDB database used by the setup guide:
 | `DB_PASSWORD`      | empty                                            | Database password  |
 | `DB_MAX_POOL_SIZE` | `10`                                             | Hikari pool size   |
 
-For the PostgreSQL test container, use a URL with the warehouse schema in the
+For the PostgreSQL test container, use a URL with the relational schema in the
 connection properties:
 
 ```bash

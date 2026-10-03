@@ -5,17 +5,16 @@ import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchScore
 import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchScoresheetInnings
 import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchScoresheetPage
 import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchScoresheetWicket
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.BridgeDeliveryFielder
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.BridgeDeliveryWicket
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimDate
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimGround
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimInnings
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimMatch
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimPerson
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimTeam
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimWicket
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.FactDelivery
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.FactMatch
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Dates
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Deliveries
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.DeliveryFielders
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.DeliveryWickets
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Grounds
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Innings
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Matches
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.People
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Teams
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Wickets
 import com.knowledgespike.ballbyball.types.values.MatchType
 import com.knowledgespike.ballbyball.types.values.PublicMatchId
 import com.knowledgespike.ballbyball.types.values.Season
@@ -31,66 +30,65 @@ internal class JooqMatchScoresheetLoader(
 ) {
     private val log = LoggerFactory.getLogger(JooqMatchScoresheetLoader::class.java)
 
-    private val dimMatch = DimMatch.DIM_MATCH
-    private val dimDate = DimDate.DIM_DATE
-    private val dimTeam1 = DimTeam.DIM_TEAM.`as`("t1")
-    private val dimTeam2 = DimTeam.DIM_TEAM.`as`("t2")
-    private val dimGround = DimGround.DIM_GROUND
-    private val dimTeamWinner = DimTeam.DIM_TEAM.`as`("tw")
-    private val factMatch = FactMatch.FACT_MATCH
-    private val dimInnings = DimInnings.DIM_INNINGS
-    private val factDelivery = FactDelivery.FACT_DELIVERY
-    private val dimInningsBattingTeam = DimTeam.DIM_TEAM.`as`("ib")
-    private val dimInningsBowlingTeam = DimTeam.DIM_TEAM.`as`("io")
-    private val dimPersonBatter = DimPerson.DIM_PERSON.`as`("pb")
-    private val dimPersonNonStriker = DimPerson.DIM_PERSON.`as`("pns")
-    private val dimPersonBowler = DimPerson.DIM_PERSON.`as`("pbo")
-    private val dimPersonFielder = DimPerson.DIM_PERSON.`as`("pf")
-    private val dimWicket = DimWicket.DIM_WICKET
-    private val bridgeDeliveryWicket = BridgeDeliveryWicket.BRIDGE_DELIVERY_WICKET
-    private val bridgeDeliveryFielder = BridgeDeliveryFielder.BRIDGE_DELIVERY_FIELDER
+    private val dimMatch = Matches.MATCHES
+    private val dimDate = Dates.DATES
+    private val dimTeam1 = Teams.TEAMS.`as`("t1")
+    private val dimTeam2 = Teams.TEAMS.`as`("t2")
+    private val dimGround = Grounds.GROUNDS
+    private val dimTeamWinner = Teams.TEAMS.`as`("tw")
+    private val dimInnings = Innings.INNINGS
+    private val factDelivery = Deliveries.DELIVERIES
+    private val dimInningsBattingTeam = Teams.TEAMS.`as`("ib")
+    private val dimInningsBowlingTeam = Teams.TEAMS.`as`("io")
+    private val dimPersonBatter = People.PEOPLE.`as`("pb")
+    private val dimPersonNonStriker = People.PEOPLE.`as`("pns")
+    private val dimPersonBowler = People.PEOPLE.`as`("pbo")
+    private val dimPersonFielder = People.PEOPLE.`as`("pf")
+    private val dimWicket = Wickets.WICKETS
+    private val bridgeDeliveryWicket = DeliveryWickets.DELIVERY_WICKETS
+    private val bridgeDeliveryFielder = DeliveryFielders.DELIVERY_FIELDERS
 
-    private val mMatchKey = dimMatch.MATCH_KEY
+    private val mMatchKey = dimMatch.ID
     private val mPublicMatchId = dimMatch.PUBLIC_MATCH_ID
     private val mFileName = dimMatch.FILE_NAME
     private val mMatchType = dimMatch.MATCH_TYPE
     private val mEventName = dimMatch.EVENT_NAME
     private val mMatchDateText = dimMatch.MATCH_DATE_TEXT
     private val mSeason = dimMatch.SEASON
-    private val mTeam1Key = dimMatch.TEAM1_KEY
-    private val mTeam2Key = dimMatch.TEAM2_KEY
-    private val mGroundKey = dimMatch.GROUND_KEY
-    private val mWinnerTeamKey = dimMatch.WINNER_TEAM_KEY
+    private val mTeam1Key = dimMatch.TEAM1_ID
+    private val mTeam2Key = dimMatch.TEAM2_ID
+    private val mGroundKey = dimMatch.GROUND_ID
+    private val mWinnerTeamKey = dimMatch.WINNER_TEAM_ID
     private val mVictoryType = dimMatch.VICTORY_TYPE
-    private val mMatchStartDateKey = dimMatch.MATCH_START_DATE_KEY
-    private val dDateKey = dimDate.DATE_KEY
+    private val mMatchStartDateKey = dimMatch.MATCH_START_DATE_ID
+    private val dDateKey = dimDate.DATE_ID
     private val dCalendarDate = dimDate.CALENDAR_DATE
-    private val t1TeamKey = dimTeam1.TEAM_KEY
+    private val t1TeamKey = dimTeam1.ID
     private val t1TeamName = dimTeam1.TEAM_NAME
-    private val t2TeamKey = dimTeam2.TEAM_KEY
+    private val t2TeamKey = dimTeam2.ID
     private val t2TeamName = dimTeam2.TEAM_NAME
-    private val gGroundKey = dimGround.GROUND_KEY
+    private val gGroundKey = dimGround.ID
     private val gGroundName = dimGround.GROUND_NAME
-    private val twTeamKey = dimTeamWinner.TEAM_KEY
+    private val twTeamKey = dimTeamWinner.ID
     private val twTeamName = dimTeamWinner.TEAM_NAME
-    private val fmMatchKey = factMatch.MATCH_KEY
-    private val fmMargin = factMatch.MARGIN
-    private val iInningsKey = dimInnings.INNINGS_KEY
+    private val fmMatchKey = dimMatch.ID
+    private val fmMargin = dimMatch.MARGIN
+    private val iInningsKey = dimInnings.ID
     private val iInningsNumber = dimInnings.INNINGS_NUMBER
-    private val iMatchKey = dimInnings.MATCH_KEY
-    private val iBattingTeamKey = dimInnings.BATTING_TEAM_KEY
-    private val iBowlingTeamKey = dimInnings.BOWLING_TEAM_KEY
-    private val fdMatchKey = factDelivery.MATCH_KEY
-    private val fdInningsKey = factDelivery.INNINGS_KEY
-    private val fdDeliveryKey = factDelivery.DELIVERY_KEY
+    private val iMatchKey = dimInnings.MATCH_ID
+    private val iBattingTeamKey = dimInnings.BATTING_TEAM_ID
+    private val iBowlingTeamKey = dimInnings.BOWLING_TEAM_ID
+    private val fdMatchKey = factDelivery.MATCH_ID
+    private val fdInningsKey = factDelivery.INNINGS_ID
+    private val fdDeliveryKey = factDelivery.ID
     private val fdSourceBallId = factDelivery.SOURCE_BALL_ID
     private val fdInningsOrder = factDelivery.INNINGS_ORDER
     private val fdOverNumber = factDelivery.OVER_NUMBER
     private val fdBallNumber = factDelivery.BALL_NUMBER
     private val fdBallInOver = factDelivery.BALL_IN_OVER
-    private val fdBatterKey = factDelivery.BATTER_KEY
-    private val fdNonStrikerKey = factDelivery.NON_STRIKER_KEY
-    private val fdBowlerKey = factDelivery.BOWLER_KEY
+    private val fdBatterKey = factDelivery.BATTER_ID
+    private val fdNonStrikerKey = factDelivery.NON_STRIKER_ID
+    private val fdBowlerKey = factDelivery.BOWLER_ID
     private val fdBatterRuns = factDelivery.BATTER_RUNS
     private val fdExtraRuns = factDelivery.EXTRA_RUNS
     private val fdTotalRuns = factDelivery.TOTAL_RUNS
@@ -101,24 +99,24 @@ internal class JooqMatchScoresheetLoader(
     private val fdNonBoundary = factDelivery.NON_BOUNDARY
     private val fdPowerplay = factDelivery.POWERPLAY
     private val fdWicketCount = factDelivery.WICKET_COUNT
-    private val pbPersonKey = dimPersonBatter.PERSON_KEY
+    private val pbPersonKey = dimPersonBatter.ID
     private val pbFullName = dimPersonBatter.FULL_NAME
-    private val pnsPersonKey = dimPersonNonStriker.PERSON_KEY
+    private val pnsPersonKey = dimPersonNonStriker.ID
     private val pnsFullName = dimPersonNonStriker.FULL_NAME
-    private val pboPersonKey = dimPersonBowler.PERSON_KEY
+    private val pboPersonKey = dimPersonBowler.ID
     private val pboFullName = dimPersonBowler.FULL_NAME
-    private val pfPersonKey = dimPersonFielder.PERSON_KEY
+    private val pfPersonKey = dimPersonFielder.ID
     private val pfFullName = dimPersonFielder.FULL_NAME
-    private val ibTeamKey = dimInningsBattingTeam.TEAM_KEY
+    private val ibTeamKey = dimInningsBattingTeam.ID
     private val ibTeamName = dimInningsBattingTeam.TEAM_NAME
-    private val ioTeamKey = dimInningsBowlingTeam.TEAM_KEY
+    private val ioTeamKey = dimInningsBowlingTeam.ID
     private val ioTeamName = dimInningsBowlingTeam.TEAM_NAME
-    private val dwDeliveryKey = bridgeDeliveryWicket.DELIVERY_KEY
-    private val dwWicketKey = bridgeDeliveryWicket.WICKET_KEY
-    private val dfDeliveryKey = bridgeDeliveryFielder.DELIVERY_KEY
-    private val dfWicketKey = bridgeDeliveryFielder.WICKET_KEY
-    private val dfPersonKey = bridgeDeliveryFielder.PERSON_KEY
-    private val wWicketKey = dimWicket.WICKET_KEY
+    private val dwDeliveryKey = bridgeDeliveryWicket.DELIVERY_ID
+    private val dwWicketKey = bridgeDeliveryWicket.WICKET_ID
+    private val dfDeliveryKey = bridgeDeliveryFielder.DELIVERY_ID
+    private val dfWicketKey = bridgeDeliveryFielder.WICKET_ID
+    private val dfPersonKey = bridgeDeliveryFielder.PERSON_ID
+    private val wWicketKey = dimWicket.ID
     private val wKind = dimWicket.WICKET_KIND
 
     suspend fun load(
@@ -148,7 +146,6 @@ internal class JooqMatchScoresheetLoader(
                 .leftJoin(dimTeam1).on(mTeam1Key.eq(t1TeamKey))
                 .leftJoin(dimTeam2).on(mTeam2Key.eq(t2TeamKey))
                 .leftJoin(dimGround).on(mGroundKey.eq(gGroundKey))
-                .leftJoin(factMatch).on(fmMatchKey.eq(mMatchKey))
                 .where(mPublicMatchId.eq(publicMatchId.value))
                 .fetchOne() ?: return@withMatchQuery null
 

@@ -2,12 +2,12 @@ package com.knowledgespike.ballbyball.parse.database
 
 import com.knowledgespike.ballbyball.types.values.PublicMatchId
 
-data class PersonRegistryEntity(val id: String, val name: String, val caId: Int)
+data class PersonEntity(val id: String, val name: String, val caId: Int)
 
 data class Team(val id: Long, val name: String)
 
-data class Location(val id: Long, val name: String)
+data class Ground(val id: Long, val name: String)
 
-data class WarehouseMatch(val key: Long, val publicMatchId: PublicMatchId)
+data class MatchEntity(val id: Long, val publicMatchId: PublicMatchId)
 
-data class WarehouseInnings(val key: Long)
+data class InningsEntity(val id: Long)

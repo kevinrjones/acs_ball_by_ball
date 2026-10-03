@@ -270,25 +270,19 @@ export FLYWAY_URL="jdbc:sqlite:/path/to/cricsheet.db"
 ```
 
 For a new MySQL or PostgreSQL database, ensure the `cricsheet` database exists
-before running the migrations. Each dialect directory includes the original
-schema `1__initial_tables.sql`, the complete warehouse schema
-`2__initial_warehouse.sql`, and deterministic identity migration
-`3__deterministic_match_identity.sql`, and public URL migration
-`4__public_match_id.sql`, and the widening migration
-`5__widen_public_match_id.sql`. `dim_match.match_key` remains a generated
-numeric join key; `canonical_match_id` remains unique; and `public_match_id` is
-a separate unique ten-digit URL identifier derived from the canonical UUID.
-`match_source_reference` retains provider UUIDs, keys, and raw digests. Legacy
-rows with canonical identity are backfilled when their canonical envelopes are
-replayed; rows without canonical identity remain null and the migration never
-invents identity from stored filenames.
+before running the migration. Each dialect directory contains one
+`1__initial_tables.sql` migration with the complete normalized relational
+schema. It creates `matches.id` as the internal generated key while keeping
+`canonical_match_id` and the nullable unique `public_match_id` separate.
+`match_source_reference` retains provider keys, source IDs, and raw digests.
+Existing databases are rebuild targets: back up the old schema, apply the
+single migration, and replay canonical envelopes rather than copying old
+surrogate keys.
 
 The API and web client use `/api/matches/{publicMatchId}/scoresheet`. The
-repository resolves that value to `match_key` before executing existing fact
-joins. A deterministic ten-digit collision fails rather than probing for a
-different URL. Migration 5 clears old seven-digit values; replay canonical
-envelopes to assign the new URLs. The known full-check limitation is the live
-MariaDB schema until migrations 4 and 5 have been applied.
+repository resolves that value through `matches.public_match_id` and reads
+the normalized relational tables. A deterministic public-ID collision fails
+rather than probing for a different URL.
 
 ```bash
 mariadb --host="$DB_HOST" --port="$DB_PORT" \
@@ -340,10 +334,10 @@ example, `csv/warehouse` is written to `[base]/csv/warehouse`. Absolute paths
 and paths that escape `baseDirectory` are rejected.
 
 Direct `DATABASE`/`SQL` output is idempotent for matches: it checks the
-canonical UUID against `dim_match.canonical_match_id` before inserting a match.
-The fully qualified source path remains in `dim_match.file_name` for
-provenance. `SQL_FILE` and `CSV` outputs are file-generation workflows and do
-not query an existing database.
+canonical UUID against `matches.canonical_match_id` before inserting a match.
+The fully qualified source path remains in `matches.file_name` for provenance.
+`SQL_FILE` and `CSV` outputs are file-generation workflows and do not query an
+existing database.
 
 Human verification checklist:
 
@@ -353,7 +347,7 @@ Human verification checklist:
   remain unchanged.
 - [ ] Correct the bytes without changing the provider basename stem and confirm
   only the raw digest changes.
-- [ ] Import the same canonical envelope twice and confirm one `dim_match` row
+- [ ] Import the same canonical envelope twice and confirm one `matches` row
   and one source-reference row exist.
 
 To ouput the data in SQL format:

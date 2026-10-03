@@ -16,14 +16,14 @@ class SqliteOutputAdapterTest {
             connection.createStatement().use { statement ->
                 statement.execute(
                     """
-                    create table dim_match (
-                        match_key integer primary key,
+                    create table matches (
+                        id integer primary key,
                         canonical_match_id varchar(36) not null unique
                     )
                     """.trimIndent()
                 )
                 statement.executeUpdate(
-                    "insert into dim_match (match_key, canonical_match_id) values (7, '1890a7a8-f76d-5f36-89f7-39b0319044b0')"
+                    "insert into matches (id, canonical_match_id) values (7, '1890a7a8-f76d-5f36-89f7-39b0319044b0')"
                 )
             }
 
@@ -54,11 +54,11 @@ class SqliteOutputAdapterTest {
             connection.createStatement().use { statement ->
                 statement.execute(
                     """
-                    create table bridge_delivery_fielder (
-                        delivery_key integer not null,
-                        wicket_key integer not null,
-                        person_key integer not null,
-                        primary key (delivery_key, wicket_key, person_key)
+                    create table delivery_fielders (
+                        delivery_id integer not null,
+                        wicket_id integer not null,
+                        person_id integer not null,
+                        primary key (delivery_id, wicket_id, person_id)
                     )
                     """.trimIndent()
                 )
@@ -71,7 +71,7 @@ class SqliteOutputAdapterTest {
             }
 
             connection.createStatement().use { statement ->
-                statement.executeQuery("select count(*) from bridge_delivery_fielder").use { result ->
+                statement.executeQuery("select count(*) from delivery_fielders").use { result ->
                     result.next()
                     expectThat(result.getInt(1)).isEqualTo(0)
                 }
@@ -85,11 +85,11 @@ class SqliteOutputAdapterTest {
             connection.createStatement().use { statement ->
                 statement.execute(
                     """
-                    create table bridge_delivery_fielder (
-                        delivery_key integer not null,
-                        wicket_key integer not null,
-                        person_key integer not null,
-                        primary key (delivery_key, wicket_key, person_key)
+                    create table delivery_fielders (
+                        delivery_id integer not null,
+                        wicket_id integer not null,
+                        person_id integer not null,
+                        primary key (delivery_id, wicket_id, person_id)
                     )
                     """.trimIndent()
                 )
@@ -101,7 +101,7 @@ class SqliteOutputAdapterTest {
             }
 
             connection.createStatement().use { statement ->
-                statement.executeQuery("select count(*) from bridge_delivery_fielder").use { result ->
+                statement.executeQuery("select count(*) from delivery_fielders").use { result ->
                     result.next()
                     expectThat(result.getInt(1)).isEqualTo(1)
                 }

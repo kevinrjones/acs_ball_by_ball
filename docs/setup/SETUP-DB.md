@@ -245,11 +245,11 @@ FLYWAY_PASSWORD="$POSTGRES_PASSWORD" \
 ./gradlew :bbb-update-database:flywayMigrate --no-daemon
 ```
 
-Each target receives `1__initial_tables.sql` and the complete
-`2__initial_warehouse.sql`. The fully qualified source JSON path is stored in
-`dim_match.file_name`; `fact_match` stores only match-level keys and measures.
-The PostgreSQL migrations create and use the `cricsheet` schema; the MariaDB
-migrations use the `cricsheet` database.
+Each target receives one `1__initial_tables.sql` migration containing the
+complete normalized relational schema. The fully qualified source JSON path is
+stored in `matches.file_name`, while match measures are stored directly on
+`matches`. The PostgreSQL migration creates and uses the `cricsheet` schema;
+the MariaDB migration uses the `cricsheet` database.
 
 ### 4. Populate both databases
 
@@ -312,18 +312,18 @@ docker exec dataloader-postgres psql \
   --command='SELECT table_schema, table_name FROM information_schema.tables WHERE table_schema = '\''cricsheet'\'' ORDER BY table_name;'
 ```
 
-After a successful load, compare row counts for the important warehouse
+After a successful load, compare row counts for the important relational
 tables. The exact counts depend on the selected Cricsheet input, but the
 corresponding counts should agree between the two databases:
 
 ```bash
 docker exec dataloader-mariadb mariadb \
   --user=cricsheet --password="$MARIADB_PASSWORD" --database=cricsheet \
-  --execute='SELECT "dim_match" AS table_name, COUNT(*) AS row_count FROM dim_match UNION ALL SELECT "fact_delivery", COUNT(*) FROM fact_delivery;'
+  --execute='SELECT "matches" AS table_name, COUNT(*) AS row_count FROM matches UNION ALL SELECT "deliveries", COUNT(*) FROM deliveries;'
 
 docker exec dataloader-postgres psql \
   --username=cricsheet --dbname=cricsheet \
-  --command='SELECT '\''dim_match'\'' AS table_name, COUNT(*) AS row_count FROM cricsheet.dim_match UNION ALL SELECT '\''fact_delivery'\'', COUNT(*) FROM cricsheet.fact_delivery;'
+  --command='SELECT '\''matches'\'' AS table_name, COUNT(*) AS row_count FROM cricsheet.matches UNION ALL SELECT '\''deliveries'\'', COUNT(*) FROM cricsheet.deliveries;'
 ```
 
 ## Manual container access

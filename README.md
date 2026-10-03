@@ -8,7 +8,7 @@
 [![Gradle](https://img.shields.io/badge/Gradle-build-02303A?logo=gradle&logoColor=white)](https://gradle.org/)
 
 Gradle multi-module applications for retrieving cricket ball-by-ball data,
-normalizing it into canonical match envelopes, loading a warehouse, and serving
+normalizing it into canonical match envelopes, loading a relational database, and serving
 match search and scoresheet APIs through a Ktor backend and Angular web UI.
 
 | | |
@@ -17,7 +17,7 @@ match search and scoresheet APIs through a Ktor backend and Angular web UI.
 | **Root project** | `BallByBall` |
 | **Default web port** | `8080` |
 | **Default API port** | `8081` |
-| **Warehouse dialects** | MariaDB / MySQL, PostgreSQL, SQLite |
+| **Database dialects** | MariaDB / MySQL, PostgreSQL, SQLite |
 
 ## Contents
 
@@ -37,9 +37,9 @@ match search and scoresheet APIs through a Ktor backend and Angular web UI.
 
 - Command-line tools to download Cricsheet archives and player registers
 - A Cricsheet adapter that emits source and canonical match envelopes
-- A warehouse loader that writes SQL scripts, CSV files, or JDBC inserts, with
+- A relational loader that writes SQL scripts, CSV files, or JDBC inserts, with
   transactional JDBC match writes
-- A read-only Ktor REST API over the warehouse
+- A read-only Ktor REST API over normalized match data
 - A Ktor-hosted, feature-sliced Angular SPA with OIDC BFF login and API proxying
 - Shared contracts, tiny types, Flyway migrations, and architecture docs
 
@@ -67,13 +67,13 @@ bbb-parse-cricsheet
 bbb-update-database
         │
         ▼
-  Warehouse (MariaDB / PostgreSQL / SQLite, SQL, or CSV)
+  Relational match data (MariaDB / PostgreSQL / SQLite, SQL, or CSV)
         │
         ▼
 bbb-api  ──proxied by──▶  bbb-web (Angular)
 ```
 
-Warehouse loading accepts **canonical envelopes only**. Cross-provider
+Relational loading accepts **canonical envelopes only**. Cross-provider
 reconciliation is intentionally a separate future application.
 
 ## Modules
@@ -83,9 +83,9 @@ reconciliation is intentionally a separate future application.
 | `bbb-get-cricsheet-data` | CLI | Download raw Cricsheet JSON archives and player registers |
 | `bbb-parse-cricsheet` | CLI | Convert raw Cricsheet JSON into source/canonical envelopes |
 | `bbb-cli-shared` | Library | Shared CLI match schema and deterministic identity contracts |
-| `bbb-update-database` | CLI | Load canonical envelopes into SQL, CSV, or JDBC warehouse output |
+| `bbb-update-database` | CLI | Load canonical envelopes into normalized SQL, CSV, or JDBC output |
 | `bbb-shared` | Library | Shared HTTP contracts and validated tiny types |
-| `bbb-api` | Service | Read-only warehouse REST API (default port `8081`) |
+| `bbb-api` | Service | Read-only relational REST API (default port `8081`) |
 | `bbb-web` | Service | Feature-sliced Angular SPA, OIDC BFF, and API proxy (default port `8080`) |
 
 Module registration lives in `settings.gradle.kts`. Dependency versions live in
@@ -117,7 +117,7 @@ Matches use layered deterministic identifiers. They are not interchangeable.
 | `rawContentDigest` | SHA-256 of exact downloaded bytes; revision evidence only | No |
 | `canonicalMatchId` | Stable UUID of the reconciled/canonical match | No |
 | `publicMatchId` | Ten-digit URL identifier derived from the canonical UUID | Yes |
-| `matchKey` | Generated warehouse surrogate key for SQL joins | No |
+| `matchKey` | Generated internal relational key for SQL joins | No |
 
 Public scoresheet URLs look like:
 
@@ -176,7 +176,7 @@ cd acs_ball_by_ball
 
 ### Common developer workflows
 
-Full command examples for retrieval, parsing, warehouse loading, API, and web
+Full command examples for retrieval, parsing, relational loading, API, and web
 are in:
 
 - **[README-DEV.md](README-DEV.md)**
@@ -195,7 +195,7 @@ Typical local data path (details and flags in the developer runbook):
 # 2. Normalize into canonical envelopes
 ./gradlew :bbb-parse-cricsheet:run --no-daemon --args="..."
 
-# 3. Load warehouse output (SQL / CSV / JDBC)
+# 3. Load relational output (SQL / CSV / JDBC)
 ./gradlew :bbb-update-database:run --no-daemon --args="..."
 
 # 4. Run API and web against a migrated database
@@ -288,7 +288,7 @@ execution, and Docker push steps.
 | [README-DEV.md](README-DEV.md) | Developer runbook and command-line workflows |
 | [docs/GENERATING_KEYS.md](docs/GENERATING_KEYS.md) | Match key generation, collision risk, and recovery |
 | [docs/architecture/applications.md](docs/architecture/applications.md) | Module boundaries and runtime flows |
-| [docs/architecture/database.md](docs/architecture/database.md) | Warehouse schema notes |
+| [docs/architecture/database.md](docs/architecture/database.md) | Relational schema and replay cutover |
 | [UBIQUITOUS_LANGUAGE.md](UBIQUITOUS_LANGUAGE.md) | Shared domain, contract, identity, and security vocabulary |
 | [docs/setup/SETUP-DB.md](docs/setup/SETUP-DB.md) | Local database container setup |
 | [docs/project_memory.md](docs/project_memory.md) | Shipped work, decisions, and gotchas |
@@ -309,10 +309,10 @@ execution, and Docker push steps.
 - Provider adapters emit source identity plus a raw-content digest.
 - `bbb-parse-cricsheet` derives Cricsheet identity from the safe basename stem,
   not the full path.
-- Warehouse loading accepts **canonical envelopes only**.
+- Relational loading accepts **canonical envelopes only**.
 - Cross-provider reconciliation is intentionally a separate future application.
 - `publicMatchId` is deterministic and unique-constrained; collisions fail
   loudly rather than probing another value.
-- Internal warehouse joins continue to use generated `matchKey` values.
+- Internal relational joins continue to use generated `matchKey` values.
 - API feature code is organized in vertical slices under
   `feature.<name>` (`presentation` / `domain` / `data`).

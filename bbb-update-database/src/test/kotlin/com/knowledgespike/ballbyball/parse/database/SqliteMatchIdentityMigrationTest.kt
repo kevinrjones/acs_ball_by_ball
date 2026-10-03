@@ -9,58 +9,48 @@ import java.sql.DriverManager
 
 class SqliteMatchIdentityMigrationTest {
     @Test
-    fun `populated legacy schema migrates without inferring canonical identity`() {
+    fun `warehouse cutover creates normalized schema and removes warehouse tables`() {
         DriverManager.getConnection("jdbc:sqlite::memory:").use { connection ->
             connection.createStatement().use { statement ->
                 statement.execute("PRAGMA foreign_keys = ON")
-                statement.execute("CREATE TABLE dim_match (id INTEGER NOT NULL PRIMARY KEY, file_name VARCHAR(120) NOT NULL)")
+                statement.execute("CREATE TABLE dim_match (id INTEGER PRIMARY KEY, file_name VARCHAR(120) NOT NULL)")
                 statement.execute(
                     "CREATE TABLE dim_innings (innings_key INTEGER PRIMARY KEY, match_key INTEGER NOT NULL, " +
                         "FOREIGN KEY (match_key) REFERENCES dim_match (id))"
                 )
-                statement.execute("INSERT INTO dim_match (id, file_name) VALUES (12345, '/legacy/12345.json')")
-                statement.execute("INSERT INTO dim_innings (innings_key, match_key) VALUES (1, 12345)")
+                migrationStatements("1__initial_tables.sql").forEach(statement::execute)
 
-                migrationStatements("3__deterministic_match_identity.sql", "4__public_match_id.sql")
-                    .forEach(statement::execute)
-
-                statement.execute(
-                    "INSERT INTO dim_match (match_key, canonical_match_id, public_match_id, file_name) " +
-                        "VALUES (12344, '1890a7a8-f76d-5f36-89f7-39b0319044b4', 2450146, '/legacy/canonical.json')"
-                )
-                migrationStatements("5__widen_public_match_id.sql").forEach(statement::execute)
                 statement.executeQuery(
-                    "SELECT public_match_id FROM dim_match WHERE match_key = 12344"
+                    "SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name LIKE 'dim_%'"
                 ).use { result ->
                     result.next()
-                    expectThat(result.getObject("public_match_id")).isEqualTo(null)
+                    expectThat(result.getInt(1)).isEqualTo(0)
                 }
-
                 statement.executeQuery(
-                    "SELECT match_key, canonical_match_id FROM dim_match WHERE match_key = 12345"
+                    "SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name IN " +
+                        "('dates', 'teams', 'people', 'grounds', 'matches', 'innings', 'deliveries', " +
+                        "'wickets', 'match_people', 'delivery_wickets', 'delivery_fielders', 'match_source_reference')"
                 ).use { result ->
                     result.next()
-                    expectThat(result.getLong("match_key")).isEqualTo(12345L)
-                    expectThat(result.getString("canonical_match_id")).isEqualTo(null)
+                    expectThat(result.getInt(1)).isEqualTo(12)
                 }
                 statement.executeQuery("PRAGMA foreign_key_check").use { result ->
                     expectThat(result.next()).isEqualTo(false)
                 }
-
-                statement.execute(
-                    "INSERT INTO dim_match (match_key, canonical_match_id, public_match_id, file_name) " +
-                        "VALUES (12346, '1890a7a8-f76d-5f36-89f7-39b0319044b1', 7922450146, '/canonical/one.json')"
-                )
-                statement.execute(
-                    "INSERT INTO dim_match (match_key, canonical_match_id, file_name) " +
-                        "VALUES (12347, '1890a7a8-f76d-5f36-89f7-39b0319044b2', '/canonical/two.json')"
-                )
-                expectThat(runCatching {
-                    statement.execute(
-                        "INSERT INTO dim_match (match_key, canonical_match_id, public_match_id, file_name) " +
-                            "VALUES (12348, '1890a7a8-f76d-5f36-89f7-39b0319044b3', 7922450146, '/canonical/three.json')"
+                statement.executeQuery("PRAGMA table_info(matches)").use { result ->
+                    val columns = buildList {
+                        while (result.next()) add(result.getString("name"))
+                    }
+                    expectThat(columns).isEqualTo(
+                        listOf(
+                            "id", "canonical_match_id", "public_match_id", "source_ca_id", "file_name",
+                            "match_in_series", "match_type", "event_name", "match_date_text", "season",
+                            "match_start_year", "match_start_date_id", "balls_per_over", "added_timestamp",
+                            "team1_id", "team2_id", "ground_id", "toss_team_id", "toss_decision", "victory_type",
+                            "winner_team_id", "loser_team_id", "duration_days", "margin", "match_count"
+                        )
                     )
-                }.isFailure).isEqualTo(true)
+                }
             }
         }
     }

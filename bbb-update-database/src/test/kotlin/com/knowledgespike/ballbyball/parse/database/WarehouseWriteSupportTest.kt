@@ -8,7 +8,7 @@ import com.knowledgespike.ballbyball.clishared.schema.Wickets
 import com.knowledgespike.ballbyball.parse.database.adapter.DeliveryRecord
 import com.knowledgespike.ballbyball.parse.database.adapter.MatchWriteDecision
 import com.knowledgespike.ballbyball.parse.database.adapter.MatchRecord
-import com.knowledgespike.ballbyball.parse.database.adapter.WarehouseWriteSupport
+import com.knowledgespike.ballbyball.parse.database.adapter.RelationalWriteSupport
 import com.knowledgespike.ballbyball.types.values.PublicMatchId
 import com.knowledgespike.cricketarchive.InvalidStateException
 import org.junit.jupiter.api.Test
@@ -18,13 +18,13 @@ import strikt.assertions.isEqualTo
 import java.time.LocalDateTime
 import java.util.UUID
 
-class WarehouseWriteSupportTest {
+class RelationalWriteSupportTest {
     @Test
     fun `given canonical match identity when matching public id is found then existing key is reused`() {
         val canonicalMatchId = CanonicalMatchId.from(UUID.fromString("1890a7a8-f76d-5f36-89f7-39b0319044b0"))
         val publicMatchId = PublicMatchId.from(1_234_567_890L)
 
-        val decision = WarehouseWriteSupport.matchWriteDecision(
+        val decision = RelationalWriteSupport.matchWriteDecision(
             canonicalMatchId = canonicalMatchId,
             publicMatchId = publicMatchId,
             existingMatchKey = 17L,
@@ -39,7 +39,7 @@ class WarehouseWriteSupportTest {
         val canonicalMatchId = CanonicalMatchId.from(UUID.fromString("1890a7a8-f76d-5f36-89f7-39b0319044b0"))
 
         assertThrows<InvalidStateException> {
-            WarehouseWriteSupport.matchWriteDecision(
+            RelationalWriteSupport.matchWriteDecision(
                 canonicalMatchId = canonicalMatchId,
                 publicMatchId = PublicMatchId.from(1_234_567_890L),
                 existingMatchKey = null,
@@ -49,11 +49,11 @@ class WarehouseWriteSupportTest {
     }
 
     @Test
-    fun `given match record when converted to warehouse values then shared column order is preserved`() {
+    fun `given match record when converted to relational values then shared column order is preserved`() {
         val match = matchRecord()
         val createdAt = LocalDateTime.parse("2024-02-03T04:05:06")
 
-        val values = WarehouseWriteSupport.matchValues(17L, match, createdAt)
+        val values = RelationalWriteSupport.matchValues(17L, match, createdAt)
 
         expectThat(values).isEqualTo(
             listOf(
@@ -78,13 +78,16 @@ class WarehouseWriteSupportTest {
                 "bat",
                 "runs",
                 25L,
-                26L
+                26L,
+                0,
+                0,
+                1
             )
         )
     }
 
     @Test
-    fun `given delivery record when converted to warehouse values then shared column order is preserved`() {
+    fun `given delivery record when converted to relational values then shared column order is preserved`() {
         val delivery = DeliveryRecord(
             matchKey = 17L,
             matchDateKey = 20240203,
@@ -109,7 +112,7 @@ class WarehouseWriteSupportTest {
             powerplay = 1
         )
 
-        val values = WarehouseWriteSupport.deliveryValues(51L, 52L, delivery)
+        val values = RelationalWriteSupport.deliveryValues(51L, 52L, delivery)
 
         val expected = listOf<Any?>(
             51L,

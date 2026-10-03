@@ -1,219 +1,256 @@
-use acs_ball_by_ball;
+USE acs_ball_by_ball;
 
-create table Teams
+-- Rebuild cutover: preserve the old database operationally through backup and
+-- canonical-envelope replay rather than copying warehouse surrogate keys.
+DROP TABLE IF EXISTS bridge_delivery_fielder;
+DROP TABLE IF EXISTS bridge_delivery_wicket;
+DROP TABLE IF EXISTS bridge_match_person;
+DROP TABLE IF EXISTS fact_delivery;
+DROP TABLE IF EXISTS fact_match;
+DROP TABLE IF EXISTS dim_wicket;
+DROP TABLE IF EXISTS dim_innings;
+DROP TABLE IF EXISTS match_source_reference;
+DROP TABLE IF EXISTS dim_match;
+DROP TABLE IF EXISTS dim_ground;
+DROP TABLE IF EXISTS dim_person;
+DROP TABLE IF EXISTS dim_team;
+DROP TABLE IF EXISTS dim_date;
+DROP TABLE IF EXISTS BallsWickets;
+DROP TABLE IF EXISTS Wickets;
+DROP TABLE IF EXISTS BallByBall;
+DROP TABLE IF EXISTS ReserveUmpiresMatches;
+DROP TABLE IF EXISTS MatchRefereesMatches;
+DROP TABLE IF EXISTS TvUmpiresMatches;
+DROP TABLE IF EXISTS UmpiresMatches;
+DROP TABLE IF EXISTS PlayersMatches;
+DROP TABLE IF EXISTS Matches;
+DROP TABLE IF EXISTS MatchReferees;
+DROP TABLE IF EXISTS TvUmpires;
+DROP TABLE IF EXISTS ReserveUmpires;
+DROP TABLE IF EXISTS Umpires;
+DROP TABLE IF EXISTS Players;
+DROP TABLE IF EXISTS PersonRegistry;
+DROP TABLE IF EXISTS Grounds;
+DROP TABLE IF EXISTS Teams;
+
+CREATE TABLE dates
 (
-    Id   Int PRIMARY KEY AUTO_INCREMENT,
-    Name varchar(100) not null
-);
-INSERT INTO Teams (Name)
-VALUES ('unknown');
+    date_id          INT        NOT NULL PRIMARY KEY,
+    calendar_date    DATE       NOT NULL,
+    calendar_year    SMALLINT   NOT NULL,
+    calendar_quarter TINYINT    NOT NULL,
+    calendar_month   TINYINT    NOT NULL,
+    month_name       VARCHAR(9) NOT NULL,
+    week_of_year     TINYINT    NOT NULL,
+    day_of_month     TINYINT    NOT NULL,
+    day_of_week      TINYINT    NOT NULL,
+    day_name         VARCHAR(9) NOT NULL,
+    is_weekend       BOOLEAN    NOT NULL,
+    UNIQUE KEY uq_dates_calendar_date (calendar_date)
+) ENGINE = InnoDB;
 
-
-create table Grounds
+CREATE TABLE teams
 (
-    Id   Int PRIMARY KEY AUTO_INCREMENT,
-    Name varchar(500) not null
-);
+    id             BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    source_team_id INT             NOT NULL,
+    team_name      VARCHAR(100)    NOT NULL,
+    UNIQUE KEY uq_teams_source_id (source_team_id)
+) ENGINE = InnoDB;
 
-create table PersonRegistry
+CREATE INDEX idx_teams_name ON teams (team_name);
+
+CREATE TABLE people
 (
-    PersonId varchar(10) PRIMARY KEY,
-    FullName varchar(200) not null,
-    CaId     Int          not null
-);
-INSERT INTO PersonRegistry (PersonId, FullName, CaId)
-VALUES ('unknown', '[substitute]', 0);
+    id              BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    source_person_id VARCHAR(10)     NOT NULL,
+    full_name        VARCHAR(200)    NOT NULL,
+    sort_name_part   VARCHAR(200)    NOT NULL,
+    other_name_part  VARCHAR(200)    NOT NULL,
+    ca_id            INT             NOT NULL,
+    UNIQUE KEY uq_people_source_id (source_person_id)
+) ENGINE = InnoDB;
 
-create table Players
+CREATE INDEX idx_people_full_name ON people (full_name);
+CREATE INDEX idx_people_sort_name ON people (sort_name_part);
+CREATE INDEX idx_people_ca_id ON people (ca_id);
+
+CREATE TABLE grounds
 (
-    PersonId      varchar(10) PRIMARY KEY,
-    FullName      varchar(200) not null,
-    SortNamePart  varchar(200) not null,
-    OtherNamePart varchar(200) not null,
+    id               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    source_ground_id INT             NOT NULL,
+    ground_name      VARCHAR(500)    NOT NULL,
+    UNIQUE KEY uq_grounds_source_id (source_ground_id)
+) ENGINE = InnoDB;
 
-    FOREIGN KEY (PersonId) REFERENCES PersonRegistry (PersonId) ON DELETE CASCADE
-);
-INSERT INTO Players (PersonId, FullName, SortNamePart, OtherNamePart)
-VALUES ('unknown', '[substitute]', '[substitute]', '');
+CREATE INDEX idx_grounds_name ON grounds (ground_name);
 
-create table Umpires
+CREATE TABLE matches
 (
-    PersonId      varchar(10) PRIMARY KEY,
-    FullName      varchar(200) not null,
-    SortNamePart  varchar(200) not null,
-    OtherNamePart varchar(200) not null,
+    id                 BIGINT          NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    canonical_match_id CHAR(36)        NULL,
+    public_match_id    BIGINT          NULL,
+    source_ca_id       VARCHAR(10)     NULL,
+    file_name          VARCHAR(120)    NOT NULL,
+    match_in_series    INT             NOT NULL,
+    match_type         VARCHAR(15)     NOT NULL,
+    event_name         VARCHAR(200)    NOT NULL,
+    match_date_text    VARCHAR(200)    NOT NULL,
+    season             VARCHAR(200)    NOT NULL,
+    match_start_year   VARCHAR(200)    NOT NULL,
+    match_start_date_id INT            NULL,
+    balls_per_over     INT             NOT NULL,
+    added_timestamp    DATETIME        NOT NULL,
+    team1_id           BIGINT UNSIGNED  NOT NULL,
+    team2_id           BIGINT UNSIGNED  NOT NULL,
+    ground_id          BIGINT UNSIGNED  NOT NULL,
+    toss_team_id       BIGINT UNSIGNED  NOT NULL,
+    toss_decision      VARCHAR(10)     NULL,
+    victory_type       VARCHAR(15)     NOT NULL,
+    winner_team_id     BIGINT UNSIGNED  NULL,
+    loser_team_id      BIGINT UNSIGNED  NULL,
+    duration_days      INT             NOT NULL,
+    margin             INT             NOT NULL,
+    match_count        TINYINT UNSIGNED NOT NULL DEFAULT 1,
+    UNIQUE KEY uq_matches_canonical_id (canonical_match_id),
+    UNIQUE KEY uq_matches_public_id (public_match_id),
+    KEY idx_matches_type (match_type),
+    KEY idx_matches_file_name (file_name),
+    KEY idx_matches_type_year (match_type, match_start_year),
+    KEY idx_matches_teams_type (match_type, team1_id, team2_id),
+    KEY idx_matches_season (season),
+    KEY idx_matches_start_date (match_start_date_id),
+    KEY idx_matches_team1 (team1_id),
+    KEY idx_matches_team2 (team2_id),
+    KEY idx_matches_ground (ground_id),
+    CONSTRAINT fk_matches_start_date FOREIGN KEY (match_start_date_id) REFERENCES dates (date_id),
+    CONSTRAINT fk_matches_team1 FOREIGN KEY (team1_id) REFERENCES teams (id),
+    CONSTRAINT fk_matches_team2 FOREIGN KEY (team2_id) REFERENCES teams (id),
+    CONSTRAINT fk_matches_ground FOREIGN KEY (ground_id) REFERENCES grounds (id),
+    CONSTRAINT fk_matches_toss_team FOREIGN KEY (toss_team_id) REFERENCES teams (id),
+    CONSTRAINT fk_matches_winner_team FOREIGN KEY (winner_team_id) REFERENCES teams (id),
+    CONSTRAINT fk_matches_loser_team FOREIGN KEY (loser_team_id) REFERENCES teams (id)
+) ENGINE = InnoDB;
 
-    FOREIGN KEY (PersonId) REFERENCES PersonRegistry (PersonId) ON DELETE CASCADE
-);
-
-create table ReserveUmpires
+CREATE TABLE match_source_reference
 (
-    PersonId      varchar(10) PRIMARY KEY,
-    FullName      varchar(200) not null,
-    SortNamePart  varchar(200) not null,
-    OtherNamePart varchar(200) not null,
+    match_id            BIGINT          NOT NULL,
+    provider            VARCHAR(100)    NOT NULL,
+    provider_record_key VARCHAR(255)    NOT NULL,
+    source_record_id    CHAR(36)        NOT NULL,
+    raw_content_digest  CHAR(64)        NOT NULL,
+    PRIMARY KEY (match_id, provider, source_record_id),
+    UNIQUE KEY uq_match_source_provider_record (provider, source_record_id),
+    CONSTRAINT fk_match_source_match FOREIGN KEY (match_id) REFERENCES matches (id)
+) ENGINE = InnoDB;
 
-    FOREIGN KEY (PersonId) REFERENCES PersonRegistry (PersonId) ON DELETE CASCADE
-);
+CREATE INDEX idx_match_source_record ON match_source_reference (source_record_id);
 
-create table TvUmpires
+CREATE TABLE innings
 (
-    PersonId      varchar(10) PRIMARY KEY,
-    FullName      varchar(200) not null,
-    SortNamePart  varchar(200) not null,
-    OtherNamePart varchar(200) not null,
+    id               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    match_id         BIGINT          NOT NULL,
+    innings_number   INT             NOT NULL,
+    batting_team_id  BIGINT UNSIGNED  NOT NULL,
+    bowling_team_id  BIGINT UNSIGNED  NOT NULL,
+    UNIQUE KEY uq_innings_match_number (match_id, innings_number),
+    KEY idx_innings_batting_team (batting_team_id),
+    KEY idx_innings_bowling_team (bowling_team_id),
+    CONSTRAINT fk_innings_match FOREIGN KEY (match_id) REFERENCES matches (id),
+    CONSTRAINT fk_innings_batting_team FOREIGN KEY (batting_team_id) REFERENCES teams (id),
+    CONSTRAINT fk_innings_bowling_team FOREIGN KEY (bowling_team_id) REFERENCES teams (id)
+) ENGINE = InnoDB;
 
-    FOREIGN KEY (PersonId) REFERENCES PersonRegistry (PersonId) ON DELETE CASCADE
-);
-
-create table MatchReferees
+CREATE TABLE wickets
 (
-    PersonId      varchar(10) PRIMARY KEY,
-    FullName      varchar(200) not null,
-    SortNamePart  varchar(200) not null,
-    OtherNamePart varchar(200) not null,
+    id               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    source_wicket_id INT             NOT NULL,
+    wicket_kind      VARCHAR(30)     NULL,
+    UNIQUE KEY uq_wickets_source_id (source_wicket_id)
+) ENGINE = InnoDB;
 
-    FOREIGN KEY (PersonId) REFERENCES PersonRegistry (PersonId) ON DELETE CASCADE
-);
+CREATE INDEX idx_wickets_kind ON wickets (wicket_kind);
 
-
-
-create table Matches
+CREATE TABLE deliveries
 (
-    Id             Int PRIMARY KEY AUTO_INCREMENT,
-    CaId           varchar(10)  null,
-    FileName       varchar(120) not null,
-    MatchInSeries  Int          not null, -- 1(st test)
-    MatchType      varchar(15)  not null,
-    Event          varchar(200) not null,
-    Team1Id        Int          not null,
-    Team1Name      varchar(200) not null,
-    Team2Id        Int          not null,
-    Team2Name      varchar(200) not null,
-    MatchDate      varchar(200) not null,
-    Season         varchar(200) not null,
-    MatchStartYear varchar(200) not null,
-    MatchStartDate date         null,
-    Duration       Int          not null, -- in days or MAX_INT for timeless test
-    BallsPerOver   Int          not null,
-    AddedDate      datetime     not null,
-    Location       varchar(200) not null,
-    LocationId     int          not null,
-    TossTeamId     Int          not null,
-    TossDecision   varchar(10)  null,
-    VictoryType    varchar(15)  not null,
-    Margin         INT          not null,
-    WhoWonId       Int          null,
-    WhoLostId      Int          null,
+    id                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    source_ball_id    INT             NOT NULL,
+    match_id          BIGINT          NOT NULL,
+    match_date_id     INT             NULL,
+    innings_id        BIGINT UNSIGNED  NOT NULL,
+    batting_team_id   BIGINT UNSIGNED  NOT NULL,
+    bowling_team_id   BIGINT UNSIGNED  NOT NULL,
+    batter_id         BIGINT UNSIGNED  NOT NULL,
+    non_striker_id    BIGINT UNSIGNED  NOT NULL,
+    bowler_id         BIGINT UNSIGNED  NOT NULL,
+    over_number       INT             NOT NULL,
+    ball_number       INT             NOT NULL,
+    ball_in_over      INT             NOT NULL,
+    innings_order     INT             NOT NULL,
+    batter_runs       INT             NOT NULL,
+    extra_runs        INT             NOT NULL,
+    total_runs        INT             NOT NULL,
+    no_balls          INT             NOT NULL,
+    wides             INT             NOT NULL,
+    byes              INT             NOT NULL,
+    leg_byes          INT             NOT NULL,
+    non_boundary      INT             NULL,
+    powerplay         INT             NOT NULL,
+    wicket_count      INT             NOT NULL,
+    UNIQUE KEY uq_deliveries_source_id (source_ball_id),
+    KEY idx_deliveries_match_order (match_id, innings_order),
+    KEY idx_deliveries_match_sequence (match_id, innings_order, over_number, ball_in_over),
+    KEY idx_deliveries_date (match_date_id),
+    KEY idx_deliveries_innings (innings_id),
+    KEY idx_deliveries_batting_team (batting_team_id),
+    KEY idx_deliveries_bowling_team (bowling_team_id),
+    KEY idx_deliveries_batter (batter_id),
+    KEY idx_deliveries_non_striker (non_striker_id),
+    KEY idx_deliveries_bowler (bowler_id),
+    KEY idx_deliveries_over (over_number),
+    KEY idx_deliveries_ball_in_over (ball_in_over),
+    KEY idx_deliveries_powerplay (powerplay),
+    CONSTRAINT fk_deliveries_match FOREIGN KEY (match_id) REFERENCES matches (id),
+    CONSTRAINT fk_deliveries_date FOREIGN KEY (match_date_id) REFERENCES dates (date_id),
+    CONSTRAINT fk_deliveries_innings FOREIGN KEY (innings_id) REFERENCES innings (id),
+    CONSTRAINT fk_deliveries_batting_team FOREIGN KEY (batting_team_id) REFERENCES teams (id),
+    CONSTRAINT fk_deliveries_bowling_team FOREIGN KEY (bowling_team_id) REFERENCES teams (id),
+    CONSTRAINT fk_deliveries_batter FOREIGN KEY (batter_id) REFERENCES people (id),
+    CONSTRAINT fk_deliveries_non_striker FOREIGN KEY (non_striker_id) REFERENCES people (id),
+    CONSTRAINT fk_deliveries_bowler FOREIGN KEY (bowler_id) REFERENCES people (id)
+) ENGINE = InnoDB;
 
-    FOREIGN KEY (Team1Id) REFERENCES Teams (Id) ON DELETE CASCADE,
-    FOREIGN KEY (Team2Id) REFERENCES Teams (Id) ON DELETE CASCADE,
-    FOREIGN KEY (TossTeamId) REFERENCES Teams (Id) ON DELETE CASCADE,
-    FOREIGN KEY (WhoWonId) REFERENCES Teams (Id) ON DELETE CASCADE,
-    FOREIGN KEY (WhoLostId) REFERENCES Teams (Id) ON DELETE CASCADE,
-    FOREIGN KEY (LocationId) REFERENCES Grounds (Id) ON DELETE CASCADE,
-    Index (MatchType)
-);
-
-create table PlayersMatches
+CREATE TABLE match_people
 (
-    PersonId varchar(10) not null,
-    MatchId  Int         not null,
+    id        BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    match_id  BIGINT          NOT NULL,
+    person_id BIGINT UNSIGNED  NOT NULL,
+    role_code VARCHAR(32)     NOT NULL,
+    UNIQUE KEY uq_match_people_role (match_id, person_id, role_code),
+    KEY idx_match_people_person (person_id),
+    KEY idx_match_people_role (role_code),
+    CONSTRAINT fk_match_people_match FOREIGN KEY (match_id) REFERENCES matches (id),
+    CONSTRAINT fk_match_people_person FOREIGN KEY (person_id) REFERENCES people (id)
+) ENGINE = InnoDB;
 
-    FOREIGN KEY (PersonId) references Players (PersonId) ON DELETE CASCADE,
-    FOREIGN KEY (MatchId) references Matches (Id) ON DELETE CASCADE
-);
-
-create table UmpiresMatches
+CREATE TABLE delivery_wickets
 (
-    PersonId varchar(10) not null,
-    MatchId  Int         not null,
+    delivery_id BIGINT UNSIGNED NOT NULL,
+    wicket_id   BIGINT UNSIGNED NOT NULL,
+    PRIMARY KEY (delivery_id, wicket_id),
+    KEY idx_delivery_wickets_wicket (wicket_id),
+    CONSTRAINT fk_delivery_wickets_delivery FOREIGN KEY (delivery_id) REFERENCES deliveries (id),
+    CONSTRAINT fk_delivery_wickets_wicket FOREIGN KEY (wicket_id) REFERENCES wickets (id)
+) ENGINE = InnoDB;
 
-    FOREIGN KEY (PersonId) references Umpires (PersonId) ON DELETE CASCADE,
-    FOREIGN KEY (MatchId) references Matches (Id) ON DELETE CASCADE
-);
-
-create table TvUmpiresMatches
+CREATE TABLE delivery_fielders
 (
-    PersonId varchar(10) not null,
-    MatchId  Int         not null,
-
-    FOREIGN KEY (PersonId) references TvUmpires (PersonId) ON DELETE CASCADE,
-    FOREIGN KEY (MatchId) references Matches (Id) ON DELETE CASCADE
-
-);
-
-create table MatchRefereesMatches
-(
-    PersonId varchar(10) not null,
-    MatchId  Int         not null,
-
-    FOREIGN KEY (PersonId) references MatchReferees (PersonId) ON DELETE CASCADE,
-    FOREIGN KEY (MatchId) references Matches (Id) ON DELETE CASCADE
-);
-
-create table ReserveUmpiresMatches
-(
-    PersonId varchar(10) not null,
-    MatchId  Int         not null,
-
-    FOREIGN KEY (PersonId) references ReserveUmpires (PersonId) ON DELETE CASCADE,
-    FOREIGN KEY (MatchId) references Matches (Id) ON DELETE CASCADE
-);
-
-create table BallByBall
-(
-    Id            Int PRIMARY KEY AUTO_INCREMENT,
-    TeamId        Int         not null,
-    OpponentsId   Int         not null,
-    MatchId       Int         not null,
-    InningsNumber Int         not null,
-    InningsOrder  Int         not null,
-    OverNumber    Int         not null,
-    BallNumber    Int         not null,
-    BallInOver    Int         not null,
-    BowlerId      varchar(10) not null,
-    BatterId      varchar(10) not null,
-    NonStrikerId  varchar(10) not null,
-    BatterRuns    INT         not null,
-    ExtraRuns     INT         not null,
-    TotalRuns     INT         not null,
-    NoBalls       INT         not null,
-    Wides         INT         not null,
-    Byes          INT         not null,
-    LegByes       INT         not null,
-    NonBoundary   INT         null,
-    Powerplay     INT         not null,
-    Wicket        INT         not null,
-
-    FOREIGN KEY (MatchId) references Matches (Id) ON DELETE CASCADE,
-    FOREIGN KEY (TeamId) references Teams (Id) ON DELETE CASCADE,
-    FOREIGN KEY (BowlerId) references Players (PersonId) ON DELETE CASCADE,
-    FOREIGN KEY (BatterId) references Players (PersonId) ON DELETE CASCADE,
-
-    INDEX (OverNumber),
-    INDEX (BallNumber),
-    INDEX (BallInOver),
-    INDEX (BatterId),
-    INDEX (BowlerId),
-    INDEX (BatterRuns),
-    INDEX (ExtraRuns),
-    INDEX (Powerplay)
-
-);
-
-create table Wickets
-(
-    id   int primary key AUTO_INCREMENT,
-    kind varchar(30)
-);
-
-create table BallsWickets
-(
-    BallId   Int not null,
-    WicketId int not null,
-
-    FOREIGN KEY (BallId) references BallByBall (Id) ON DELETE CASCADE,
-    FOREIGN KEY (WicketId) references Wickets (Id) ON DELETE CASCADE
-);
-
+    delivery_id BIGINT UNSIGNED NOT NULL,
+    wicket_id   BIGINT UNSIGNED NOT NULL,
+    person_id   BIGINT UNSIGNED NOT NULL,
+    PRIMARY KEY (delivery_id, wicket_id, person_id),
+    KEY idx_delivery_fielders_wicket (wicket_id),
+    KEY idx_delivery_fielders_person (person_id),
+    CONSTRAINT fk_delivery_fielders_delivery FOREIGN KEY (delivery_id) REFERENCES deliveries (id),
+    CONSTRAINT fk_delivery_fielders_wicket FOREIGN KEY (wicket_id) REFERENCES wickets (id),
+    CONSTRAINT fk_delivery_fielders_person FOREIGN KEY (person_id) REFERENCES people (id)
+) ENGINE = InnoDB;

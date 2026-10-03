@@ -1,19 +1,16 @@
 package com.knowledgespike.ballbyball.parse.database.adapter
 
-import com.knowledgespike.ballbyball.identity.CanonicalMatchId
-import com.knowledgespike.ballbyball.identity.DeterministicIdentity
 import com.knowledgespike.ballbyball.clishared.identity.SourceReference
 import com.knowledgespike.ballbyball.clishared.schema.Delivery
-import com.knowledgespike.ballbyball.parse.database.Location
-import com.knowledgespike.ballbyball.parse.database.PersonRegistryEntity
+import com.knowledgespike.ballbyball.identity.CanonicalMatchId
+import com.knowledgespike.ballbyball.identity.DeterministicIdentity
+import com.knowledgespike.ballbyball.parse.database.Ground
+import com.knowledgespike.ballbyball.parse.database.InningsEntity
+import com.knowledgespike.ballbyball.parse.database.MatchEntity
+import com.knowledgespike.ballbyball.parse.database.PersonEntity
 import com.knowledgespike.ballbyball.parse.database.Team
-import com.knowledgespike.ballbyball.parse.database.WarehouseInnings
-import com.knowledgespike.ballbyball.parse.database.WarehouseMatch
 import com.knowledgespike.ballbyball.types.values.PublicMatchId
 
-/**
- * Persists warehouse rows without coupling the parser to a particular output.
- */
 interface OutputAdapter : AutoCloseable {
     fun findMatchKey(canonicalMatchId: CanonicalMatchId): Long?
 
@@ -28,37 +25,29 @@ interface OutputAdapter : AutoCloseable {
 
     fun upsertTeam(name: String): Team
 
-    fun upsertGround(name: String): Location
+    fun upsertGround(name: String): Ground
 
     fun upsertDate(date: java.time.LocalDate): Int
 
-    fun insertMatch(match: MatchRecord): WarehouseMatch
+    fun insertMatch(match: MatchRecord): MatchEntity
 
-    fun insertSourceReferences(matchKey: Long, sources: List<SourceReference>)
+    fun insertSourceReferences(matchId: Long, sources: List<SourceReference>)
 
-    fun insertMatchFact(
-        matchKey: Long,
-        matchDateKey: Int?,
-        groundKey: Long,
-        durationDays: Int,
-        margin: Int
-    )
+    fun upsertInnings(matchId: Long, inningsNumber: Int, battingTeamId: Long, bowlingTeamId: Long): InningsEntity
 
-    fun upsertInnings(matchKey: Long, inningsNumber: Int, battingTeamKey: Long, bowlingTeamKey: Long): WarehouseInnings
-
-    fun findDeliveryKey(matchKey: Long, inningsKey: Long, inningsOrder: Int): Long?
+    fun findDeliveryKey(matchId: Long, inningsId: Long, inningsOrder: Int): Long?
 
     fun insertDelivery(delivery: DeliveryRecord): Long
 
     fun insertWicket(kind: String): Long
 
-    fun insertDeliveryWicket(deliveryKey: Long, wicketKey: Long)
+    fun insertDeliveryWicket(deliveryId: Long, wicketId: Long)
 
-    fun insertDeliveryFielder(deliveryKey: Long, wicketKey: Long, personKey: Long)
+    fun insertDeliveryFielder(deliveryId: Long, wicketId: Long, personId: Long)
 
-    fun insertMatchPerson(matchKey: Long, personKey: Long, roleCode: String)
+    fun insertMatchPerson(matchId: Long, personId: Long, roleCode: String)
 
-    fun writeAllPeople(people: Sequence<PersonRegistryEntity>)
+    fun writeAllPeople(people: Sequence<PersonEntity>)
 
     fun beginMatch() = Unit
 
@@ -81,6 +70,9 @@ data class MatchRecord(
     val matchStartYear: String,
     val matchStartDateKey: Int?,
     val ballsPerOver: Int,
+    val durationDays: Int = 0,
+    val margin: Int = 0,
+    val matchCount: Int = 1,
     val team1Key: Long,
     val team2Key: Long,
     val groundKey: Long,

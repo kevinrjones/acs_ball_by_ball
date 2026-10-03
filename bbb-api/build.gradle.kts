@@ -115,11 +115,11 @@ jooq {
                         name = "org.jooq.meta.mariadb.MariaDBDatabase"
                         inputSchema = jooqDatabaseSchema.get()
                         outputSchema = jooqOutputSchema.get()
-//                        includes = "(?i:(dim_match|dim_date|dim_team|dim_ground|fact_match|dim_innings|fact_delivery|dim_person|dim_wicket|bridge_delivery_wicket|bridge_delivery_fielder))"
+                        includes = "(?i:(dates|teams|people|grounds|matches|match_source_reference|innings|deliveries|wickets|match_people|delivery_wickets|delivery_fielders))"
                         forcedTypes {
                             forcedType {
                                 name = "BIGINT"
-                                includeExpression = "(?i:.*\\.(match_key|team1_key|team2_key|ground_key|toss_team_key|winner_team_key|loser_team_key|team_key|person_key|innings_key|delivery_key|wicket_key|batter_key|non_striker_key|bowler_key|batting_team_key|bowling_team_key))"
+                                includeExpression = "(?i:.*\\.(id|match_id|team1_id|team2_id|ground_id|toss_team_id|winner_team_id|loser_team_id|team_id|person_id|innings_id|delivery_id|wicket_id|batter_id|non_striker_id|bowler_id|batting_team_id|bowling_team_id))"
                             }
                         }
                     }

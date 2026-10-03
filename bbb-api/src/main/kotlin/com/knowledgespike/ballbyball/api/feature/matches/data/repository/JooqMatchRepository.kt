@@ -6,13 +6,12 @@ import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchSearc
 import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchSearchPage
 import com.knowledgespike.ballbyball.api.feature.matches.domain.model.MatchScoresheetPage
 import com.knowledgespike.ballbyball.contracts.MatchSummary
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimDate
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimGround
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimInnings
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimMatch
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimTeam
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.FactDelivery
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.FactMatch
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Dates
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Deliveries
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Grounds
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Innings
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Matches
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Teams
 import com.knowledgespike.ballbyball.types.values.Limit
 import com.knowledgespike.ballbyball.types.values.MatchType
 import com.knowledgespike.ballbyball.types.values.PageNumber
@@ -36,17 +35,16 @@ class JooqMatchRepository(
     private val log = LoggerFactory.getLogger(JooqMatchRepository::class.java)
     private val dsl = DSL.using(dataSource, dialect)
 
-    private val dimMatch = DimMatch.DIM_MATCH
-    private val dimDate = DimDate.DIM_DATE
-    private val dimTeam1 = DimTeam.DIM_TEAM.`as`("t1")
-    private val dimTeam2 = DimTeam.DIM_TEAM.`as`("t2")
-    private val dimGround = DimGround.DIM_GROUND
-    private val dimTeamWinner = DimTeam.DIM_TEAM.`as`("tw")
-    private val factMatch = FactMatch.FACT_MATCH
-    private val dimInnings = DimInnings.DIM_INNINGS
-    private val factDelivery = FactDelivery.FACT_DELIVERY
+    private val dimMatch = Matches.MATCHES
+    private val dimDate = Dates.DATES
+    private val dimTeam1 = Teams.TEAMS.`as`("t1")
+    private val dimTeam2 = Teams.TEAMS.`as`("t2")
+    private val dimGround = Grounds.GROUNDS
+    private val dimTeamWinner = Teams.TEAMS.`as`("tw")
+    private val dimInnings = Innings.INNINGS
+    private val factDelivery = Deliveries.DELIVERIES
 
-    private val mMatchKey = dimMatch.MATCH_KEY
+    private val mMatchKey = dimMatch.ID
     private val mPublicMatchId = dimMatch.PUBLIC_MATCH_ID
     private val mFileName = dimMatch.FILE_NAME
     private val mMatchType = dimMatch.MATCH_TYPE
@@ -54,37 +52,37 @@ class JooqMatchRepository(
     private val mMatchDateText = dimMatch.MATCH_DATE_TEXT
     private val mSeason = dimMatch.SEASON
     private val mBallsPerOver = dimMatch.BALLS_PER_OVER
-    private val mTeam1Key = dimMatch.TEAM1_KEY
-    private val mTeam2Key = dimMatch.TEAM2_KEY
-    private val mGroundKey = dimMatch.GROUND_KEY
-    private val mWinnerTeamKey = dimMatch.WINNER_TEAM_KEY
+    private val mTeam1Key = dimMatch.TEAM1_ID
+    private val mTeam2Key = dimMatch.TEAM2_ID
+    private val mGroundKey = dimMatch.GROUND_ID
+    private val mWinnerTeamKey = dimMatch.WINNER_TEAM_ID
     private val mVictoryType = dimMatch.VICTORY_TYPE
-    private val mMatchStartDateKey = dimMatch.MATCH_START_DATE_KEY
+    private val mMatchStartDateKey = dimMatch.MATCH_START_DATE_ID
 
-    private val dDateKey = dimDate.DATE_KEY
+    private val dDateKey = dimDate.DATE_ID
     private val dCalendarDate = dimDate.CALENDAR_DATE
 
-    private val t1TeamKey = dimTeam1.TEAM_KEY
+    private val t1TeamKey = dimTeam1.ID
     private val t1TeamName = dimTeam1.TEAM_NAME
 
-    private val t2TeamKey = dimTeam2.TEAM_KEY
+    private val t2TeamKey = dimTeam2.ID
     private val t2TeamName = dimTeam2.TEAM_NAME
 
-    private val gGroundKey = dimGround.GROUND_KEY
+    private val gGroundKey = dimGround.ID
     private val gGroundName = dimGround.GROUND_NAME
 
-    private val twTeamKey = dimTeamWinner.TEAM_KEY
+    private val twTeamKey = dimTeamWinner.ID
     private val twTeamName = dimTeamWinner.TEAM_NAME
 
-    private val fmMatchKey = factMatch.MATCH_KEY
-    private val fmMargin = factMatch.MARGIN
+    private val fmMatchKey = dimMatch.ID
+    private val fmMargin = dimMatch.MARGIN
 
-    private val iInningsKey = dimInnings.INNINGS_KEY
+    private val iInningsKey = dimInnings.ID
     private val iInningsNumber = dimInnings.INNINGS_NUMBER
 
-    private val fdMatchKey = factDelivery.MATCH_KEY
-    private val fdInningsKey = factDelivery.INNINGS_KEY
-    private val fdBattingTeamKey = factDelivery.BATTING_TEAM_KEY
+    private val fdMatchKey = factDelivery.MATCH_ID
+    private val fdInningsKey = factDelivery.INNINGS_ID
+    private val fdBattingTeamKey = factDelivery.BATTING_TEAM_ID
     private val fdTotalRuns = factDelivery.TOTAL_RUNS
     private val fdWicketCount = factDelivery.WICKET_COUNT
     private val fdWides = factDelivery.WIDES
@@ -143,7 +141,6 @@ class JooqMatchRepository(
                 .leftJoin(dimTeam1).on(mTeam1Key.eq(t1TeamKey))
                 .leftJoin(dimTeam2).on(mTeam2Key.eq(t2TeamKey))
                 .leftJoin(dimTeamWinner).on(mWinnerTeamKey.eq(twTeamKey))
-                .leftJoin(factMatch).on(mMatchKey.eq(fmMatchKey))
                 .where(mPublicMatchId.isNotNull.and(mMatchStartDateKey.`in`(recentDateKeys)))
                 .orderBy(dCalendarDate.desc(), mMatchKey.desc())
                 .fetch()
@@ -254,7 +251,6 @@ class JooqMatchRepository(
                 .leftJoin(dimTeam1).on(mTeam1Key.eq(t1TeamKey))
                 .leftJoin(dimTeam2).on(mTeam2Key.eq(t2TeamKey))
                 .leftJoin(dimGround).on(mGroundKey.eq(gGroundKey))
-                .leftJoin(factMatch).on(fmMatchKey.eq(mMatchKey))
                 .where(mPublicMatchId.isNotNull.and(searchCondition))
                 .orderBy(dCalendarDate.desc().nullsLast(), mMatchKey.desc())
                 .limit(criteria.pageSize.value)

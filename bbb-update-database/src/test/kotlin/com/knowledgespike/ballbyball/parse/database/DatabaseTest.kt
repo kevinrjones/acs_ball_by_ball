@@ -80,15 +80,15 @@ class DatabaseTest {
             connection.createStatement().use { statement ->
                 statement.execute(
                     """
-                    create table dim_match (
-                        match_key integer primary key,
+                    create table matches (
+                        id integer primary key,
                         canonical_match_id varchar(36) not null unique,
-                        public_match_id integer unique
+                        public_match_id bigint unique
                     )
                     """.trimIndent()
                 )
                 statement.executeUpdate(
-                    "insert into dim_match (match_key, canonical_match_id) " +
+                    "insert into matches (id, canonical_match_id) " +
                         "values (7, '1890a7a8-f76d-5f36-89f7-39b0319044b0')"
                 )
             }
@@ -98,11 +98,11 @@ class DatabaseTest {
             }
 
             connection.createStatement().use { statement ->
-                statement.executeQuery("select count(*) from dim_match").use { result ->
+                statement.executeQuery("select count(*) from matches").use { result ->
                     result.next()
                     expectThat(result.getInt(1)).isEqualTo(1)
                 }
-                statement.executeQuery("select public_match_id from dim_match where match_key = 7").use { result ->
+                statement.executeQuery("select public_match_id from matches where id = 7").use { result ->
                     result.next()
                     expectThat(result.getLong(1)).isEqualTo(7_922_450_146L)
                 }
@@ -171,7 +171,7 @@ class DatabaseTest {
         expectThat(sql.contains("'Home Women'")).isEqualTo(false)
     }
     @Test
-    fun `given wicket fielder when match is written then fielder bridge row is emitted`() {
+    fun `given wicket fielder when match is written then fielder association is emitted`() {
         val output = Files.createTempFile("warehouse", ".sql")
 
         SqlScriptOutputAdapter(output).use { adapter ->
@@ -183,12 +183,8 @@ class DatabaseTest {
 
         val sql = Files.readString(output)
         expectThat(sql).contains(
-            "INSERT INTO bridge_delivery_fielder (delivery_key, wicket_key, person_key) VALUES (1, 1, 4) " +
-                    "ON CONFLICT (delivery_key, wicket_key, person_key) DO NOTHING;"
-        )
-        expectThat(sql).contains(
-            "INSERT INTO fact_match (match_key, match_date_key, ground_key, duration_days, margin, match_count) " +
-                "VALUES (1, 20240101, 1, 1, 1, 1);"
+            "INSERT INTO delivery_fielders (delivery_id, wicket_id, person_id) VALUES (1, 1, 4) " +
+                    "ON CONFLICT (delivery_id, wicket_id, person_id) DO NOTHING;"
         )
     }
 
@@ -204,7 +200,7 @@ class DatabaseTest {
         }
 
         val sql = Files.readString(output)
-        expectThat(sql.lines().count { it.startsWith("INSERT INTO bridge_delivery_fielder") }).isEqualTo(1)
+        expectThat(sql.lines().count { it.startsWith("INSERT INTO delivery_fielders") }).isEqualTo(1)
     }
 
     @Test
@@ -220,11 +216,11 @@ class DatabaseTest {
 
         val sql = Files.readString(output)
         expectThat(sql).contains(
-            "INSERT INTO dim_person (person_key, source_person_id, full_name, sort_name_part, other_name_part, ca_id) VALUES (5, 'unknown', '[substitute]', '[substitute]', '', 0);"
+            "INSERT INTO people (id, source_person_id, full_name, sort_name_part, other_name_part, ca_id) VALUES (5, 'unknown', '[substitute]', '[substitute]', '', 0);"
         )
         expectThat(sql).contains(
-            "INSERT INTO bridge_delivery_fielder (delivery_key, wicket_key, person_key) VALUES (1, 1, 5) " +
-                    "ON CONFLICT (delivery_key, wicket_key, person_key) DO NOTHING;"
+            "INSERT INTO delivery_fielders (delivery_id, wicket_id, person_id) VALUES (1, 1, 5) " +
+                    "ON CONFLICT (delivery_id, wicket_id, person_id) DO NOTHING;"
         )
     }
 
@@ -262,7 +258,7 @@ class DatabaseTest {
     }
 
     @Test
-    fun `given match with powerplays when match is written then powerplay is stored in fact_delivery`() {
+    fun `given match with powerplays when match is written then powerplay is stored in deliveries`() {
         val output = Files.createTempFile("warehouse", ".sql")
 
         SqlScriptOutputAdapter(output).use { adapter ->
@@ -274,8 +270,8 @@ class DatabaseTest {
 
         val sql = Files.readString(output)
         // delivery.powerplay should be 1
-        expectThat(sql).contains("INSERT INTO fact_delivery")
-        val deliveryLine = sql.lines().first { it.startsWith("INSERT INTO fact_delivery") }
+        expectThat(sql).contains("INSERT INTO deliveries")
+        val deliveryLine = sql.lines().first { it.startsWith("INSERT INTO deliveries") }
         // The powerplay column value before wicket_count (which is 1 from the caught dismissal) should be 1
         expectThat(deliveryLine).contains(", 1, 1);")
     }
@@ -322,30 +318,23 @@ class DatabaseTest {
         ) = Unit
         override fun upsertPerson(sourceId: String, fullName: String, caId: Int): Long = 1
         override fun upsertTeam(name: String): Team = teams.getOrPut(name) { Team(teams.size + 1L, name) }
-        override fun upsertGround(name: String): Location = throw IllegalStateException("Simulated match write failure")
+        override fun upsertGround(name: String): Ground = throw IllegalStateException("Simulated match write failure")
         override fun upsertDate(date: java.time.LocalDate): Int = 20240101
-        override fun insertMatch(match: MatchRecord): WarehouseMatch = WarehouseMatch(1, match.publicMatchId)
+        override fun insertMatch(match: MatchRecord): MatchEntity = MatchEntity(1, match.publicMatchId)
         override fun insertSourceReferences(matchKey: Long, sources: List<SourceReference>) = Unit
-        override fun insertMatchFact(
-            matchKey: Long,
-            matchDateKey: Int?,
-            groundKey: Long,
-            durationDays: Int,
-            margin: Int
-        ) = Unit
         override fun upsertInnings(
             matchKey: Long,
             inningsNumber: Int,
             battingTeamKey: Long,
             bowlingTeamKey: Long
-        ): WarehouseInnings = WarehouseInnings(1)
+        ): InningsEntity = InningsEntity(1)
         override fun findDeliveryKey(matchKey: Long, inningsKey: Long, inningsOrder: Int): Long? = null
         override fun insertDelivery(delivery: DeliveryRecord): Long = 1
         override fun insertWicket(kind: String): Long = 1
         override fun insertDeliveryWicket(deliveryKey: Long, wicketKey: Long) = Unit
         override fun insertDeliveryFielder(deliveryKey: Long, wicketKey: Long, personKey: Long) = Unit
         override fun insertMatchPerson(matchKey: Long, personKey: Long, roleCode: String) = Unit
-        override fun writeAllPeople(people: Sequence<PersonRegistryEntity>) = Unit
+        override fun writeAllPeople(people: Sequence<PersonEntity>) = Unit
         override fun beginMatch() {
             matchStarted = true
         }

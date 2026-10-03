@@ -16,7 +16,7 @@ import org.jooq.impl.UpdatableRecordImpl
 @Suppress("warnings")
 open class MatchSourceReferenceRecord() : UpdatableRecordImpl<MatchSourceReferenceRecord>(MatchSourceReference.MATCH_SOURCE_REFERENCE) {
 
-    open var matchKey: Long?
+    open var matchId: Long?
         set(value): Unit = set(0, value)
         get(): Long? = get(0) as Long?
 
@@ -45,8 +45,8 @@ open class MatchSourceReferenceRecord() : UpdatableRecordImpl<MatchSourceReferen
     /**
      * Create a detached, initialised MatchSourceReferenceRecord
      */
-    constructor(matchKey: Long? = null, provider: String? = null, providerRecordKey: String? = null, sourceRecordId: String? = null, rawContentDigest: String? = null): this() {
-        this.matchKey = matchKey
+    constructor(matchId: Long? = null, provider: String? = null, providerRecordKey: String? = null, sourceRecordId: String? = null, rawContentDigest: String? = null): this() {
+        this.matchId = matchId
         this.provider = provider
         this.providerRecordKey = providerRecordKey
         this.sourceRecordId = sourceRecordId

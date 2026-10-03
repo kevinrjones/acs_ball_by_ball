@@ -1,5 +1,90 @@
 # Project Memory
 
+## Task: Consolidate relational migrations
+
+### Title
+
+Use one initial migration per database dialect
+
+### Date/time completed
+
+2026-10-03 14:38
+
+### What was shipped
+
+- Merged the complete relational cutover schema into
+  `1__initial_tables.sql` for MySQL, PostgreSQL, and SQLite.
+- Removed obsolete warehouse and incremental identity migration files so each
+  dialect now has one authoritative migration.
+- Updated the SQLite migration test and database setup guidance to use the
+  single migration and normalized table names.
+
+### Key decisions
+
+- The single initial migration retains the rebuild reset order and all
+  relational identity, provenance, association, and foreign-key definitions.
+- Existing databases remain backup-and-replay cutover targets rather than
+  in-place data-copy targets.
+
+### Gotchas
+
+- Existing Flyway installations with the old migration history must be
+  recreated or handled as an explicitly coordinated cutover; the consolidated
+  files describe the fresh relational target.
+
+### Test coverage areas
+
+- SQLite migration coverage now applies `1__initial_tables.sql` and verifies
+  warehouse-table removal and relational schema creation.
+
+## Task: Replace warehouse schema with relational match data
+
+### Title
+
+Normalized relational database cutover and API/updater refactor
+
+### Date/time completed
+
+2026-10-03 14:25
+
+### What was shipped
+
+- Added a complete `1__initial_tables.sql` migration for MariaDB, PostgreSQL,
+  and SQLite, replacing warehouse tables with normalized match, entity, event,
+  association, and provenance tables.
+- Updated JDBC, SQL-script, and CSV updater outputs to write relational tables,
+  with match measures merged into `matches` and delivery measures merged into
+  `deliveries`.
+- Regenerated relational jOOQ bindings and updated match summary, search, and
+  scoresheet readers without changing public HTTP contracts.
+- Added ADR `0005-relational-database-schema.md` and refreshed database and
+  application architecture documentation.
+
+### Key decisions
+
+- Existing databases are backup-first rebuild targets; canonical envelopes are
+  replayed instead of translating warehouse surrogate keys in place.
+- `matches.id`, `canonical_match_id`, and `public_match_id` remain distinct;
+  source digests continue to reject changed provenance.
+- Official and player assignments use `match_people`, while wicket and fielder
+  relationships use explicit association tables.
+
+### Gotchas
+
+- Internal numeric IDs can change after replay; API and ingestion code must use
+  canonical or public identities.
+- Live integration tests require a MariaDB instance already populated with the
+  relational schema; connection settings are configurable through test system
+  properties or `TEST_DB_*` environment variables.
+
+### Test coverage areas
+
+- SQLite cutover validation covers legacy-table removal, all normalized tables,
+  foreign-key integrity, and the complete `matches` column contract.
+- Updater tests cover JDBC, SQL-script, CSV, identity/provenance, duplicate
+  suppression, and relational column ordering; API production compilation and
+  non-live tests pass.
+
 ## Task: Expert code review and ubiquitous language
 
 ### Title

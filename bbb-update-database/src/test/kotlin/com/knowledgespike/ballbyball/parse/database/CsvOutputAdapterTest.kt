@@ -27,12 +27,12 @@ class CsvOutputAdapterTest {
         adapter.insertDeliveryFielder(1, 2, 3)
         adapter.close()
 
-        val csv = Files.readString(output.resolve("dim_person.csv"))
-        expectThat(csv).contains("source_person_id,full_name,sort_name_part,other_name_part,ca_id")
+        val csv = Files.readString(output.resolve("people.csv"))
+        expectThat(csv).contains("id,source_person_id,full_name,sort_name_part,other_name_part,ca_id")
         expectThat(csv.lines().count { it.startsWith("1,person-1,") }).isEqualTo(1)
         expectThat(csv).contains("\"O'Brien, Jr.\"")
-        expectThat(Files.readString(output.resolve("bridge_delivery_fielder.csv")))
-            .isEqualTo("delivery_key,wicket_key,person_key\n1,2,3\n")
+        expectThat(Files.readString(output.resolve("delivery_fielders.csv")))
+            .isEqualTo("delivery_id,wicket_id,person_id\n1,2,3\n")
     }
 
     @Test
@@ -89,7 +89,7 @@ class CsvOutputAdapterTest {
             )
         )
         adapter.insertSourceReferences(
-            match.key,
+            match.id,
             listOf(
                 SourceReference(
                     provider = ProviderId.from("cricsheet"),
@@ -99,16 +99,14 @@ class CsvOutputAdapterTest {
                 )
             )
         )
-        adapter.insertMatchFact(match.key, dateKey, ground.id, 1, 10)
         adapter.close()
 
-        expectThat(duplicate.key).isEqualTo(match.key)
+        expectThat(duplicate.id).isEqualTo(match.id)
 
-        val matchCsv = Files.readString(output.resolve("dim_match.csv"))
-        expectThat(matchCsv).contains("match_key,canonical_match_id,public_match_id,source_ca_id,file_name")
+        val matchCsv = Files.readString(output.resolve("matches.csv"))
+        expectThat(matchCsv).contains("id,canonical_match_id,public_match_id,source_ca_id,file_name")
         expectThat(matchCsv).contains("1,1890a7a8-f76d-5f36-89f7-39b0319044b0,7922450146,\\N,${sourceFile.toString()}")
-        expectThat(Files.readString(output.resolve("fact_match.csv")))
-            .contains("match_key,match_date_key,ground_key,duration_days,margin,match_count\n1,20240102,1,1,10,1")
+        expectThat(matchCsv).contains(",duration_days,margin,match_count\n")
         expectThat(Files.readString(output.resolve("match_source_reference.csv")))
             .contains("1,cricsheet,12345,c61f62bd-7b02-5c3f-ae44-572d533b5877,${"0".repeat(64)}")
     }

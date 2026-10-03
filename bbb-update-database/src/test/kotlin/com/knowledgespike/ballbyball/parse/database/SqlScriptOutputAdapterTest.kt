@@ -35,58 +35,54 @@ class SqlScriptOutputAdapterTest {
         }
     }
     @Test
-    fun `given a new script when opened then warehouse tables are reset before data`() {
+    fun `given a new script when opened then relational tables are reset before data`() {
         val output = Files.createTempFile("warehouse", ".sql")
         val adapter = SqlScriptOutputAdapter(output)
         adapter.close()
 
         val sql = Files.readString(output)
         val statements = sql.lines()
-        val dropBridgeDeliveryWicket = statements.indexOf("DROP TABLE IF EXISTS bridge_delivery_wicket;")
-        val dropDimDate = statements.indexOf("DROP TABLE IF EXISTS dim_date;")
-        val createDimDate = statements.indexOfFirst { it.startsWith("CREATE TABLE dim_date") }
-        val createBridgeDeliveryWicket = statements.indexOfFirst { it.startsWith("CREATE TABLE bridge_delivery_wicket") }
+        val dropDeliveryWicket = statements.indexOf("DROP TABLE IF EXISTS delivery_wickets;")
+        val dropDates = statements.indexOf("DROP TABLE IF EXISTS dates;")
+        val createDates = statements.indexOfFirst { it.startsWith("CREATE TABLE dates") }
+        val createDeliveryWicket = statements.indexOfFirst { it.startsWith("CREATE TABLE delivery_wickets") }
         val startTransaction = statements.indexOf("START TRANSACTION;")
         val commit = statements.indexOf("COMMIT;")
 
-        expectThat(dropBridgeDeliveryWicket).isGreaterThan(-1)
-        expectThat(dropDimDate).isGreaterThan(dropBridgeDeliveryWicket)
-        expectThat(createDimDate).isGreaterThan(dropDimDate)
-        expectThat(createBridgeDeliveryWicket).isGreaterThan(createDimDate)
-        expectThat(startTransaction).isGreaterThan(createBridgeDeliveryWicket)
-        expectThat(commit).isGreaterThan(createBridgeDeliveryWicket)
+        expectThat(dropDeliveryWicket).isGreaterThan(-1)
+        expectThat(dropDates).isGreaterThan(dropDeliveryWicket)
+        expectThat(createDates).isGreaterThan(dropDates)
+        expectThat(createDeliveryWicket).isGreaterThan(createDates)
+        expectThat(startTransaction).isGreaterThan(createDeliveryWicket)
+        expectThat(commit).isGreaterThan(createDeliveryWicket)
     }
 
     @Test
-    fun `given mariadb output when opened then every warehouse table uses innodb`() {
+    fun `given mariadb output when opened then every relational table uses innodb`() {
         val output = Files.createTempFile("warehouse", ".sql")
         SqlScriptOutputAdapter(output).use { }
 
         val sql = Files.readString(output)
-        expectThat(Regex("CREATE TABLE ").findAll(sql).count()).isEqualTo(13)
-        expectThat(Regex("\\) ENGINE = InnoDB;").findAll(sql).count()).isEqualTo(13)
+        expectThat(Regex("CREATE TABLE ").findAll(sql).count()).isEqualTo(12)
+        expectThat(Regex("\\) ENGINE = InnoDB;").findAll(sql).count()).isEqualTo(12)
     }
 
     @Test
-    fun `given mariadb output then match foreign keys use the dim match key type`() {
+    fun `given mariadb output then relational foreign keys use the match key type`() {
         val output = Files.createTempFile("warehouse", ".sql")
         SqlScriptOutputAdapter(output).use { }
 
         val sql = Files.readString(output)
-        expectThat(
-            Regex("(?m)^\\s+match_key\\s+BIGINT NOT NULL(?: PRIMARY KEY)?,")
-                .findAll(sql)
-                .count()
-        ).isEqualTo(5)
-        expectThat(sql).contains("match_key            BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,")
-        expectThat(sql).contains("canonical_match_id   CHAR(36) NULL,")
-        expectThat(sql).contains("public_match_id      BIGINT NULL,")
-        expectThat(sql).contains("CONSTRAINT uq_dim_match_canonical_id UNIQUE (canonical_match_id)")
-        expectThat(sql).contains("CONSTRAINT uq_dim_match_public_match_id UNIQUE (public_match_id)")
+        expectThat(sql).contains("match_id BIGINT NOT NULL")
+        expectThat(sql).contains("id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY")
+        expectThat(sql).contains("canonical_match_id CHAR(36) NULL")
+        expectThat(sql).contains("public_match_id BIGINT NULL")
+        expectThat(sql).contains("duration_days INT NOT NULL")
+        expectThat(sql).contains("margin INT NOT NULL")
         expectThat(sql).contains("CREATE TABLE match_source_reference")
-        expectThat(sql).contains("source_record_id   CHAR(36) NOT NULL")
-        expectThat(sql).contains("added_timestamp      DATETIME NOT NULL")
-        expectThat(sql).contains("match_count     TINYINT UNSIGNED NOT NULL DEFAULT 1")
+        expectThat(sql).contains("source_record_id CHAR(36) NOT NULL")
+        expectThat(sql).contains("added_timestamp DATETIME NOT NULL")
+        expectThat(sql).contains("match_count TINYINT UNSIGNED NOT NULL DEFAULT 1")
     }
 
     @Test
@@ -101,7 +97,7 @@ class SqlScriptOutputAdapterTest {
         val sql = Files.readString(output)
         expectThat(firstKey).isEqualTo(secondKey)
         expectThat(sql).contains("'O''Brien'")
-        expectThat(sql.lines().count { it.startsWith("INSERT INTO dim_person") }).isEqualTo(1)
+        expectThat(sql.lines().count { it.startsWith("INSERT INTO people") }).isEqualTo(1)
     }
 
     @Test
@@ -113,7 +109,7 @@ class SqlScriptOutputAdapterTest {
         }
 
         val sql = Files.readString(output)
-        expectThat(sql.lines().count { it.startsWith("INSERT INTO bridge_delivery_fielder") }).isEqualTo(1)
+        expectThat(sql.lines().count { it.startsWith("INSERT INTO delivery_fielders") }).isEqualTo(1)
     }
 
     @Test
@@ -147,18 +143,16 @@ class SqlScriptOutputAdapterTest {
                 loserTeamKey = team2.id
             )
         )
-        adapter.insertMatchFact(match.key, dateKey, ground.id, 1, 10)
         adapter.close()
 
         val sql = Files.readString(output)
-        expectThat(sql).contains("INSERT INTO dim_match (match_key, canonical_match_id, public_match_id, source_ca_id, file_name")
+        expectThat(sql).contains("INSERT INTO matches (id, canonical_match_id, public_match_id, source_ca_id, file_name")
         expectThat(sql).contains(
             "VALUES (1, '1890a7a8-f76d-5f36-89f7-39b0319044b0', 7922450146, NULL, '${sourceFile.toString().replace("'", "''")}'"
         )
-        val matchInsert = sql.lineSequence().single { it.startsWith("INSERT INTO dim_match") }
+        val matchInsert = sql.lineSequence().single { it.startsWith("INSERT INTO matches") }
         expectThat(matchInsert.count { it == '?' }).isEqualTo(0)
-        expectThat(sql).contains("INSERT INTO fact_match (match_key, match_date_key")
-            .and { contains("VALUES (1, 20240102, 1, 1, 10, 1)") }
+        expectThat(sql).contains("duration_days, margin, match_count")
     }
 
     @Test
@@ -172,10 +166,10 @@ class SqlScriptOutputAdapterTest {
         val sql = Files.readString(output)
         expectThat(sql).contains("CREATE SCHEMA IF NOT EXISTS acs_ball_by_ball;")
         expectThat(sql).contains("BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY")
-        expectThat(sql).contains("ON CONFLICT (match_key, person_key, role_code) DO NOTHING")
+        expectThat(sql).contains("ON CONFLICT (match_id, person_id, role_code) DO NOTHING")
         expectThat(sql).contains(
-            "INSERT INTO bridge_delivery_fielder (delivery_key, wicket_key, person_key) VALUES (1, 2, 3) " +
-                    "ON CONFLICT (delivery_key, wicket_key, person_key) DO NOTHING;"
+            "INSERT INTO delivery_fielders (delivery_id, wicket_id, person_id) VALUES (1, 2, 3) " +
+                    "ON CONFLICT (delivery_id, wicket_id, person_id) DO NOTHING;"
         )
         expectThat(sql).contains("START TRANSACTION;")
     }
@@ -190,12 +184,12 @@ class SqlScriptOutputAdapterTest {
         val sql = Files.readString(output)
         expectThat(sql).contains("PRAGMA foreign_keys = ON;")
         expectThat(sql).contains("INTEGER PRIMARY KEY AUTOINCREMENT")
-        expectThat(sql).contains("ON CONFLICT (match_key, person_key, role_code) DO NOTHING")
+        expectThat(sql).contains("ON CONFLICT (match_id, person_id, role_code) DO NOTHING")
         expectThat(sql).contains("BEGIN TRANSACTION;")
     }
 
     @Test
-    fun `given sqlite output when executed then warehouse schema is created`() {
+    fun `given sqlite output when executed then relational schema is created`() {
         val output = Files.createTempFile("warehouse-sqlite", ".sql")
         SqliteSqlScriptOutputAdapter(output).use { }
         val statements = Files.readString(output)
@@ -212,22 +206,22 @@ class SqlScriptOutputAdapterTest {
                     "select count(*) from sqlite_master where type = 'table' and name not like 'sqlite_%'"
                 ).use { result ->
                     result.next()
-                    expectThat(result.getInt(1)).isEqualTo(13)
+                    expectThat(result.getInt(1)).isEqualTo(12)
                 }
                 statement.executeQuery(
-                    "select count(*) from sqlite_master where type = 'index' and name = 'idx_fact_delivery_ball_in_over'"
+                    "select count(*) from sqlite_master where type = 'index' and name = 'idx_deliveries_match_order'"
                 ).use { result ->
                     result.next()
                     expectThat(result.getInt(1)).isEqualTo(1)
                 }
                 listOf(
-                    "idx_fact_delivery_match_seq",
-                    "idx_dim_match_file_name",
-                    "idx_dim_match_type_year",
-                    "idx_dim_match_teams_type",
-                    "idx_dim_person_full_name",
-                    "idx_bridge_delivery_wicket_wicket",
-                    "idx_bridge_delivery_fielder_wicket"
+                    "idx_deliveries_match_sequence",
+                    "idx_matches_file_name",
+                    "idx_matches_type_year",
+                    "idx_matches_teams_type",
+                    "idx_people_full_name",
+                    "idx_delivery_wickets_wicket",
+                    "idx_delivery_fielders_wicket"
                 ).forEach { indexName ->
                     statement.executeQuery(
                         "select count(*) from sqlite_master where type = 'index' and name = '$indexName'"
@@ -237,10 +231,10 @@ class SqlScriptOutputAdapterTest {
                     }
                 }
                 statement.executeQuery(
-                    "select count(*) from pragma_table_info('fact_match') where name = 'file_name'"
+                    "select count(*) from pragma_table_info('matches') where name = 'duration_days'"
                 ).use { result ->
                     result.next()
-                    expectThat(result.getInt(1)).isEqualTo(0)
+                    expectThat(result.getInt(1)).isEqualTo(1)
                 }
             }
         }

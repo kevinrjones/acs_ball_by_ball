@@ -5,83 +5,77 @@
 package com.knowledgespike.ballbyball.api.generated.jooq.tables.references
 
 
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.BridgeDeliveryFielder
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.BridgeDeliveryWicket
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.BridgeMatchPerson
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimDate
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimGround
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimInnings
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimMatch
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimPerson
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimTeam
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimWicket
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.FactDelivery
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.FactMatch
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Dates
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Deliveries
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.DeliveryFielders
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.DeliveryWickets
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Grounds
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Innings
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.MatchPeople
 import com.knowledgespike.ballbyball.api.generated.jooq.tables.MatchSourceReference
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Matches
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.People
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Teams
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Wickets
 
 
 
 /**
- * The table <code>acs_ball_by_ball.bridge_delivery_fielder</code>.
+ * The table <code>acs_ball_by_ball.dates</code>.
  */
-val BRIDGE_DELIVERY_FIELDER: BridgeDeliveryFielder = BridgeDeliveryFielder.BRIDGE_DELIVERY_FIELDER
+val DATES: Dates = Dates.DATES
 
 /**
- * The table <code>acs_ball_by_ball.bridge_delivery_wicket</code>.
+ * The table <code>acs_ball_by_ball.deliveries</code>.
  */
-val BRIDGE_DELIVERY_WICKET: BridgeDeliveryWicket = BridgeDeliveryWicket.BRIDGE_DELIVERY_WICKET
+val DELIVERIES: Deliveries = Deliveries.DELIVERIES
 
 /**
- * The table <code>acs_ball_by_ball.bridge_match_person</code>.
+ * The table <code>acs_ball_by_ball.delivery_fielders</code>.
  */
-val BRIDGE_MATCH_PERSON: BridgeMatchPerson = BridgeMatchPerson.BRIDGE_MATCH_PERSON
+val DELIVERY_FIELDERS: DeliveryFielders = DeliveryFielders.DELIVERY_FIELDERS
 
 /**
- * The table <code>acs_ball_by_ball.dim_date</code>.
+ * The table <code>acs_ball_by_ball.delivery_wickets</code>.
  */
-val DIM_DATE: DimDate = DimDate.DIM_DATE
+val DELIVERY_WICKETS: DeliveryWickets = DeliveryWickets.DELIVERY_WICKETS
 
 /**
- * The table <code>acs_ball_by_ball.dim_ground</code>.
+ * The table <code>acs_ball_by_ball.grounds</code>.
  */
-val DIM_GROUND: DimGround = DimGround.DIM_GROUND
+val GROUNDS: Grounds = Grounds.GROUNDS
 
 /**
- * The table <code>acs_ball_by_ball.dim_innings</code>.
+ * The table <code>acs_ball_by_ball.innings</code>.
  */
-val DIM_INNINGS: DimInnings = DimInnings.DIM_INNINGS
+val INNINGS: Innings = Innings.INNINGS
 
 /**
- * The table <code>acs_ball_by_ball.dim_match</code>.
+ * The table <code>acs_ball_by_ball.match_people</code>.
  */
-val DIM_MATCH: DimMatch = DimMatch.DIM_MATCH
-
-/**
- * The table <code>acs_ball_by_ball.dim_person</code>.
- */
-val DIM_PERSON: DimPerson = DimPerson.DIM_PERSON
-
-/**
- * The table <code>acs_ball_by_ball.dim_team</code>.
- */
-val DIM_TEAM: DimTeam = DimTeam.DIM_TEAM
-
-/**
- * The table <code>acs_ball_by_ball.dim_wicket</code>.
- */
-val DIM_WICKET: DimWicket = DimWicket.DIM_WICKET
-
-/**
- * The table <code>acs_ball_by_ball.fact_delivery</code>.
- */
-val FACT_DELIVERY: FactDelivery = FactDelivery.FACT_DELIVERY
-
-/**
- * The table <code>acs_ball_by_ball.fact_match</code>.
- */
-val FACT_MATCH: FactMatch = FactMatch.FACT_MATCH
+val MATCH_PEOPLE: MatchPeople = MatchPeople.MATCH_PEOPLE
 
 /**
  * The table <code>acs_ball_by_ball.match_source_reference</code>.
  */
 val MATCH_SOURCE_REFERENCE: MatchSourceReference = MatchSourceReference.MATCH_SOURCE_REFERENCE
+
+/**
+ * The table <code>acs_ball_by_ball.matches</code>.
+ */
+val MATCHES: Matches = Matches.MATCHES
+
+/**
+ * The table <code>acs_ball_by_ball.people</code>.
+ */
+val PEOPLE: People = People.PEOPLE
+
+/**
+ * The table <code>acs_ball_by_ball.teams</code>.
+ */
+val TEAMS: Teams = Teams.TEAMS
+
+/**
+ * The table <code>acs_ball_by_ball.wickets</code>.
+ */
+val WICKETS: Wickets = Wickets.WICKETS

@@ -4,19 +4,18 @@
 package com.knowledgespike.ballbyball.api.generated.jooq
 
 
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.BridgeDeliveryFielder
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.BridgeDeliveryWicket
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.BridgeMatchPerson
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimDate
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimGround
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimInnings
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimMatch
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimPerson
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimTeam
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.DimWicket
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.FactDelivery
-import com.knowledgespike.ballbyball.api.generated.jooq.tables.FactMatch
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Dates
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Deliveries
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.DeliveryFielders
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.DeliveryWickets
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Grounds
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Innings
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.MatchPeople
 import com.knowledgespike.ballbyball.api.generated.jooq.tables.MatchSourceReference
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Matches
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.People
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Teams
+import com.knowledgespike.ballbyball.api.generated.jooq.tables.Wickets
 
 import kotlin.collections.List
 
@@ -40,85 +39,79 @@ open class AcsBallByBall : SchemaImpl(DSL.name("acs_ball_by_ball"), DefaultCatal
     }
 
     /**
-     * The table <code>acs_ball_by_ball.bridge_delivery_fielder</code>.
+     * The table <code>acs_ball_by_ball.dates</code>.
      */
-    val BRIDGE_DELIVERY_FIELDER: BridgeDeliveryFielder get() = BridgeDeliveryFielder.BRIDGE_DELIVERY_FIELDER
+    val DATES: Dates get() = Dates.DATES
 
     /**
-     * The table <code>acs_ball_by_ball.bridge_delivery_wicket</code>.
+     * The table <code>acs_ball_by_ball.deliveries</code>.
      */
-    val BRIDGE_DELIVERY_WICKET: BridgeDeliveryWicket get() = BridgeDeliveryWicket.BRIDGE_DELIVERY_WICKET
+    val DELIVERIES: Deliveries get() = Deliveries.DELIVERIES
 
     /**
-     * The table <code>acs_ball_by_ball.bridge_match_person</code>.
+     * The table <code>acs_ball_by_ball.delivery_fielders</code>.
      */
-    val BRIDGE_MATCH_PERSON: BridgeMatchPerson get() = BridgeMatchPerson.BRIDGE_MATCH_PERSON
+    val DELIVERY_FIELDERS: DeliveryFielders get() = DeliveryFielders.DELIVERY_FIELDERS
 
     /**
-     * The table <code>acs_ball_by_ball.dim_date</code>.
+     * The table <code>acs_ball_by_ball.delivery_wickets</code>.
      */
-    val DIM_DATE: DimDate get() = DimDate.DIM_DATE
+    val DELIVERY_WICKETS: DeliveryWickets get() = DeliveryWickets.DELIVERY_WICKETS
 
     /**
-     * The table <code>acs_ball_by_ball.dim_ground</code>.
+     * The table <code>acs_ball_by_ball.grounds</code>.
      */
-    val DIM_GROUND: DimGround get() = DimGround.DIM_GROUND
+    val GROUNDS: Grounds get() = Grounds.GROUNDS
 
     /**
-     * The table <code>acs_ball_by_ball.dim_innings</code>.
+     * The table <code>acs_ball_by_ball.innings</code>.
      */
-    val DIM_INNINGS: DimInnings get() = DimInnings.DIM_INNINGS
+    val INNINGS: Innings get() = Innings.INNINGS
 
     /**
-     * The table <code>acs_ball_by_ball.dim_match</code>.
+     * The table <code>acs_ball_by_ball.match_people</code>.
      */
-    val DIM_MATCH: DimMatch get() = DimMatch.DIM_MATCH
-
-    /**
-     * The table <code>acs_ball_by_ball.dim_person</code>.
-     */
-    val DIM_PERSON: DimPerson get() = DimPerson.DIM_PERSON
-
-    /**
-     * The table <code>acs_ball_by_ball.dim_team</code>.
-     */
-    val DIM_TEAM: DimTeam get() = DimTeam.DIM_TEAM
-
-    /**
-     * The table <code>acs_ball_by_ball.dim_wicket</code>.
-     */
-    val DIM_WICKET: DimWicket get() = DimWicket.DIM_WICKET
-
-    /**
-     * The table <code>acs_ball_by_ball.fact_delivery</code>.
-     */
-    val FACT_DELIVERY: FactDelivery get() = FactDelivery.FACT_DELIVERY
-
-    /**
-     * The table <code>acs_ball_by_ball.fact_match</code>.
-     */
-    val FACT_MATCH: FactMatch get() = FactMatch.FACT_MATCH
+    val MATCH_PEOPLE: MatchPeople get() = MatchPeople.MATCH_PEOPLE
 
     /**
      * The table <code>acs_ball_by_ball.match_source_reference</code>.
      */
     val MATCH_SOURCE_REFERENCE: MatchSourceReference get() = MatchSourceReference.MATCH_SOURCE_REFERENCE
 
+    /**
+     * The table <code>acs_ball_by_ball.matches</code>.
+     */
+    val MATCHES: Matches get() = Matches.MATCHES
+
+    /**
+     * The table <code>acs_ball_by_ball.people</code>.
+     */
+    val PEOPLE: People get() = People.PEOPLE
+
+    /**
+     * The table <code>acs_ball_by_ball.teams</code>.
+     */
+    val TEAMS: Teams get() = Teams.TEAMS
+
+    /**
+     * The table <code>acs_ball_by_ball.wickets</code>.
+     */
+    val WICKETS: Wickets get() = Wickets.WICKETS
+
     override fun getCatalog(): Catalog = DefaultCatalog.DEFAULT_CATALOG
 
     override fun getTables(): List<Table<*>> = listOf(
-        BridgeDeliveryFielder.BRIDGE_DELIVERY_FIELDER,
-        BridgeDeliveryWicket.BRIDGE_DELIVERY_WICKET,
-        BridgeMatchPerson.BRIDGE_MATCH_PERSON,
-        DimDate.DIM_DATE,
-        DimGround.DIM_GROUND,
-        DimInnings.DIM_INNINGS,
-        DimMatch.DIM_MATCH,
-        DimPerson.DIM_PERSON,
-        DimTeam.DIM_TEAM,
-        DimWicket.DIM_WICKET,
-        FactDelivery.FACT_DELIVERY,
-        FactMatch.FACT_MATCH,
-        MatchSourceReference.MATCH_SOURCE_REFERENCE
+        Dates.DATES,
+        Deliveries.DELIVERIES,
+        DeliveryFielders.DELIVERY_FIELDERS,
+        DeliveryWickets.DELIVERY_WICKETS,
+        Grounds.GROUNDS,
+        Innings.INNINGS,
+        MatchPeople.MATCH_PEOPLE,
+        MatchSourceReference.MATCH_SOURCE_REFERENCE,
+        Matches.MATCHES,
+        People.PEOPLE,
+        Teams.TEAMS,
+        Wickets.WICKETS
     )
 }
